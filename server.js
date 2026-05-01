@@ -360,6 +360,54 @@ app.post('/api/admin/settings', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- MEDIA UPLOADS (Cloudinary) ---
+
+app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+        const { type } = req.body;
+
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: 'auto',
+            folder: 'emyris_media'
+        });
+
+        // Update company profile
+        const settings = await db.Company.findOne();
+        if (settings) {
+            if (type === 'music') await settings.update({ musicUrl: result.secure_url });
+            else if (type === 'video') await settings.update({ videoUrl: result.secure_url });
+        }
+
+        // Clean up local file
+        fs.unlinkSync(req.file.path);
+
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { 
+        console.error("Upload Error:", e);
+        res.status(500).json({ success: false, message: e.message }); 
+    }
+});
+
+app.post('/api/admin/settings/upload-design', docUpload.single('design'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: 'auto',
+            folder: 'emyris_blueprints'
+        });
+
+        const settings = await db.Company.findOne();
+        if (settings) {
+            await settings.update({ referenceInvoiceUrl: result.secure_url });
+        }
+
+        fs.unlinkSync(req.file.path);
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // Orders
 
 app.post('/api/orders', async (req, res) => {
