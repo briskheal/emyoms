@@ -85,14 +85,19 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'UP', timestamp:
 // DB Stats (PostgreSQL version)
 app.get('/api/admin/db-stats', async (req, res) => {
     try {
-        // Simplified for SQL (Shows record counts instead of raw MBs which is harder to get in JS for Postgres)
-        const productCount = await db.Product.count();
-        const stockistCount = await db.Stockist.count();
-        const orderCount = await db.Order.count();
+        const [[sizeResult]] = await db.sequelize.query('SELECT pg_database_size(current_database()) as size_bytes');
+        const usedBytes = parseInt(sizeResult.size_bytes);
+        const usedMB = (usedBytes / (1024 * 1024)).toFixed(2);
+        const capacityMB = 1024; // Render Free Tier limit
+        const percent = ((usedMB / capacityMB) * 100).toFixed(2);
+
         res.json({
-            productCount,
-            stockistCount,
-            orderCount,
+            productCount: await db.Product.count(),
+            stockistCount: await db.Stockist.count(),
+            orderCount: await db.Order.count(),
+            usedMB,
+            capacityMB,
+            percent,
             dbType: 'PostgreSQL'
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
