@@ -97,17 +97,23 @@ app.get('/api/admin/db-stats', async (req, res) => {
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 const PORT = process.env.PORT || 4000;
 
-// PostgreSQL Connection Initialization
-db.sequelize.sync()
+// Database Initialization & Server Start
+db.sequelize.authenticate()
     .then(() => {
-        console.log('✅ PostgreSQL Database Synchronized');
-        app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+        console.log('✅ PostgreSQL Connected Successfully');
+        return db.sequelize.sync({ force: false });
+    })
+    .then(() => {
+        console.log('✅ Database Models Synced');
+        app.listen(PORT, () => {
+            console.log(`🚀 EMYOMS Server running on http://localhost:${PORT}`);
+        });
     })
     .catch(err => {
-        console.error('❌ Database Sync Error:', err.message);
+        console.error('❌ CRITICAL: Server Failed to Start:', err);
+        process.exit(1); 
     });
 
 // --- HELPER: Document Counters (SQL Atomic Version) ---
@@ -654,4 +660,3 @@ app.get('/api/admin/reports/gstr1', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.listen(PORT, () => console.log(`🚀 EMYOMS Server running on http://localhost:${PORT}`));
