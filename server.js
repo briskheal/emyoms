@@ -239,10 +239,66 @@ app.post('/api/stockist/register', async (req, res) => {
 app.post('/api/stockist/login', async (req, res) => {
     let { loginId, password } = req.body;
     try {
-        const user = await db.Stockist.findOne({ where: { loginId, password } });
-        if (!user) return res.status(401).json({ success: false, message: 'Invalid Credentials' });
+        if (!loginId || !password) return res.status(400).json({ success: false, message: 'All fields required' });
+        
+        // Case-insensitive lookup for SQL
+        const user = await db.Stockist.findOne({ 
+            where: db.Sequelize.where(
+                db.Sequelize.fn('LOWER', db.Sequelize.col('loginId')), 
+                loginId.trim().toLowerCase()
+            )
+        });
+
+        if (!user || user.password !== password.trim()) {
+            return res.status(401).json({ success: false, message: 'Invalid Credentials' });
+        }
+        
         if (!user.approved) return res.status(403).json({ success: false, message: 'Account pending approval' });
         res.json({ success: true, user });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/stockist/profile/:id', async (req, res) => {
+    try {
+        const stockist = await db.Stockist.findByPk(req.params.id);
+        if (!stockist) return res.status(404).json({ success: false, message: 'User not found' });
+        res.json({ success: true, stockist });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/stockist/forgot-id-pw', async (req, res) => {
+    let { email } = req.body;
+    try {
+        if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+        email = email.trim().toLowerCase();
+        
+        const user = await db.Stockist.findOne({ 
+            where: db.Sequelize.where(
+                db.Sequelize.fn('LOWER', db.Sequelize.col('email')), 
+                email
+            )
+        });
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'No account found with this email address.' });
+        }
+
+        const emailContent = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4;">
+                <div style="background: #fff; padding: 30px; border-radius: 10px; max-width: 500px; margin: 0 auto;">
+                    <h2 style="color: #6366f1;">EMYRIS BIOLIFESCIENCES</h2>
+                    <p>Hello <strong>${user.name}</strong>,</p>
+                    <p>Your account credentials are:</p>
+                    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                        <p><strong>Login ID:</strong> ${user.loginId}</p>
+                        <p><strong>Password:</strong> ${user.password}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        await sendEmail(user.email, "Account Credentials Recovery", emailContent);
+        res.json({ success: true, message: "Credentials sent to your email." });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
