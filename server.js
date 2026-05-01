@@ -202,6 +202,19 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// --- ADMIN AUTH ---
+app.post('/api/admin/login', (req, res) => {
+    const { adminId, password } = req.body;
+    const correctId = process.env.ADMIN_ID || "EMYRIS";
+    const correctPass = process.env.ADMIN_PASSWORD || "1234";
+    
+    if (adminId === correctId && password === correctPass) {
+        res.json({ success: true, message: "Welcome Admin" });
+    } else {
+        res.status(401).json({ success: false, message: "Invalid Credentials" });
+    }
+});
+
 // --- STOCKIST AUTH & REGISTRATION ---
 
 app.post('/api/stockist/register', async (req, res) => {
