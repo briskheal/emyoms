@@ -23,6 +23,9 @@ module.exports = (sequelize, DataTypes) => {
         invoiceBankVisible: { type: DataTypes.BOOLEAN, defaultValue: true },
         scrollingMessage: { type: DataTypes.JSONB, defaultValue: {} },
         invoiceStyle: { type: DataTypes.STRING, defaultValue: 'classic' },
-        documentCounters: { type: DataTypes.JSONB, defaultValue: {} }
+        documentCounters: { type: DataTypes.JSONB, defaultValue: {} },
+        musicUrl: { type: DataTypes.STRING, defaultValue: "" },
+        videoUrl: { type: DataTypes.STRING, defaultValue: "" },
+        musicVolume: { type: DataTypes.FLOAT, defaultValue: 0.5 }
     });
 };
