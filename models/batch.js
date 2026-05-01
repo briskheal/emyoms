@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-    return sequelize.define('Batch', {
+    const Batch = sequelize.define('Batch', {
         id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         batchNo: { type: DataTypes.STRING, allowNull: false },
         mfgDate: DataTypes.STRING,
@@ -13,4 +13,12 @@ module.exports = (sequelize, DataTypes) => {
             references: { model: 'Products', key: 'id' }
         }
     });
+
+    Batch.prototype.toJSON = function () {
+        let values = Object.assign({}, this.get());
+        values._id = values.id;
+        return values;
+    };
+
+    return Batch;
 };

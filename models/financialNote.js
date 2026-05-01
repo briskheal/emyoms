@@ -7,5 +7,12 @@ module.exports = (sequelize, DataTypes) => {
         reason: { type: DataTypes.STRING },
         description: { type: DataTypes.TEXT }
     });
+
+    FinancialNote.prototype.toJSON = function () {
+        let values = Object.assign({}, this.get());
+        values._id = values.id;
+        return values;
+    };
+
     return FinancialNote;
 };
