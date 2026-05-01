@@ -1,0 +1,2497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMYRIS OMS | Admin Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #10b981;
+            --bg: #0b0f1a;
+            --sidebar-bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --grad-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+
+        /* --- BACKGROUND DECOR --- */
+        .blob { position: fixed; width: 600px; height: 600px; background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%); filter: blur(80px); z-index: -1; }
+        .blob-1 { top: -150px; right: -150px; }
+        .blob-2 { bottom: -150px; left: -150px; background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%); }
+
+        /* --- MARQUEE --- */
+        .marquee-container { 
+            background: rgba(99, 102, 241, 0.15); 
+            backdrop-filter: blur(10px); 
+            border-bottom: 1px solid var(--glass-border);
+            color: #fff; 
+            padding: 10px 0; 
+            font-weight: 700; 
+            font-size: 0.8rem; 
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            overflow: hidden; 
+            white-space: nowrap; 
+            position: relative; 
+            z-index: 1001;
+        }
+        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee linear infinite; animation-duration: 30s; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        /* --- LAYOUT --- */
+        .navbar { 
+            height: 65px; 
+            background: rgba(15, 23, 42, 0.95); 
+            backdrop-filter: blur(20px); 
+            border-bottom: 1px solid var(--glass-border); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 1.5rem; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+        }
+        .nav-left { display: flex; align-items: center; gap: 15px; }
+        .menu-toggle { 
+            display: none; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--glass-border); 
+            color: #fff; 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        @media (max-width: 1024px) {
+            .menu-toggle { display: flex; }
+            .sidebar { 
+                position: fixed; 
+                left: -300px; 
+                top: 0;
+                height: 100vh;
+                z-index: 1010;
+                transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: none;
+            }
+            .sidebar.show { left: 0; box-shadow: 20px 0 60px rgba(0,0,0,0.9); }
+        }
+        .total-cell { color: #facc15 !important; font-weight: 900 !important; font-size: 1rem !important; }
+
+        /* --- DATABASE MONITOR --- */
+        .db-monitor { background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; }
+        .db-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        .db-bar-fill { height: 100%; background: var(--grad-primary); width: 0%; transition: 1s ease-out; }
+        .nav-logo { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; }
+        
+        .main-container { display: flex; min-height: calc(100vh - 75px); }
+        .sidebar { 
+            width: 280px; 
+            background: var(--sidebar-bg); 
+            border-right: 1px solid var(--glass-border); 
+            padding: 1.5rem 1rem; 
+            height: calc(100vh - 65px);
+            position: sticky;
+            top: 65px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1009;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.show { display: block; }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .content { flex: 1; padding: 1.25rem 1.5rem; position: relative; overflow-x: hidden; }
+
+        .nav-item { 
+            padding: 0.85rem 1.25rem; 
+            border-radius: 12px; 
+            margin-bottom: 0.5rem; 
+            cursor: pointer; 
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            color: var(--text-muted); 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            font-weight: 500; 
+            font-size: 0.9rem;
+            border: 1px solid transparent;
+            position: relative;
+        }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.04); color: #fff; border-color: rgba(255,255,255,0.05); }
+        .nav-item.active { 
+            background: rgba(99, 102, 241, 0.1); 
+            color: #fff; 
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            font-weight: 700;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 20px;
+            width: 4px;
+            background: var(--grad-primary);
+            border-radius: 0 4px 4px 0;
+        }
+        .nav-item i { font-size: 1.2rem; opacity: 0.8; }
+
+        /* --- COMPONENTS --- */
+        .glass-card { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(32px); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 32px; 
+            padding: 1.5rem; 
+            margin-bottom: 2rem; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover { border-color: rgba(255, 255, 255, 0.15); }
+        .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 2rem; display: flex; align-items: center; gap: 12px; color: #fff; letter-spacing: -0.2px; text-transform: uppercase; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { 
+            background: rgba(255,255,255,0.02); 
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); 
+            padding: 1rem; 
+            border-radius: 16px; 
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .stat-card:hover { transform: translateY(-5px); border-color: var(--primary); background: rgba(99, 102, 241, 0.05); box-shadow: 0 15px 30px -10px rgba(0,0,0,0.5); }
+        .stat-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%); opacity: 0; transition: 0.5s; pointer-events: none; }
+        .stat-card:hover::before { opacity: 1; }
+        .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: var(--grad-primary); opacity: 0; transition: 0.3s; }
+        .stat-card:hover::after { opacity: 1; }
+
+        .stat-label { color: var(--text-muted); font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.3rem; display: block; }
+        .stat-value { font-size: 1.15rem; font-weight: 900; color: #fff; letter-spacing: -0.3px; }
+
+        /* --- TABLES --- */
+        .table-container { border-radius: 20px; overflow-x: auto; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.3); }
+        table { width: 100%; border-collapse: collapse; }
+        
+        /* Sticky Column for Product Master */
+        #tab-products table th:first-child,
+        #tab-products table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: #1e293b; /* Solid dark background for readability */
+            border-right: 2px solid rgba(99, 102, 241, 0.3);
+            min-width: 200px;
+        }
+        #tab-products table th:first-child {
+            z-index: 11; /* Higher z-index for the header */
+        }
+
+        th { 
+            background: rgba(255,255,255,0.03); 
+            text-align: left; 
+            padding: 1rem 1.25rem; 
+            font-size: 0.65rem; 
+            color: var(--text-muted); 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            letter-spacing: 1.2px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        td { padding: 1rem 1.25rem; border-top: 1px solid var(--glass-border); font-size: 0.85rem; color: #cbd5e1; }
+        tr { transition: 0.2s; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+
+        /* --- FORMS & UI --- */
+        input, select, textarea { 
+            width: 100%; 
+            background: rgba(15, 23, 42, 0.6); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 12px; 
+            padding: 0.75rem 1rem; 
+            color: #fff; 
+            font-size: 0.85rem; 
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2); background: rgba(15, 23, 42, 0.8); }
+
+        .btn { 
+            padding: 0.7rem 1.5rem; 
+            border-radius: 12px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            border: none; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center;
+            gap: 10px; 
+            font-size: 0.8rem; 
+            letter-spacing: 0.5px;
+        }
+        .btn-primary { background: var(--grad-primary); color: #fff; box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4); position: relative; overflow: hidden; }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 35px -5px rgba(99, 102, 241, 0.6); filter: brightness(1.1); }
+        .btn-primary::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: translateX(-100%); transition: 0.6s; }
+        .btn-primary:hover::after { transform: translateX(100%); }
+
+        .btn-ghost { background: rgba(255,255,255,0.03); color: #fff; border: 1px solid var(--glass-border); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); border-color: rgba(255,255,255,0.2); }
+
+        .badge { padding: 6px 14px; border-radius: 30px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .badge-pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1); }
+        .badge-approved { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1); }
+
+        .hidden { display: none !important; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .content > div { }
+        .content > div:not(.hidden) { animation: fadeIn 0.4s ease-out; }
+
+        /* Remove spin buttons from number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <div class="marquee-container">
+        <div class="marquee-text">Welcome to EMYRIS OMS Admin Command Center • System Status: Active • Monitoring Real-time Orders</div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <div class="nav-logo">EMYRIS OMS <span style="font-weight: 400; font-size: 0.8rem; opacity: 0.6; margin-left: 5px;">ADMIN COMMAND</span></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <button type="button" id="musicToggleAdmin" onclick="toggleMusic()" style="background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: 0.3s;">
+                <span>🔇</span> <span id="musicTextAdmin">Music Off</span>
+            </button>
+            <div id="adminStatus" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; display: none;">● ACTIVE</div>
+            <button class="btn btn-ghost" style="padding: 6px 15px; font-size: 0.7rem;" onclick="logout()">LOGOUT</button>
+        </div>
+    </nav>
+
+
+    <!-- ADMIN LOGIN OVERLAY -->
+    <div id="adminLoginOverlay" class="hidden" style="position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="glass-card" style="width: 400px; text-align: center;">
+            <div class="nav-logo" style="font-size: 2rem; margin-bottom: 2rem;">EMYRIS OMS</div>
+            <h2 class="section-title" style="justify-content: center; margin-bottom: 0.5rem;">Admin Access</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem;">Please verify your identity to continue</p>
+            
+            <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+                <div class="form-group" style="text-align: left;">
+                    <label>Admin ID</label>
+                    <input type="text" id="admin-id-input" required placeholder="Enter Admin ID">
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label>Password</label>
+                    <input type="password" id="admin-pass-input" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">VERIFY & ENTER</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <aside class="sidebar">
+            <div class="nav-item active" onclick="switchTab('dashboard', this); closeSidebar()"><span>📊</span> Dashboard</div>
+            <div class="nav-item" onclick="switchTab('products', this); closeSidebar()"><span>💊</span> Product Master</div>
+            <div class="nav-item" onclick="switchTab('stockists', this); closeSidebar()"><span>🤝</span> Party Master</div>
+            <div class="nav-item" onclick="switchTab('masters', this); closeSidebar()"><span>📋</span> Global Masters</div>
+            <div class="nav-item" onclick="switchTab('orders', this); closeSidebar()"><span>🛒</span> Order History</div>
+            <div style="margin-bottom: 0.5rem;">
+                <div class="nav-item" onclick="toggleSubmenu('sub-finance', this)">
+                    <span>💰</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
+                </div>
+                <div id="sub-finance" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null); closeSidebar()">● Sales Invoices</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT'); closeSidebar()">● Payment In (Receipts)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT'); closeSidebar()">● Payment Out (Payouts)</div>
+                    
+                    <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
+
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleSubmenu('sub-notes', null)">● Financial Notes (CN/DN) <i style="font-size: 0.6rem; opacity: 0.5;">▶</i></div>
+                    <div id="sub-notes" style="display:none; padding-left: 1rem; flex-direction: column; gap: 0.5rem;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Salable Return'); closeSidebar()">- Sales Linked CN</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Purchase Return'); closeSidebar()">- Purc. Linked DN</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff'); closeSidebar()">- Price Difference (CN/DN)</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-bottom: 0.5rem;">
+                <div class="nav-item" onclick="toggleSubmenu('sub-direct-sales', this)">
+                    <span>🌐</span> Direct Sales <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
+                </div>
+                <div id="sub-direct-sales" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openOnlineOrderModal(); closeSidebar()">● Online Orders</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openDirectOrderModal(); closeSidebar()">● Direct Order to Company</div>
+                </div>
+            </div>
+
+            <div class="nav-item" onclick="switchTab('purchase', this); closeSidebar()"><span>🛒</span> Purchase Entry</div>
+            <div class="nav-item" onclick="switchTab('reports', this); closeSidebar()"><span>📊</span> Reports & Compliance</div>
+            <div class="nav-item" onclick="switchTab('system', this); closeSidebar()"><span>🛠️</span> System Health</div>
+            <div class="nav-item" onclick="switchTab('settings', this); closeSidebar()"><span>⚙️</span> Company Settings</div>
+        </aside>
+
+        <main class="content">
+            <!-- DASHBOARD TAB -->
+            <div id="tab-dashboard">
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total Orders</span>
+                        <div class="stat-value" id="stat-orders">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Revenue (Ex. GST)</span>
+                        <div class="stat-value">₹<span id="stat-revenue" style="font-size: 1.5rem;">0.00</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Pending Approvals</span>
+                        <div class="stat-value" id="stat-pending">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Stockists</span>
+                        <div class="stat-value" id="stat-stockists">0</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div class="glass-card" style="padding: 2rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">📈 Sales Performance (This Month)</h3>
+                            <div id="mom-badge" style="padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">-</div>
+                        </div>
+                        <div style="height: 220px;">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card" style="padding: 2rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🎯 Top 5 Best Sellers</h3>
+                        <div style="height: 220px;">
+                            <canvas id="topProductsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="glass-card" style="padding: 2rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🤝 Leading Stockists</h3>
+                        <div style="height: 220px;">
+                            <canvas id="topStockistsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card" style="padding: 2rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">📦 Order Fulfillment</h3>
+                        <div style="height: 220px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="orderStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW ANALYTICS: Group Share & GST -->
+                <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; margin-top: 2rem;">
+                    <div class="glass-card" style="padding: 2.5rem; display: flex; flex-direction: column; align-items: center;">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 2rem; width: 100%; text-align: center;">💊 Product Group Share</h3>
+                        <div style="flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; height: 220px;">
+                            <canvas id="groupPieChart"></canvas>
+                        </div>
+                        <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Revenue Share by Group</div>
+                    </div>
+                    <div class="glass-card" style="padding: 2.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">💰 GST Liability (Per Group)</h3>
+                            <div id="total-gst-display" style="color: var(--primary); font-weight: 900; background: rgba(99, 102, 241, 0.1); padding: 5px 12px; border-radius: 8px; font-size: 0.9rem; border: 1px solid rgba(99, 102, 241, 0.2);">₹0.00</div>
+                        </div>
+                        <div style="height: 220px;">
+                            <canvas id="gstBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRODUCT MASTER TAB -->
+            <div id="tab-products" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">💊 Product Master</h2>
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <input type="text" id="productSearch" placeholder="🔍 Search Products..." onkeyup="filterProducts(this.value)" 
+                               style="padding: 10px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff; width: 280px; font-size: 0.85rem;">
+                        <button class="btn btn-ghost" onclick="downloadProductTemplate()">📥 Template</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()">📤 Bulk Upload</button>
+                        <input type="file" id="bulkProductInput" hidden accept=".csv, .xlsx, .xls" onchange="handleProductBulkUpload(this)">
+                        <button class="btn btn-primary" onclick="openProductModal()">+ Single Entry</button>
+                    </div>
+                </div>
+                
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>Packing</th>
+                                    <th>HSN</th>
+                                    <th>MRP</th>
+                                    <th>PTR</th>
+                                    <th>PTS</th>
+                                    <th>GST %</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STOCKIST MANAGEMENT TAB -->
+            <div id="tab-stockists" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">🤝 Party Master (Stockists & Suppliers)</h2>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <div style="position: relative; width: 250px;">
+                            <input type="text" id="stockistSearch" placeholder="Search by name/city..." onkeyup="filterStockists(this.value)" style="padding: 0.6rem 1rem 0.6rem 2.5rem;">
+                            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                        </div>
+                        <button class="btn btn-ghost" onclick="clearStockistSearch()">Clear</button>
+                        <select id="party-type-filter" onchange="loadStockists(this.value)" style="width: 150px; padding: 0.5rem;">
+                            <option value="">All Parties</option>
+                            <option value="STOCKIST">Stockists Only</option>
+                            <option value="SUPPLIER">Suppliers Only</option>
+                        </select>
+                        <button class="btn btn-ghost" onclick="exportParties()">📥 EXPORT PARTIES</button>
+                        <button class="btn btn-primary" onclick="openPartyModal()">+ Create Party Master</button>
+                        <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()">🗑️ DELETE ALL</button>
+                    </div>
+                </div>
+
+                <!-- PARTY MASTER STATS -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Total Parties</span>
+                        <div id="stat-total-parties" class="stat-value" style="font-size: 1.1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Stockists</span>
+                        <div id="stat-total-stockists" class="stat-value" style="color: var(--primary); font-size: 1.1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Suppliers</span>
+                        <div id="stat-total-suppliers" class="stat-value" style="color: var(--accent); font-size: 1.1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 1rem;">
+                        <span class="stat-label">Active Approval</span>
+                        <div id="stat-pending-approval" class="stat-value" style="color: #f59e0b; font-size: 1.1rem;">0</div>
+                    </div>
+                </div>
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Firm Name</th>
+                                    <th>Type</th>
+                                    <th>City</th>
+                                    <th style="text-align: right;">Outstanding</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockistTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-masters" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">📦 Global Master Data</h2>
+                    <button class="btn btn-primary" onclick="loadMasters(); alert('Masters Synchronized with Database!')">💾 SAVE & REFRESH ALL</button>
+                </div>
+
+                <!-- DB CAPACITY MONITOR -->
+                <div class="db-monitor">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">DATABASE UTILIZATION (FREE TIER)</span>
+                        <span id="db-usage-text" style="font-size: 0.8rem; font-weight: 800; color: var(--accent);">0.0 / 512 MB (0%)</span>
+                    </div>
+                    <div class="db-bar-bg">
+                        <div id="db-usage-bar" class="db-bar-fill"></div>
+                    </div>
+                    <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 5px;">*Data usage includes all product records, order history, and stockist data.</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                    <!-- Category Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">💊 Product Categories</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-cat-name" placeholder="Category Name">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('categories')">ADD</button>
+                        </div>
+                        <div id="master-cat-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- HSN Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">🔢 HSN Codes</h3>
+                        <div class="form-group" style="display: flex; gap: 5px; flex-direction: column;">
+                            <input type="text" id="new-hsn-code" placeholder="HSN Code">
+                            <input type="text" id="new-hsn-desc" placeholder="Description (Optional)" style="font-size: 0.7rem;">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('hsns')">ADD HSN</button>
+                        </div>
+                        <div id="master-hsn-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- GST Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">💰 GST Rates (%)</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="number" id="new-gst-rate" placeholder="12">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('gst')">ADD</button>
+                        </div>
+                        <div id="master-gst-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- Product Groups Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">🏷️ Product Groups</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-group-name" placeholder="Group Name">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('groups')">ADD</button>
+                        </div>
+                        <div id="master-group-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+                    <!-- HQ Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">🏢 Operational HQs</h3>
+                        <div class="form-group" style="display: flex; gap: 5px;">
+                            <input type="text" id="new-hq-name" placeholder="HQ Name (e.g. Hyderabad)">
+                            <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('hq')">ADD</button>
+                        </div>
+                        <div id="master-hq-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- Expense Categories Master -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 1rem;">💸 Expense Categories</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="form-group" style="display: flex; gap: 5px;">
+                                <input type="text" id="new-exp-cat-name" placeholder="Category (e.g. Rent)">
+                                <select id="new-exp-cat-type" style="width: 100px; padding: 5px;">
+                                    <option value="Indirect">Indirect</option>
+                                    <option value="Direct">Direct</option>
+                                </select>
+                                <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('expenseCategories')">ADD</button>
+                            </div>
+                            <div id="master-exp-cat-list" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- DOCUMENT NUMBERING MASTER -->
+                    <div class="glass-card" style="grid-column: 1 / -1; margin-top: 1rem; border: 1px solid var(--primary);">
+                        <h3 class="section-title" style="font-size: 1rem; color: var(--primary);">🧾 Document Numbering & Counters</h3>
+                        <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1.5rem;">Define prefixes (e.g., INV-24-) and starting numbers for all financial documents.</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">SALES INVOICE</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-inv-pre" placeholder="Prefix (INV-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-inv-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PURCHASE ENTRY</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pur-pre" placeholder="Prefix (PUR-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pur-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">SALES RETURN (S-CN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-scn-pre" placeholder="Prefix (S-CN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-scn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PURCHASE RETURN (P-DN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pdn-pre" placeholder="Prefix (P-DN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pdn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PRICE DIFF CN (PD-CN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pdcn-pre" placeholder="Prefix (PD-CN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pdcn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PRICE DIFF DN (PD-DN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-pddn-pre" placeholder="Prefix (PD-DN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-pddn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">LOSS DN (BD-DN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-ldn-pre" placeholder="Prefix (BD-DN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-ldn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">LOSS CN (EB-CN)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-lcn-pre" placeholder="Prefix (EB-CN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-lcn-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" style="grid-column: 1 / -1; border: 1px solid var(--accent-glow); padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
+                            <h3 class="section-title" style="font-size: 1rem; color: var(--accent); margin: 0;">🎬 Multimedia Command Center</h3>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                                💡 Tip: Use local files or permanent links for stability.
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;">
+                            
+                            <!-- MUSIC COLUMN -->
+                            <div style="flex: 1; min-width: 280px;">
+                                <label style="display: block; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 800;">🎵 Background Music</label>
+                                <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                                    <input type="text" id="set-music-url" placeholder="Paste Link (Drive/Dropbox)" 
+                                        style="flex: 1; padding: 6px 10px; font-size: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff;">
+                                    <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.6rem; border-radius: 8px;" onclick="testMedia('music')">TEST</button>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="file" id="musicFile" accept="audio/mpeg,audio/mp3" style="font-size: 0.65rem; flex: 1;">
+                                    <button class="btn btn-accent" style="padding: 4px 10px; font-size: 0.6rem; border-radius: 8px;" onclick="uploadMedia('music')">UPLOAD</button>
+                                </div>
+                                <p id="current-music-name" style="font-size: 0.6rem; color: var(--primary); margin-top: 5px;"></p>
+                            </div>
+
+                            <!-- VIDEO COLUMN -->
+                            <div style="flex: 1; min-width: 280px;">
+                                <label style="display: block; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 800;">📹 Landing Video</label>
+                                <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                                    <input type="text" id="set-video-url" placeholder="Paste Link (Drive/Dropbox/YT)" 
+                                        style="flex: 1; padding: 6px 10px; font-size: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff;">
+                                    <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 0.6rem; border-radius: 8px;" onclick="testMedia('video')">TEST</button>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="file" id="videoFile" accept="video/mp4" style="font-size: 0.65rem; flex: 1;">
+                                    <button class="btn btn-accent" style="padding: 4px 10px; font-size: 0.6rem; border-radius: 8px;" onclick="uploadMedia('video')">UPLOAD</button>
+                                </div>
+                                <p id="current-video-name" style="font-size: 0.6rem; color: var(--primary); margin-top: 5px;"></p>
+                            </div>
+
+                            <!-- VOLUME & SAVE COLUMN -->
+                            <div style="flex: 1; min-width: 250px; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
+                                <label style="display: block; font-size: 0.65rem; color: var(--accent); margin-bottom: 0.8rem; text-transform: uppercase; font-weight: 800;">🔊 Global Volume & Sync</label>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
+                                    <input type="range" id="globalVolume" min="0" max="1" step="0.05" value="0.5" 
+                                        style="flex: 1; accent-color: var(--accent); height: 4px;" 
+                                        oninput="updateLocalVolume(this.value)">
+                                    <span id="volumePercent" style="font-size: 0.75rem; color: #fff; font-weight: 700; min-width: 35px;">50%</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <button class="btn btn-primary" onclick="saveSettings(event)" style="width: 100%; justify-content: center; background: var(--grad-primary); font-size: 0.7rem; padding: 10px;">
+                                        💾 SAVE ALL CHANGES
+                                    </button>
+                                    <button class="btn btn-ghost" onclick="toggleMediaLibrary()" style="width: 100%; justify-content: center; font-size: 0.7rem; padding: 8px; border: 1px solid var(--accent);">
+                                        📚 BROWSE MEDIA LIBRARY
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- NEW: Media Library Explorer (Hidden by Default) -->
+                        <div id="media-library-explorer" class="hidden" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed rgba(255,255,255,0.1); animation: fadeIn 0.3s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; font-size: 0.85rem; color: #fff;">📚 Permanent Cloud Library</h4>
+                                <button class="btn btn-ghost" style="padding: 2px 8px; font-size: 0.6rem;" onclick="toggleMediaLibrary()">CLOSE LIBRARY</button>
+                            </div>
+                            <div id="media-library-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                                <!-- Library items will be injected here -->
+                                <p style="font-size: 0.7rem; color: var(--text-muted);">Loading library...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+            <!-- ORDER HISTORY TAB -->
+            <div id="tab-orders" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">📜 Complete Order History</h2>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" id="orderHistorySearch" placeholder="Search by Stockist or Order No..." 
+                            onkeyup="filterOrderHistory(this.value)"
+                            style="width: 300px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
+                    </div>
+                </div>
+                
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Order No</th>
+                                    <th>Stockist / Party Name</th>
+                                    <th>Date</th>
+                                    <th style="text-align: center;">Total Items</th>
+                                    <th style="text-align: right;">Order Value</th>
+                                    <th style="text-align: center;">Status</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orderHistoryBody">
+                                <!-- Order history rows will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACCOUNTING & INVOICES TAB -->
+            <div id="tab-invoices" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">🧾 Tax Invoices & Accounting</h2>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" placeholder="Search Invoices..." onkeyup="filterInvoices(this.value)" style="width: 300px;">
+                    </div>
+                </div>
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Invoice No</th>
+                                    <th>Stockist Name</th>
+                                    <th>Date</th>
+                                    <th style="text-align: right;">Subtotal</th>
+                                    <th style="text-align: right;">GST</th>
+                                    <th style="text-align: right;">Total Amount</th>
+                                    <th style="text-align: right;">Actions</th>
+                                    <th>View</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PURCHASE ENTRY TAB -->
+            <div id="tab-purchase" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">🛒 New Purchase Entry (Stock-In)</h2>
+                    <button class="btn btn-primary" onclick="openPurchaseModal()">+ NEW PURCHASE</button>
+                </div>
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Purchase No</th>
+                                    <th>Supplier</th>
+                                    <th>Inv No</th>
+                                    <th>Date</th>
+                                    <th style="text-align: center;">Items</th>
+                                    <th style="text-align: right;">Total Value</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchaseTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TREASURY & PAYMENTS TAB -->
+            <div id="tab-payments" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" id="payment-page-title" style="margin: 0;">💰 Treasury Collections & Payouts</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="paymentSearch" placeholder="Search by Voucher No or Party..." 
+                            onkeyup="filterPayments()"
+                            style="width: 250px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
+                        <button class="btn btn-primary" onclick="openPaymentModal()">+ NEW PAYMENT ENTRY</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="glass-card" style="margin:0; padding:1.25rem; border-left: 4px solid #10b981;">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Monthly Receipts</span>
+                        <div id="stat-receipts-total" style="font-size:1.5rem; font-weight:900; color:#10b981; margin-top:5px;">₹0.00</div>
+                    </div>
+                    <div class="glass-card" style="margin:0; padding:1.25rem; border-left: 4px solid #ef4444;">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Monthly Payouts</span>
+                        <div id="stat-payouts-total" style="font-size:1.5rem; font-weight:900; color:#ef4444; margin-top:5px;">₹0.00</div>
+                    </div>
+                    <div class="glass-card" style="margin:0; padding:1.25rem; border-left: 4px solid var(--primary);">
+                        <span style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Net Cash Flow</span>
+                        <div id="stat-net-flow" style="font-size:1.5rem; font-weight:900; color:var(--primary); margin-top:5px;">₹0.00</div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Voucher No</th>
+                                    <th>Type</th>
+                                    <th>Party Name</th>
+                                    <th>Method</th>
+                                    <th>Ref / Chq No</th>
+                                    <th style="text-align: right;">Amount</th>
+                                    <th>Date</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FINANCIAL NOTES TAB -->
+            <div id="tab-notes" class="hidden">
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" id="notes-page-title" style="margin: 0;">📑 ALL CN/DN DETAILS</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="noteSearch" placeholder="Search by Party or Note No..." 
+                            onkeyup="filterNotes()"
+                            style="width: 250px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
+                        <h3 id="note-context-label" style="font-size: 0.8rem; color: var(--accent); margin: 0; font-weight: 700;"></h3>
+                        <button class="btn btn-primary" onclick="openNoteModal()">📑 ALL CN/DN</button>
+                    </div>
+                </div>
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Note No</th>
+                                    <th>Type</th>
+                                    <th>Party Name</th>
+                                    <th>Reason</th>
+                                    <th style="text-align: right;">Amount</th>
+                                    <th>Date</th>
+                                    <th style="text-align: right;">Actions</th>
+                                    <th>View</th>
+                                </tr>
+                            </thead>
+                            <tbody id="noteTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPORTS TAB (OVERHAULED) -->
+            <div id="tab-reports" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 class="section-title" style="margin: 0;">📊 Intelligence & Compliance Center</h2>
+                        <p style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 5px;">Strategic reporting and tax audit portal</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                         <button class="btn btn-ghost" onclick="window.print()" style="font-size: 0.7rem;">⎙ PRINT VIEW</button>
+                         <button class="btn btn-primary" style="font-size: 0.7rem; background: var(--accent);" onclick="exportAllReports()">📦 EXCEL CONSOLIDATED</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+                    
+                    <!-- FINANCIAL REPORTS -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--primary);">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📈</span> Financial Performance</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('bill-profit')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Bill-wise Profit Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Itemized margins comparing PTR/PTS vs Sale price.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('p-and-l')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Profit & Loss Statement</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Consolidated revenue vs cost vs expenses.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('cashflow')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Cashflow Analysis</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Inflow (Receipts) vs Outflow (Payouts/Expenses).</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('balance-sheet')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Balance Sheet</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Assets, Liabilities, and Equity overview.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('business-status')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Business Status (Bank Statement)</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Current bank balances and outstanding overview.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('discount-report')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Consolidated Discount Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">All discounts offered across invoices.</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PARTY & LEDGER REPORTS -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--accent);">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">🤝</span> Party & Ledger</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('consolidated-ledger')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Consolidated Party Ledger</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">List of all parties with balances.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('party-statement')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Party Statement</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Detailed ledger statement for individual parties.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('party-profit-loss')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Party-wise Profit & Loss</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Profitability breakdown per stockist.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('sale-purchase-party')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Sale/Purchase by Party</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Total sales and purchases segmented by party.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('ageing-report')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Ageing Report (30/60/90+)</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Track long-term pending payments.</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+
+                    <!-- COMPLIANCE & TAXATION -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #10b981;">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📑</span> Compliance & Tax</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-1')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-1 (Sales Return)</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">B2B invoice data for tax filing.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('doc-expiry')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">License Expiry Tracker</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Monitor DL and GST validity dates.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-2')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-2 (Inward Supplies)</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Purchase data for ITC claim filing.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-3b')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-3B Summary</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Consolidated summary of Outward/Inward GST.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gst-transaction')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GST Transaction Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">All transactions involving tax liability.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-9')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-9 (Annual Return)</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Annual comprehensive GST filing report.</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ITEM & STOCK REPORTS -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #f59e0b;">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📦</span> Item & Inventory</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('stock-summary')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Stock Summary Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Pdt Name, HSN, Batch, Qty overview.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('item-profit-loss')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Item-wise Profit & Loss</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Margin analysis per individual SKU.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('low-stock')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Low Stock Summary Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Products below threshold re-order levels.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('item-batch')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Item Batch Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Deep dive into batch-level inventory.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('item-discount')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Item-wise Discount Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Promotional deductions applied per item.</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- EXPENSE REPORTS -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #ef4444;">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">💸</span> Expense Management</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('expense-transaction')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Expense Transaction Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Log of all operational outgoings.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('expense-category')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Expense Category Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Expenses grouped by Direct and Indirect headings.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('expense-item')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Expense Item Report</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Granular breakdown of specific expense items.</span>
+                                </div>
+                            </button>
+                            
+                            <button class="btn btn-primary" style="margin-top: 1rem;" onclick="document.getElementById('expenseModal').classList.remove('hidden')">
+                                ➕ LOG NEW EXPENSE
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SETTINGS TAB -->
+            <div id="tab-settings" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">⚙️ Company & Portal Configuration</h2>
+                    <button id="save-settings-btn" class="btn btn-primary" type="submit" form="companyForm">💾 SAVE ALL SETTINGS</button>
+                </div>
+
+                <form id="companyForm" onsubmit="saveSettings(event)">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+                        
+                        <!-- ZONE 1: CORPORATE IDENTITY & CONTACT -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--primary);">🏢</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Corporate Identity & Contact</h3>
+                            </div>
+                            <div class="form-group">
+                                <label>Company Name (Legal)</label>
+                                <input type="text" id="set-name" placeholder="Emyris Biolifesciences Pvt. Ltd.">
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Registered Office Address</label>
+                                <textarea id="set-address" style="width: 100%; min-height: 60px;"></textarea>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Toll Free / Primary Phone</label>
+                                    <input type="text" id="set-tollfree" placeholder="1800-XXX-XXXX">
+                                </div>
+                                <div class="form-group">
+                                    <label>Admin Contact Email</label>
+                                    <input type="email" id="set-admin-email" placeholder="admin@emyrisbio.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Primary Phone</label>
+                                    <input type="text" id="set-phone" placeholder="+91-XXXXXXXXXX">
+                                </div>
+                                <div class="form-group">
+                                    <label>Website 1</label>
+                                    <input type="text" id="set-web1" placeholder="www.emyrisbio.com">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Email 1 (Sales)</label>
+                                    <input type="email" id="set-email1" placeholder="sales@emyrisbio.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Email 2 (Support)</label>
+                                    <input type="email" id="set-email2" placeholder="support@emyrisbio.com">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Payment Due Days (Default)</label>
+                                    <input type="number" id="set-payment-due-days" placeholder="21">
+                                </div>
+                                <div class="form-group">
+                                    <label>Default Place of Supply</label>
+                                    <input type="text" id="set-default-supply" placeholder="GUJARAT">
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Company Logo</label>
+                                    <input type="file" id="set-logo" accept="image/*" onchange="convertLogoToBase64(this)">
+                                    <input type="hidden" id="set-logo-b64">
+                                    <img id="logo-preview" src="" style="max-height: 40px; margin-top: 5px; display: none; border: 1px dashed var(--glass-border);">
+                                </div>
+                                <div class="form-group">
+                                    <label>Authorized Signature</label>
+                                    <input type="file" id="set-signature" accept="image/*" onchange="convertSignatureToBase64(this)">
+                                    <input type="hidden" id="set-signature-b64">
+                                    <img id="sig-preview" src="" style="max-height: 40px; margin-top: 5px; display: none; border: 1px dashed var(--glass-border);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ZONE 2: STATUTORY & COMPLIANCE -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #ef4444;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #ef4444;">⚖️</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Statutory & Legal</h3>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>GSTIN</label>
+                                    <input type="text" id="set-gst-no" placeholder="GST Number" style="text-transform: uppercase; font-family: monospace;">
+                                </div>
+                                <div class="form-group">
+                                    <label>PAN Number</label>
+                                    <input type="text" id="set-pan-no" placeholder="PAN" style="text-transform: uppercase; font-family: monospace;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Drug License No.</label>
+                                    <input type="text" id="set-dl-no" placeholder="DL-20, DL-21">
+                                </div>
+                                <div class="form-group">
+                                    <label>FSSAI License</label>
+                                    <input type="text" id="set-fssai-no" placeholder="FSSAI No">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Website 2 (Secondary)</label>
+                                <input type="text" id="set-web2" placeholder="www.emyris.in">
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Email 3 (General)</label>
+                                <input type="email" id="set-email3" placeholder="contact@emyrisbio.com">
+                            </div>
+                        </div>
+
+                        <!-- ZONE 3: BANKING & FINANCE -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #10b981;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #10b981;">🏦</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Banking & Finance</h3>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Bank Account No.</label>
+                                    <input type="text" id="set-bank-acc" placeholder="Account Number">
+                                </div>
+                                <div class="form-group">
+                                    <label>IFSC Code</label>
+                                    <input type="text" id="set-bank-ifsc" placeholder="IFSC Code">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Master Bank Details (Formatted Text)</label>
+                                <textarea id="set-bank-details" rows="3" placeholder="Bank Name, A/C No, IFSC..."></textarea>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>UPI ID (for Dynamic QR)</label>
+                                    <input type="text" id="set-upi-id" placeholder="company@upi">
+                                </div>
+                                <div class="form-group">
+                                    <label>GST Rate (%)</label>
+                                    <input type="number" id="set-gst-rate" value="12">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Default Payment Due Days</label>
+                                <input type="number" id="set-due-days" value="30">
+                            </div>
+                        </div>
+
+                        <!-- ZONE 4: PORTAL EXPERIENCE -->
+                        <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #f59e0b;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #f59e0b;">📢</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Portal Experience</h3>
+                            </div>
+                            <div class="form-group">
+                                <label>Announcement Bar Message</label>
+                                <input type="text" id="set-msg-text" placeholder="Welcome to Emyris...">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="form-group">
+                                    <label>Message Color</label>
+                                    <input type="color" id="set-msg-color" style="height: 40px; padding: 2px;">
+                                </div>
+                                <div class="form-group">
+                                    <label>Scroll Speed (s)</label>
+                                    <input type="number" id="set-msg-speed" value="30">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ZONE 6: INVOICING & TERMS -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 1.5rem; border-left: 4px solid #6366f1;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+                                <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #6366f1;">📄</div>
+                                <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Invoicing Terms & Visibility</h3>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                                <div class="form-group">
+                                    <label>Sales Invoice Terms</label>
+                                    <textarea id="set-invoice-terms" rows="3" style="font-size: 0.7rem;"></textarea>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                        <input type="checkbox" id="set-invoice-bank-visible">
+                                        <label style="margin: 0; font-size: 0.65rem;">Show Bank in Invoice</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Credit Note Terms</label>
+                                    <textarea id="set-cn-terms" rows="3" style="font-size: 0.7rem;"></textarea>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                        <input type="checkbox" id="set-cn-bank-visible">
+                                        <label style="margin: 0; font-size: 0.65rem;">Show Bank in CN</label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Debit Note Terms</label>
+                                    <textarea id="set-dn-terms" rows="3" style="font-size: 0.7rem;"></textarea>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                        <input type="checkbox" id="set-dn-bank-visible">
+                                        <label style="margin: 0; font-size: 0.65rem;">Show Bank in DN</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ZONE 5: BRANDING HUB (INVOICE DESIGN) -->
+                        <div class="glass-card" style="grid-column: span 2; padding: 2rem; border-top: 2px solid var(--accent); background: rgba(99, 102, 241, 0.05);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                                <div>
+                                    <h3 class="section-title" style="font-size: 1.1rem; margin: 0; color: var(--accent);">🎨 Branding & Invoice Blueprint</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Your invoice design is the face of your company. Match it to your legacy format here.</p>
+                                </div>
+                                <div id="design-status-badge"></div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2.5rem;">
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 1rem;">1. Reference Blueprint (Sample PDF)</h4>
+                                    <div style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 16px; border: 2px dashed var(--glass-border);">
+                                        <div style="flex: 1;">
+                                            <input type="file" id="invoice-design-file" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 0.75rem;">
+                                            <div id="design-preview-link" style="margin-top: 10px; font-size: 0.7rem;"></div>
+                                        </div>
+                                        <button type="button" class="btn btn-primary" onclick="uploadInvoiceDesign()" style="white-space: nowrap;">UPLOAD BLUEPRINT</button>
+                                    </div>
+                                    <div style="margin-top: 1.5rem; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); font-size: 0.75rem; color: #10b981;">
+                                        ℹ️ <b>AI Engine Status:</b> Once uploaded, the AI will automatically attempt to match your coordinates and font hierarchy for the next download.
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 1rem;">2. Select Base Template</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                        <div id="specimen-classic" onclick="setInvoiceStyle('classic')" style="padding: 12px; border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 0.8rem;">Standard Classic</span>
+                                            <span id="check-classic" class="badge badge-approved" style="display:none;">ACTIVE</span>
+                                        </div>
+                                        <div id="specimen-modern" onclick="setInvoiceStyle('modern')" style="padding: 12px; border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 0.8rem;">Modern Glass</span>
+                                            <span id="check-modern" class="badge badge-approved" style="display:none;">ACTIVE</span>
+                                        </div>
+                                        <div id="specimen-sample" onclick="setInvoiceStyle('sample')" style="padding: 12px; border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 0.8rem; color: var(--accent); font-weight: 700;">Matched Sample (AI Engine)</span>
+                                            <span id="check-sample" class="badge badge-approved" style="display:none;">ACTIVE</span>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="set-inv-style" value="classic">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+                <div style="margin-top: 2rem; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.75rem;">💾 Save Settings to apply changes to all portal modules.</p>
+                </div>
+            </div>
+            
+            <!-- SYSTEM HEALTH TAB -->
+            <div id="tab-system" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">🛠️ System Health & Logs</h2>
+                    <button class="btn btn-ghost" onclick="loadFailedEmails()">🔄 Refresh Logs</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+                    <!-- DB Stats -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 0.9rem; color: var(--primary);">💾 Database Capacity</h3>
+                        <div class="db-monitor" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px;">
+                                <span>Used Space</span>
+                                <span id="db-usage-text">0 / 512 MB (0%)</span>
+                            </div>
+                            <div class="db-bar-bg">
+                                <div id="db-usage-bar" class="db-bar-fill"></div>
+                            </div>
+                            <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 10px;">Monitoring MongoDB Atlas free tier usage (512MB limit).</p>
+                        </div>
+                    </div>
+
+                    <!-- Failed Email Queue -->
+                    <div class="glass-card">
+                        <h3 class="section-title" style="font-size: 0.9rem; color: #ef4444;">✉️ Critical Email Queue (Failures)</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Recipient</th>
+                                        <th>Subject</th>
+                                        <th>Error</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="failedEmailTableBody">
+                                    <tr><td colspan="4" style="text-align: center; color: #10b981;">✅ Email queue is healthy.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GLOBAL FOOTER INSIDE CONTENT -->
+            <footer style="background: rgba(15, 23, 42, 0.2); border-top: 1px solid var(--glass-border); padding: 1.25rem 2rem; margin-top: 2rem; color: #64748b; font-size: 0.7rem; border-radius: 20px 20px 0 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div>
+                        <strong id="footer-co-name" style="color: #94a3b8; font-size: 0.85rem; display: block; margin-bottom: 2px;">EMYRIS OMS</strong>
+                        <p id="footer-co-address" style="margin: 0; font-size: 0.65rem; max-width: 500px;">Loading company details...</p>
+                    </div>
+                    <div style="text-align: right; opacity: 0.7;">
+                        <p id="footer-co-web" style="margin: 0; font-weight: 700; color: var(--primary);">www.emyrisbio.com</p>
+                        <p style="margin: 2px 0 0 0; font-size: 0.6rem;">© 2026 Emyris Bio. All Rights Reserved.</p>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- MODAL (Product Add/Edit) -->
+    <div id="productModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 5000;">
+        <div class="glass-card" style="width: 1250px; max-height: 95vh; overflow-y: auto; margin: 0; padding: 0; border-top: 4px solid var(--primary); display: flex; flex-direction: column;">
+            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
+                <div>
+                    <div style="font-size:0.55rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:4px;opacity:0.9;">INVENTORY MASTER</div>
+                    <div style="font-size:1.2rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">📦 Manage Product Record</div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeProductModal()" style="padding:6px 14px;font-size:0.75rem;border-radius:8px;">CANCEL</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-product" onclick="document.getElementById('productForm').requestSubmit()" style="padding:6px 16px;font-size:0.75rem;border-radius:8px;">SAVE PRODUCT</button>
+
+                </div>
+            </div>
+            <form id="productForm" onsubmit="saveProduct(event)" style="display: flex; flex-direction: column; flex: 1;">
+                <input type="hidden" id="prod-id">
+                
+                <div style="padding: 1.25rem 1.5rem; display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; align-items: stretch; height: 100%;">
+                    
+                    <!-- LEFT COLUMN: Core Details & Defaults -->
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; padding-right: 0.5rem;">
+                        
+                        <!-- SECTION 1: CORE DETAILS -->
+                        <div>
+                            <h4 style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 8px;"><span style="color: var(--primary);">●</span> Core Identifiers</h4>
+                            <div style="background: rgba(15,23,42,0.3); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: grid; gap: 0.5rem;">
+                                <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Product Name</label><input type="text" id="prod-name" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" required></div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Manufacturer</label><input type="text" id="prod-manufacturer" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="Mfg Co."></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">HSN Code</label><input type="text" id="prod-hsn" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="hsn-list"></div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Category</label><input type="text" id="prod-cat" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="category-list"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Group</label><input type="text" id="prod-group" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="group-list"></div>
+                                </div>
+                                <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Packing</label><input type="text" id="prod-packing" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="10x10" required></div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 2: DEFAULTS -->
+                        <div>
+                            <h4 style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 0.4rem; display: flex; align-items: center; gap: 8px;"><span style="color: var(--accent);">●</span> Defaults & Schemes</h4>
+                            <div style="background: rgba(15,23,42,0.3); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: grid; gap: 0.5rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">MRP</label><input type="number" id="prod-mrp" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" step="0.01" required></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">GST %</label><input type="number" id="prod-gst" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" list="gst-rate-list" value="12"></div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">PTR</label><input type="number" id="prod-ptr" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" step="0.01"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">PTS</label><input type="number" id="prod-pts" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" step="0.01"></div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 0.5rem; margin-top: 0;">
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Bonus Buy (X)</label><input type="number" id="prod-buy" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="10"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.15rem; font-size:0.65rem;">Free (Y)</label><input type="number" id="prod-get" style="padding: 4px 8px; font-size: 0.75rem; height: auto;" placeholder="1"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT COLUMN: Batch Engine -->
+                    <div style="background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(99,102,241,0.15); display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary);">Batch Inventory Engine</h4>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">Total Qty: <span id="prod-total-qty-display" style="color: var(--accent); font-size: 1.1rem; margin-left: 5px; font-weight: 900;">0</span></div>
+                            <input type="hidden" id="prod-qty" value="0">
+                        </div>
+                        
+                        <!-- Batch Table -->
+                        <div style="flex: 1; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+                            <div style="flex: 1; overflow-y: auto;">
+                                <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
+                                    <thead style="background: rgba(255,255,255,0.05); position: sticky; top: 0; backdrop-filter: blur(8px);">
+                                        <tr>
+                                            <th style="padding: 12px 14px; text-align: left; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Batch No</th>
+                                            <th style="padding: 12px 14px; text-align: center; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Exp (MM-YY)</th>
+                                            <th style="padding: 12px 14px; text-align: right; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">MRP</th>
+                                            <th style="padding: 12px 14px; text-align: right; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">PTS</th>
+                                            <th style="padding: 12px 14px; text-align: right; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">PTR</th>
+                                            <th style="padding: 12px 14px; text-align: center; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Qty</th>
+                                            <th style="padding: 12px 14px; text-align: center; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.1);">Act</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="prod-batch-tbody">
+                                        <!-- Batches will be rendered here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.1); padding: 8px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 4px 6px;"><input type="text" id="new-batch-no" placeholder="B.No" style="padding: 8px 10px; font-size: 0.75rem; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px;"><input type="text" id="new-batch-exp" placeholder="MM-YY" style="padding: 8px 10px; font-size: 0.75rem; text-align: center; background: rgba(0,0,0,0.5);" oninput="formatMMYY(this)" maxlength="5"></td>
+                                        <td style="padding: 4px 6px;"><input type="number" id="new-batch-mrp" step="0.01" placeholder="MRP" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px;"><input type="number" id="new-batch-pts" step="0.01" placeholder="PTS" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px;"><input type="number" id="new-batch-ptr" step="0.01" placeholder="PTR" style="padding: 8px 10px; font-size: 0.75rem; text-align: right; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px;"><input type="number" id="new-batch-qty" placeholder="Qty" style="padding: 8px 10px; font-size: 0.75rem; text-align: center; background: rgba(0,0,0,0.5);"></td>
+                                        <td style="padding: 4px 6px; text-align: center;"><button type="button" onclick="addProductBatch()" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.75rem; border-radius: 8px;">+ ADD</button></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL (Party Create/Edit) -->
+    <div id="partyModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 5000;">
+        <div class="glass-card" style="width: 850px; margin: 0; border-top: 4px solid var(--accent); padding: 1.5rem 2rem; max-height: 95vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div id="party-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">GLOBAL MASTER</div>
+                    <div id="party-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🤝 Manage Party Record</div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closePartyModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-party" onclick="document.getElementById('partyForm').requestSubmit()" style="padding:5px 15px;font-size:0.72rem; background: var(--accent);">SAVE & APPROVE</button>
+                </div>
+
+            </div>
+            
+            <form id="partyForm" onsubmit="saveParty(event)" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <input type="hidden" id="party-id">
+                
+                <!-- TOP GRID: IDENTITY -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Firm Name / Entity Name</label>
+                        <input type="text" id="party-name" required placeholder="Full registered name">
+                    </div>
+                    <div class="form-group">
+                        <label>Party Type</label>
+                        <select id="party-type" required>
+                            <option value="STOCKIST">STOCKIST (Customer)</option>
+                            <option value="SUPPLIER">SUPPLIER (Vendor)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #f59e0b; font-weight: 800;">📍 Assign Headquarter (HQ) *</label>
+                        <select id="party-hq" required style="border: 1px solid #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);">
+                            <option value="">-- Select HQ --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- MIDDLE GRID: AUTH & CONTACT -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 1rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <div class="form-group">
+                        <label style="display:flex; justify-content:space-between;">Login ID 
+                            <span style="color:var(--accent); cursor:pointer; font-size:0.6rem;" onclick="regeneratePartyCreds('id')">🔄 REGEN</span>
+                        </label>
+                        <input type="text" id="party-login" required readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; font-family: monospace;">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:flex; justify-content:space-between;">Security Password 
+                            <span style="color:var(--accent); cursor:pointer; font-size:0.6rem;" onclick="regeneratePartyCreds('pass')">🔄 REGEN</span>
+                        </label>
+                        <input type="text" id="party-pass" required readonly style="background: rgba(255,255,255,0.02); opacity: 0.7; font-family: monospace;">
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address (For Notifications)</label>
+                        <input type="email" id="party-email" required placeholder="contact@example.com">
+                    </div>
+                </div>
+
+                <!-- BOTTOM GRID: REGULATORY & FINANCE -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <div class="form-group"><label>GSTIN Number</label><input type="text" id="party-gst" maxlength="15" placeholder="15-digit GST"></div>
+                    <div class="form-group"><label>Drug License (DL)</label><input type="text" id="party-dl" placeholder="DL-XX-XXXXXX"></div>
+                    <div class="form-group"><label>FSSAI Number</label><input type="text" id="party-fssai" placeholder="14-digit FSSAI"></div>
+                    <div class="form-group"><label>PAN Number</label><input type="text" id="party-pan" maxlength="10"></div>
+                </div>
+
+                <!-- LOCATION GRID -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group"><label>City</label><input type="text" id="party-city" required></div>
+                    <div class="form-group"><label>Pincode</label><input type="number" id="party-pincode" required></div>
+                    <div class="form-group"><label>State</label><input type="text" id="party-state" required></div>
+                    <div class="form-group"><label>Phone/WhatsApp</label><input type="text" id="party-phone" required></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Complete Mailing Address</label>
+                    <textarea id="party-address" rows="2" style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                </div>
+
+                <!-- ACCOUNTING / HIDDEN -->
+                <div style="display: none;">
+                    <input type="number" id="party-limit" value="50000">
+                    <input type="number" id="party-balance" value="0">
+                    <input type="text" id="party-bank-name">
+                    <input type="text" id="party-bank-acc">
+                    <input type="text" id="party-bank-ifsc">
+                </div>
+
+                <div style="padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 1rem;">
+                    <p style="margin: 0; align-self: center; font-size: 0.7rem; color: var(--text-muted); font-style: italic;">* Mandatory HQ assignment required for approval.</p>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 30px; font-weight: 800; letter-spacing: 1px;">💾 SAVE & APPROVE NEW PARTY</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- MODAL (Order Details) -->
+    <div id="orderDetailModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 96%; max-width: 1600px; margin: 0; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div style="font-size:0.65rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;">
+                        <span style="width:8px;height:8px;background:var(--primary);border-radius:2px;box-shadow:0 0 10px var(--primary);"></span>
+                        ORDER MANAGEMENT
+                    </div>
+                    <div id="detail-order-no" style="font-size:1.4rem;font-weight:900;color:#fff;letter-spacing:-0.5px;">Order #ORD-XXXXXX</div>
+                    <p id="detail-date" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; font-weight: 500;"></p>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closeOrderModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px;">
+                <div>
+                    <span class="stat-label" style="margin-bottom: 0.5rem;">Stockist Details</span>
+                    <div id="detail-stockist-name" style="font-weight: 800; font-size: 1.1rem; color: #fff;">-</div>
+                    <div id="detail-stockist-code" style="color: var(--accent); font-weight: 700; margin-top: 4px;">-</div>
+                    
+                    <div id="hq-selection-container" class="hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--glass-border);">
+                        <label class="stat-label" style="color: #facc15;">Assign HQ (Mandatory)</label>
+                        <select id="detail-hq-select" style="width: 100%; margin-top: 5px; background: rgba(0,0,0,0.3); border: 1px solid var(--primary); color: #fff; padding: 8px; border-radius: 8px; font-weight: 600;">
+                            <option value="">-- Select Headquarters --</option>
+                        </select>
+                    </div>
+                    <div id="hq-display-container" class="hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--glass-border);">
+                        <span class="stat-label">Assigned HQ</span>
+                        <div id="detail-hq-name" style="color: #fff; font-weight: 700; font-size: 1rem; margin-top: 4px;">-</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span class="stat-label" style="margin-bottom: 0.5rem;">Status</span>
+                    <div id="detail-status" style="display: inline-block; padding: 6px 15px; border-radius: 99px; font-weight: 800; font-size: 0.8rem;">PENDING</div>
+                </div>
+            </div>
+
+            <div class="table-container" style="margin-bottom: 1.5rem; overflow-x: auto; border-radius: 16px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2);">
+                <table style="font-size: 0.78rem; width: 100%; border-collapse: separate; border-spacing: 0;">
+                    <thead style="position: sticky; top: 0; z-index: 10;">
+                        <tr style="background: rgba(15, 23, 42, 0.98);">
+                            <th style="position: sticky; left: 0; z-index: 20; background: #0f172a; min-width: 220px; border-right: 1px solid rgba(255,255,255,0.05);">Product Item</th>
+                            <th style="text-align: center; min-width: 160px; color: var(--accent);">Batch Allocated</th>
+                            <th style="text-align: right; min-width: 90px;">Master PTR</th>
+                            <th style="text-align: right; min-width: 90px;">Asking Rate</th>
+                            <th style="text-align: center; min-width: 130px;">Auth Note</th>
+                            <th style="text-align: center; min-width: 100px;">Final Rate</th>
+                            <th style="text-align: center; min-width: 70px;">Qty</th>
+                            <th style="text-align: center; min-width: 80px;">Bonus</th>
+                            <th style="text-align: right; min-width: 110px;">Total</th>
+                            <th style="text-align: center; min-width: 240px;">Negotiation Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detail-items-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 300px; background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-muted);">Taxable Amount:</span>
+                        <span id="detail-subtotal" style="font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-muted);">GST Total:</span>
+                        <span id="detail-gst" style="font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">
+                        <span style="color: var(--text-muted);">Round Off:</span>
+                        <span id="detail-roundoff" style="font-weight: 700;">₹0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span style="font-weight: 800; color: #fff;">Grand Total:</span>
+                        <span id="detail-total" style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button class="btn btn-ghost" onclick="closeOrderModal()" style="flex: 1; justify-content: center;">CLOSE</button>
+                <button class="btn" id="detail-delete-btn" style="flex: 1; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); justify-content: center;">DELETE RECORD</button>
+                <button class="btn" id="detail-reject-btn" style="flex: 1.5; background: #991b1b; color: #fff; justify-content: center;">❌ REJECT ORDER</button>
+                <button class="btn btn-primary" id="detail-approve-btn" style="flex: 2; justify-content: center;">✅ APPROVE ORDER</button>
+                <button class="btn" id="detail-invoice-btn" style="flex: 2; background: var(--accent); color: #fff; justify-content: center; display: none;">🧾 GENERATE INVOICE</button>
+                <button class="btn" id="detail-download-btn" style="flex: 2; background: #6366f1; color: #fff; justify-content: center; display: none;">📥 DOWNLOAD PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL (Financial Note) -->
+    <div id="noteModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; z-index: 5000;">
+        <div class="glass-card" style="width: 600px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.15);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; border-bottom:1px solid var(--glass-border); padding-bottom:1rem;">
+                <h3 class="section-title" style="margin:0;">📝 Financial Adjustment (CN/DN)</h3>
+                <button class="btn btn-ghost" onclick="closeNoteModal()">✕</button>
+            </div>
+            <form id="noteForm" onsubmit="saveFinancialNote(event)">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+                    <div class="form-group">
+                        <label>Transaction Type</label>
+                        <select id="note-type" required style="border-color: var(--primary);">
+                            <option value="CN">CREDIT NOTE (Reduce Due)</option>
+                            <option value="DN">DEBIT NOTE (Increase Due)</option>
+                        </select>
+                        <p style="font-size:0.65rem; color:var(--text-muted); margin-top:5px;">*CN for Returns/Discounts, DN for Charges.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Adjustment Amount (₹)</label>
+                        <input type="number" id="note-amount" required step="0.01" placeholder="0.00" style="font-weight:800; font-size:1.1rem; color:var(--primary);">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label>Select Party / Stockist</label>
+                    <select id="note-party" required onchange="updateNotePartyDetails(this.value)"></select>
+                    <div id="note-party-info" style="font-size:0.7rem; color:var(--accent); margin-top:5px; height: 1rem;"></div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label>Reason for Adjustment</label>
+                    <select id="note-reason" required onchange="toggleNoteInventoryFields(this.value)">
+                        <option value="Price Diff CN">Price Diff CN (Overcharged)</option>
+                        <option value="Price Diff DN">Price Diff DN (Undercharged)</option>
+                        <option value="Exp/Brk/Damg CN">Exp/Brk/Damg CN (Non-Salable Return)</option>
+                        <option value="Brk/Dmg/Loss DN">Brk/Dmg/Loss DN (Stock Adjustment)</option>
+                        <option value="Salable Return">Salable Return (Add to Inventory + CN)</option>
+                        <option value="Purchase Return">Purchase Return (Remove from Inventory + DN)</option>
+                        <option value="Promotional Discount">Special Promotional Discount</option>
+                        <option value="Other">Other Adjustment</option>
+                    </select>
+                </div>
+
+                <!-- INVENTORY LINK FIELDS (Hidden by default) -->
+                <div id="note-inventory-fields" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed var(--glass-border);">
+                    <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 10px; font-weight: 700;">📦 INVENTORY IMPACT DETAILS</p>
+                    <div class="form-group">
+                        <label>Select Product</label>
+                        <select id="note-product" onchange="updateNoteBatches(this.value)"></select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Batch No</label>
+                            <input type="text" id="note-batch" placeholder="e.g. B24001">
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="note-qty" placeholder="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:1.5rem;">
+                    <label>Internal Reference / Description</label>
+                    <textarea id="note-desc" style="min-height: 100px;" placeholder="Details for ledger entry..."></textarea>
+                </div>
+
+                <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeNoteModal()" style="flex: 1; justify-content:center;">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 2; justify-content:center; font-weight:800;">✓ GENERATE & POST NOTE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL (Multi-Item Return - Sale/Purchase) -->
+    <div id="returnModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:3000;">
+        <div class="glass-card" style="width:98%;max-width:1380px;padding:1.25rem 1.75rem;max-height:96vh;overflow-y:auto;border:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0;">
+
+            <!-- ── Header ────────────────────────────────────────────── -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;border-bottom:1px solid var(--glass-border);padding-bottom:0.75rem;">
+                <div>
+                    <div id="return-module-badge" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">CREDIT NOTE</div>
+                    <div id="return-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">Sale Return — Credit Note</div>
+                </div>
+                <button class="btn btn-ghost" onclick="closeReturnModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+            </div>
+
+            <!-- ── 3-Action Tabs ──────────────────────────────────────────────────────── -->
+            <div id="return-action-tabs" style="display:flex;gap:5px;margin-bottom:1rem;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;width:fit-content;"></div>
+
+            <form id="returnForm" onsubmit="saveMultiItemReturn(event)" style="display:flex;flex-direction:column;flex:1;">
+                <input type="hidden" id="return-reason">
+                <input type="hidden" id="return-note-type">
+
+                <!-- ── Header Fields ───────────────────────────── -->
+                <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:0.85rem;margin-bottom:0.85rem;">
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Party / Stockist</label>
+                        <select id="return-party" required onchange="updateNotePartyDetails(this.value,'return-party-info')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;"></select>
+                        <div id="return-party-info" style="font-size:0.6rem;color:var(--accent);margin-top:3px;min-height:0.8rem;"></div>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Ref Invoice No</label>
+                        <input type="text" id="return-inv-no" placeholder="e.g. INV-1023" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Invoice Date</label>
+                        <input type="text" id="return-inv-date" placeholder="DD-MM-YYYY" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Place of Supply</label>
+                        <input type="text" id="return-supply" placeholder="State Name" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
+                    </div>
+                </div>
+
+                <!-- ── Items Table ──────────────────────────────── -->
+                <div style="flex:1;border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;background:rgba(6,12,24,0.6);margin-bottom:0.75rem;">
+                    <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+                        <colgroup>
+                            <col style="width:24%"><!-- Product -->
+                            <col style="width:7%"><!-- HSN -->
+                            <col style="width:10%"><!-- Batch -->
+                            <col style="width:9%"><!-- Exp MM-YY -->
+                            <col style="width:6%"><!-- Qty -->
+                            <col style="width:9%"><!-- Price -->
+                            <col style="width:5%"><!-- GST% -->
+                            <col style="width:10%"><!-- Total -->
+                            <col style="width:3%"><!-- Del -->
+                        </colgroup>
+                        <thead>
+                            <tr style="background:rgba(99,102,241,0.08);border-bottom:1px solid rgba(99,102,241,0.15);">
+                                <th style="padding:7px 8px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Product</th>
+                                <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">HSN</th>
+                                <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Batch No</th>
+                                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Exp (MM-YY)</th>
+                                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Qty</th>
+                                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Price</th>
+                                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">GST%</th>
+                                <th style="padding:7px 8px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="return-items-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- ── Totals Row + Add Button ────────────────── -->
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:0.85rem;">
+                    <button type="button" onclick="addReturnRow()" style="background:transparent;border:1px dashed rgba(99,102,241,0.35);color:var(--primary);padding:5px 14px;border-radius:7px;font-size:0.68rem;font-weight:800;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background='transparent'">＋ ADD ITEM</button>
+                    <div style="display:flex;align-items:center;gap:1.2rem;background:rgba(0,0,0,0.4);padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.06);">
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">Subtotal</div>
+                            <div id="return-subtotal" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">₹0.00</div>
+                        </div>
+                        <span style="color:#334155;font-size:0.65rem;">+</span>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">GST</div>
+                            <div id="return-gst" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">₹0.00</div>
+                        </div>
+                        <span style="color:#334155;font-size:0.65rem;">±</span>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">Round Off</div>
+                            <div id="return-roundoff" style="font-size:0.75rem;font-weight:700;color:#64748b;font-family:monospace;">₹0.00</div>
+                        </div>
+                        <div style="width:1px;height:28px;background:rgba(255,255,255,0.07);"></div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;">Grand Total</div>
+                            <div id="return-total" style="font-size:1.05rem;font-weight:900;color:var(--primary);font-family:monospace;">₹0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Footer Actions ──────────────────────────────── -->
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:0.6rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.06);">
+                    <button type="button" onclick="closeReturnModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#64748b;padding:7px 18px;border-radius:7px;font-size:0.7rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.04em;">✕ CANCEL</button>
+                    <button type="submit" id="return-submit-btn" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;padding:7px 22px;border-radius:7px;font-size:0.72rem;font-weight:900;cursor:pointer;letter-spacing:0.06em;transition:all 0.2s;box-shadow:0 4px 14px rgba(99,102,241,0.35);">✓ POST RETURN & GENERATE CN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- MODAL (Party Ledger) -->
+    <div id="ledgerModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 90%; max-width: 1200px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:2px;opacity:0.9;">FINANCIAL LEDGER</div>
+                    <div id="ledger-party-name" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">📋 Party Ledger</div>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button type="button" class="btn btn-primary" onclick="openPaymentModalFromLedger()" style="padding: 6px 14px; font-size: 0.7rem;">+ RECORD PAYMENT / RECEIPT</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeLedgerModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Ref No</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th style="text-align: right;">Debit (Dr)</th>
+                            <th style="text-align: right;">Credit (Cr)</th>
+                            <th style="text-align: right;">Running Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ledgerTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL (Purchase Entry) -->
+    <div id="purchaseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 1300px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:2px;opacity:0.9;">PROCUREMENT MODULE</div>
+                    <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Detailed Purchase Entry (Stock-In)</div>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+            </div>
+            
+            <form id="purchaseForm" onsubmit="savePurchaseEntry(event)">
+                <input type="hidden" id="pur-id">
+                <!-- SUPPLIER & HEADER INFO -->
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
+                    <div class="form-group">
+                        <label>Select Supplier</label>
+                        <select id="pur-supplier" required onchange="updateSupplierDetailsDisplay(this.value)"></select>
+                        <div id="supplier-compliance-box" style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">
+                            <!-- Dynamic Details -->
+                            Select a supplier to view compliance data.
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>Supplier Inv No</label>
+                            <input type="text" id="pur-inv-no" required placeholder="INV/001">
+                        </div>
+                        <div class="form-group" style="margin-top: 10px;">
+                            <label>Invoice Date</label>
+                            <input type="date" id="pur-inv-date" required>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>LR Number</label>
+                            <input type="text" id="pur-lr-no" placeholder="LR-7728">
+                        </div>
+                        <div class="form-group" style="margin-top: 10px;">
+                            <label>LR Date</label>
+                            <input type="date" id="pur-lr-date">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>Payment Mode</label>
+                            <select id="pur-payment-type">
+                                <option value="CREDIT">CREDIT (Pay Later)</option>
+                                <option value="CASH">CASH (Paid Now)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-top: 10px;">
+                            <label>Transport Name</label>
+                            <input type="text" id="pur-transport" placeholder="Transporter Name">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ITEM ENTRY SECTION -->
+                <div style="background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.1); margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); margin-bottom: 1rem;">Item Line Entry</h4>
+                    <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+                        <div>
+                            <label style="font-size: 0.65rem;">Product</label>
+                            <select id="pur-prod-select" onchange="updateProductEntryMeta(this.value)"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Manufacturer</label>
+                            <input type="text" id="pur-manf-name" placeholder="Mfg Name">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Batch No</label>
+                            <input type="text" id="pur-batch" placeholder="B-123">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Mfg Date</label>
+                            <input type="text" id="pur-mfg" placeholder="MM-YY" oninput="formatMMYY(this)" maxlength="5">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Exp Date</label>
+                            <input type="text" id="pur-exp" placeholder="MM-YY" oninput="formatMMYY(this)" maxlength="5">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Qty</label>
+                            <input type="number" id="pur-qty" placeholder="0">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Rate (Ex. GST)</label>
+                            <input type="number" id="pur-rate" step="0.01" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">GST %</label>
+                            <input type="number" id="pur-gst-pct" value="12">
+                        </div>
+                        <button type="button" class="btn btn-primary" style="padding: 10px 15px; font-size: 0.7rem;" onclick="addPurchaseItem()">ADD ITEM</button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem;">
+                    <table style="font-size: 0.75rem;">
+                        <thead style="position: sticky; top: 0; background: var(--bg); z-index: 10;">
+                            <tr>
+                                <th>Product Details</th>
+                                <th>Batch</th>
+                                <th>Exp</th>
+                                <th style="text-align: center;">Qty</th>
+                                <th style="text-align: right;">Rate</th>
+                                <th style="text-align: center;">GST %</th>
+                                <th style="text-align: right;">Final Value</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchase-items-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- FOOTER SUMMARY -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                    <div style="flex: 1;">
+                        <div class="form-group" style="width: 300px;">
+                            <label>General Remarks / Notes</label>
+                            <textarea id="pur-remarks" style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                        </div>
+                    </div>
+                    <div style="width: 300px; background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem;">
+                            <span style="opacity: 0.7;">Gross Amount:</span>
+                            <span id="pur-subtotal" style="font-weight: 700;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem;">
+                            <span style="opacity: 0.7;">GST Amount:</span>
+                            <span id="pur-gst-total" style="font-weight: 700;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <span style="font-weight: 800; font-size: 1rem;">NET PAYABLE:</span>
+                            <span id="pur-total" style="font-weight: 900; font-size: 1.1rem; color: var(--primary);">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; letter-spacing: 1px;">✓ CONFIRM & POST PURCHASE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL (Direct Sales / Online & Direct) -->
+    <div id="directSaleModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 1300px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--accent);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div id="sale-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">DIRECT SALES MODULE</div>
+                    <div id="sale-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 New Direct Order</div>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closeSaleModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+            </div>
+            
+            <form id="saleForm" onsubmit="saveDirectSale(event)">
+                <input type="hidden" id="sale-type-input">
+                <!-- PARTY & HEADER INFO -->
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
+                    <div class="form-group">
+                        <label>Select Party / Customer</label>
+                        <select id="sale-party" required></select>
+                        <div style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted);">
+                            * For Online Orders, select 'Online Customer' or appropriate party.
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>Order Reference / Bill No</label>
+                            <input type="text" id="sale-ref-no" required placeholder="ORD-2026-001">
+                        </div>
+                        <div class="form-group" style="margin-top: 10px;">
+                            <label>Sale Date</label>
+                            <input type="date" id="sale-date" required>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>Sales Channel</label>
+                            <select id="sale-channel" onchange="updateSaleChannelContext(this.value)">
+                                <option value="DIRECT">Direct Company Sale</option>
+                                <option value="ONLINE">Online Platform (Web/App)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label>Payment Mode</label>
+                            <select id="sale-payment-mode">
+                                <option value="CASH">CASH</option>
+                                <option value="UPI">UPI / ONLINE</option>
+                                <option value="CREDIT">CREDIT</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ITEM ENTRY SECTION -->
+                <div style="background: rgba(16, 185, 129, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(16, 185, 129, 0.1); margin-bottom: 1.5rem;">
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 1rem;">Item Line Entry</h4>
+                    <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+                        <div>
+                            <label style="font-size: 0.65rem;">Product</label>
+                            <select id="sale-prod-select" onchange="updateSaleProductMeta(this.value)"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Select Batch</label>
+                            <select id="sale-batch-select" onchange="updateSaleBatchMeta(this.value)"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Rate (Ex. GST)</label>
+                            <input type="number" id="sale-rate" step="0.01" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Qty</label>
+                            <input type="number" id="sale-qty" placeholder="0">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">GST %</label>
+                            <input type="number" id="sale-gst-pct" readonly style="background: rgba(0,0,0,0.2); opacity: 0.7;">
+                        </div>
+                        <button type="button" class="btn btn-primary" style="padding: 10px 15px; font-size: 0.7rem; background: var(--accent);" onclick="addSaleItem()">ADD ITEM</button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem;">
+                    <table style="font-size: 0.75rem;">
+                        <thead style="position: sticky; top: 0; background: var(--bg); z-index: 10;">
+                            <tr>
+                                <th>Product Details</th>
+                                <th>Batch</th>
+                                <th style="text-align: center;">Qty</th>
+                                <th style="text-align: right;">Rate</th>
+                                <th style="text-align: center;">GST %</th>
+                                <th style="text-align: right;">Final Value</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sale-items-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- FOOTER SUMMARY -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                    <div style="flex: 1;">
+                        <div class="form-group" style="width: 300px;">
+                            <label>Sales Remarks / Dispatch Info</label>
+                            <textarea id="sale-remarks" style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                        </div>
+                    </div>
+                    <div style="width: 300px; background: rgba(0,0,0,0.3); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem;">
+                            <span style="opacity: 0.7;">Gross Amount:</span>
+                            <span id="sale-subtotal" style="font-weight: 700;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem;">
+                            <span style="opacity: 0.7;">GST Amount:</span>
+                            <span id="sale-gst-total" style="font-weight: 700;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <span style="font-weight: 800; font-size: 1rem;">NET RECEIVABLE:</span>
+                            <span id="sale-total" style="font-weight: 900; font-size: 1.1rem; color: var(--accent);">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closeSaleModal()">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; letter-spacing: 1px; background: var(--accent);">✓ CONFIRM & POST DIRECT SALE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL (Payment Entry) -->
+    <div id="paymentModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 5000;">
+        <div class="glass-card" style="width: 700px; margin: 0; border-top: 5px solid var(--primary); padding: 0; overflow: hidden; border-radius: 24px;">
+            <!-- Header -->
+            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                        <span id="pay-badge" style="background: var(--primary); color: #fff; font-size: 0.55rem; font-weight: 900; padding: 2px 8px; border-radius: 4px; letter-spacing: 1px;">RECEIPT</span>
+                        <span id="pay-voucher-placeholder" style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); font-family: monospace;">PAYIN-XXXX-XXXX</span>
+                    </div>
+                    <h2 id="payment-modal-title" style="font-size: 1.4rem; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.02em;">💰 Financial Voucher Entry</h2>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+            </div>
+
+            <form id="paymentForm" onsubmit="savePayment(event)" style="padding: 2rem;">
+                <!-- Step 1: Type, Party & Date -->
+                <div style="display: grid; grid-template-columns: 1.2fr 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: var(--primary); margin-bottom: 8px; display: block;">TYPE</label>
+                        <select id="pay-type" required onchange="updatePaymentContext()" style="font-size: 0.9rem; padding: 12px; background: rgba(0,0,0,0.4); border: 2px solid var(--glass-border); border-radius: 12px;">
+                            <option value="RECEIPT">RECEIPT (In)</option>
+                            <option value="PAYMENT">PAYMENT (Out)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label id="pay-party-label" style="font-size: 0.7rem; font-weight: 800; color: var(--primary); margin-bottom: 8px; display: block;">1. SELECT PARTY</label>
+                        <select id="pay-party" required onchange="updatePartyBalanceDisplay()" style="font-size: 0.9rem; padding: 12px; background: rgba(0,0,0,0.4); border: 2px solid var(--glass-border); border-radius: 12px;">
+                            <option value="">-- Choose Party --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: var(--primary); margin-bottom: 8px; display: block;">DATE</label>
+                        <input type="date" id="pay-date" required style="padding: 12px; background: rgba(0,0,0,0.4); border: 2px solid var(--glass-border); border-radius: 12px;">
+                    </div>
+                </div>
+
+                <!-- Step 2: Amount & Method -->
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; align-items: flex-end;">
+                    <div class="form-group">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: var(--accent); margin-bottom: 8px; display: block;">2. ENTER AMOUNT (₹)</label>
+                        <input type="number" id="pay-amount" required step="0.01" placeholder="0.00" 
+                               oninput="previewBillAdjustment()"
+                               style="font-size: 1.8rem; font-weight: 900; color: var(--accent); background: rgba(245, 158, 11, 0.05); border: 2px solid var(--accent); border-radius: 16px; padding: 15px; text-align: center;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.7rem; font-weight: 800; margin-bottom: 8px; display: block;">METHOD</label>
+                        <select id="pay-method" required style="padding: 12px; background: rgba(0,0,0,0.4); border: 2px solid var(--glass-border); border-radius: 12px;">
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="UPI">UPI / GPay</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Adjustment">Accounting Adjustment</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.7rem; font-weight: 800; margin-bottom: 8px; display: block;">REFERENCE NO</label>
+                        <input type="text" id="pay-ref" placeholder="Txn ID / Chq No" style="padding: 12px; background: rgba(0,0,0,0.4); border: 2px solid var(--glass-border); border-radius: 12px;">
+                    </div>
+                </div>
+
+                <!-- Step 3: Bill-wise Adjustment Preview -->
+                <div id="bill-adjustment-section" class="glass-card" style="background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); padding: 1rem; border-radius: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
+                        <span style="font-size: 0.7rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">📦 AUTOMATIC BILL ADJUSTMENT (FIFO)</span>
+                        <span id="party-total-due" style="font-size: 0.75rem; font-weight: 800; color: var(--accent);">Outstanding: ₹0.00</span>
+                    </div>
+                    <div id="bill-preview-list" style="max-height: 180px; overflow-y: auto; font-size: 0.8rem;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 1rem; font-style: italic;">
+                            Select a party and enter amount to see adjustment preview...
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); pt: 1.5rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="font-weight: 800;">CANCEL</button>
+                    <button type="submit" id="pay-submit-btn" class="btn btn-primary" style="padding: 15px 50px; font-weight: 900; font-size: 1rem; letter-spacing: 1px; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);">
+                        ✓ CONFIRM & POST VOUCHER
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MODAL (Report Preview) -->
+    <div id="reportModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000;">
+        <div class="glass-card" style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-top: 5px solid #10b981;">
+            
+            <!-- Header -->
+            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 id="report-modal-title" style="font-size: 1.4rem; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.02em;">📊 Intelligence Report Viewer</h2>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Filter, preview, and export intelligence data.</p>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closeReportModal()" style="width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+            </div>
+
+            <!-- Toolbar / Filters -->
+            <div style="padding: 1rem 2rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="hidden" id="current-report-type">
+                    <div style="display: flex; flex-direction: column;">
+                        <label style="font-size: 0.6rem; font-weight: 800; color: var(--primary); margin-bottom: 4px;">FROM DATE</label>
+                        <input type="date" id="report-from-date" style="padding: 8px 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; font-size: 0.8rem;">
+                    </div>
+                    <div style="display: flex; flex-direction: column;">
+                        <label style="font-size: 0.6rem; font-weight: 800; color: var(--primary); margin-bottom: 4px;">TO DATE</label>
+                        <input type="date" id="report-to-date" style="padding: 8px 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; font-size: 0.8rem;">
+                    </div>
+                    <button type="button" class="btn btn-primary" style="margin-top: 15px; padding: 9px 16px; font-size: 0.75rem;" onclick="renderReportView()">🔄 LOAD DATA</button>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 15px;">
+                    <button type="button" class="btn btn-ghost" style="border-color: #f59e0b; color: #f59e0b; padding: 8px 16px; font-size: 0.75rem; font-weight: 800;" onclick="exportReportPDF()">📥 EXPORT PDF</button>
+                    <button type="button" class="btn btn-ghost" style="border-color: #10b981; color: #10b981; padding: 8px 16px; font-size: 0.75rem; font-weight: 800;" onclick="exportReportExcel()">📊 EXPORT EXCEL</button>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="table-container" style="flex: 1; overflow: auto; padding: 1rem 2rem;">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8rem;">
+                    <thead style="position: sticky; top: 0; z-index: 10; background: #0f172a;">
+                        <tr id="report-table-head">
+                            <!-- Dynamic Headers -->
+                        </tr>
+                    </thead>
+                    <tbody id="report-table-body">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+                <div id="report-loading-spinner" style="text-align: center; padding: 3rem; color: var(--text-muted); font-style: italic; display: none;">
+                    Fetching & compiling data...
+                </div>
+                <div id="report-empty-state" style="text-align: center; padding: 3rem; color: var(--text-muted); font-style: italic; display: none;">
+                    No data found for the selected date range.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL (Expense Entry) -->
+    <div id="expenseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000;">
+        <div class="glass-card" style="width: 620px; margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 24px;">
+            <!-- Header -->
+            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size:0.55rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#ef4444; margin-bottom:4px;">EXPENSE MANAGEMENT</div>
+                    <h2 style="font-size:1.3rem; font-weight:900; color:#fff; margin:0;">💸 Log New Expense</h2>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width:40px;height:40px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>
+            </div>
+
+            <form id="expenseForm" onsubmit="saveExpense(event)" style="padding: 2rem;">
+
+                <!-- Row 1: Expense Type & Category -->
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#ef4444; margin-bottom:8px; display:block;">EXPENSE TYPE</label>
+                        <select id="exp-type" required onchange="loadExpenseCategoryOptions()" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                            <option value="">-- Select Type --</option>
+                            <option value="Direct">📦 Direct Expense</option>
+                            <option value="Indirect">🏢 Indirect Expense</option>
+                        </select>
+                        <div style="font-size:0.6rem; color:var(--text-muted); margin-top:6px; line-height:1.4;">
+                            <strong style="color:#f59e0b;">Direct:</strong> Raw material, packaging, freight, production<br>
+                            <strong style="color:#10b981;">Indirect:</strong> Rent, salary, utilities, marketing, admin
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#ef4444; margin-bottom:8px; display:block;">EXPENSE HEAD / CATEGORY</label>
+                        <select id="exp-category" required style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                            <option value="">-- Select Type First --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Row 2: Title & Date -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">EXPENSE TITLE / ITEM</label>
+                        <input type="text" id="exp-title" required placeholder="e.g. Office Rent - April 2026" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">DATE</label>
+                        <input type="date" id="exp-date" required style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                </div>
+
+                <!-- Row 3: Amount, Method, Ref -->
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#ef4444; margin-bottom:8px; display:block;">AMOUNT (₹)</label>
+                        <input type="number" id="exp-amount" required step="0.01" placeholder="0.00" style="font-size:1.6rem; font-weight:900; color:#ef4444; background:rgba(239,68,68,0.05); border:2px solid #ef4444; border-radius:16px; padding:12px; text-align:center;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">PAYMENT METHOD</label>
+                        <select id="exp-method" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="UPI">UPI / GPay</option>
+                            <option value="Cheque">Cheque</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">REFERENCE NO</label>
+                        <input type="text" id="exp-ref" placeholder="Receipt / TxnID" style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group" style="margin-bottom:2rem;">
+                    <label style="font-size:0.7rem; font-weight:800; margin-bottom:8px; display:block;">NOTES (Optional)</label>
+                    <textarea id="exp-notes" rows="2" placeholder="Additional details..." style="width:100%; padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px; color:#fff; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:1.5rem; border-top:1px solid var(--glass-border); padding-top:1.5rem;">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')">CANCEL</button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg,#ef4444,#f97316); border:none; padding:12px 40px; font-weight:900;">💸 POST EXPENSE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin-script.js?v=2.2"></script>
+
+    <audio id="bgMusic" loop preload="auto"></audio>
+</body>
+</html>
+

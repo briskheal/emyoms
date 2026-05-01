@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMYRIS OMS | Stockist Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.5);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --grad-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        
+        /* --- GLOBAL --- */
+        body { 
+            background: var(--bg); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; width: 100%; }
+        .hidden { display: none !important; }
+
+        /* --- NEW LANDING (COMPACT HORIZONTAL) --- */
+        .landing-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5% 100px;
+            gap: 3rem;
+            min-height: 100vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+
+        .main-heading {
+            text-align: left;
+            max-width: 350px;
+            animation: fadeInLeft 0.8s ease-out;
+        }
+
+
+
+
+
+        .main-heading h1 {
+            font-size: 1.5rem;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 0.2rem;
+            background: var(--grad-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+
+
+        .auth-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 1.5rem;
+            flex: 1;
+            animation: fadeInRight 0.8s ease-out;
+            max-width: 1000px;
+        }
+
+
+
+
+
+
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+
+        .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.1rem; color: #fff; }
+        .card-subtitle { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+
+        .form-group { margin-bottom: 0.5rem; text-align: left; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.2rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            color: #fff;
+            font-size: 0.8rem;
+
+            transition: 0.3s;
+        }
+
+        input:focus { outline: none; border-color: var(--primary); background: rgba(255,255,255,0.05); }
+
+        .btn-primary {
+            width: 100%; background: var(--grad-primary); color: #fff; padding: 0.75rem; border-radius: 10px; border: none; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3); }
+
+        /* --- DASHBOARD STYLES (RESTORED) --- */
+        .navbar { 
+            height: 80px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--glass-border); padding: 0 2rem; margin-bottom: 2rem;
+            background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(20px);
+        }
+        .logo { font-weight: 800; font-size: 1.5rem; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .excel-container { 
+            background: var(--card-bg); border-radius: 16px; overflow: auto; border: 1px solid var(--glass-border); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); backdrop-filter: blur(20px); min-height: 60vh;
+        }
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .excel-table th { 
+            position: sticky; top: 0; background: #f1f5f9; padding: 1rem; text-align: left; font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; border-right: 1px solid #cbd5e1; z-index: 10; font-weight: 800;
+        }
+        .excel-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #1e293b; vertical-align: middle; }
+        .excel-table tr:hover { background: rgba(99, 102, 241, 0.03); }
+        .excel-table tr:nth-child(even) { background: rgba(0, 0, 0, 0.01); }
+
+        .qty-input { width: 90px; padding: 0.6rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 10px; text-align: center; font-weight: 800; color: var(--accent); }
+        .negotiation-input { width: 80px; padding: 5px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: #fff; border-radius: 4px; text-align: right; font-weight: 700; }
+        .note-input { width: 120px; padding: 5px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: #fff; border-radius: 4px; font-size: 0.75rem; }
+
+        .category-scroll { display: flex; gap: 1rem; overflow-x: auto; padding: 10px 5px; scrollbar-width: none; margin-bottom: 2rem; }
+        .category-scroll::-webkit-scrollbar { display: none; }
+        .cat-chip { padding: 10px 20px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 50px; color: var(--text-muted); font-weight: 700; font-size: 0.75rem; white-space: nowrap; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; backdrop-filter: blur(10px); }
+        .cat-chip.active { background: var(--grad-primary); color: #fff; border-color: transparent; box-shadow: 0 10px 25px -5px var(--primary-glow); }
+
+        .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(7, 10, 18, 0.98); backdrop-filter: blur(20px); border-top: 1px solid var(--glass-border); padding: 0.6rem 2.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8); }
+
+        /* --- FOOTERS --- */
+        #global-footer { background: rgba(15, 23, 42, 0.9); border-top: 1px solid var(--glass-border); padding: 2rem 0; margin-top: 4rem; }
+        .landing-footer { background: rgba(15, 23, 42, 0.95); border-top: 1px solid var(--glass-border); padding: 0.5rem 0; margin-top: auto; }
+
+
+
+        @media (max-width: 1100px) {
+            body { height: auto; overflow: auto; }
+            .landing-wrapper { flex-direction: column; padding: 2rem 5%; gap: 2rem; height: auto; }
+            .main-heading { text-align: center; max-width: none; }
+            .auth-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Remove spin buttons from number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        @keyframes fadeInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: var(--grad-primary); color: #fff; box-shadow: 0 10px 20px -5px var(--primary-glow); }
+        .bonus-tag { background: rgba(16, 185, 129, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; border: 1px solid var(--accent-glow); }
+        .total-cell { color: #facc15 !important; font-weight: 900 !important; font-size: 1rem !important; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- LANDING VIEW (KEEPING NEW DESIGN) -->
+    <div id="section-auth" style="min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); overflow: hidden;">
+        <!-- TOP MARQUEE (FIXED & MINIMIZED) -->
+        <div id="land-marquee" class="hidden" style="width: 100%; padding: 4px; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); border-bottom: 1px solid var(--glass-border); overflow: hidden; white-space: nowrap; z-index: 2000; position: fixed; top: 0; left: 0;">
+            <div id="land-marquee-content" style="display: inline-block; animation: marquee linear infinite; font-weight: 700; color: #fff; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px;">Welcome to EMYRIS OMS Portal</div>
+        </div>
+
+
+
+
+        <div class="landing-wrapper" style="flex: 1; padding: 40px 5% 80px; display: flex; align-items: center; justify-content: space-between;">
+
+
+
+
+
+
+
+
+
+
+
+        <div class="main-heading" style="margin-top: 0;">
+            <h1>EMYRIS OMS</h1>
+            <p style="font-size: 1.1rem; line-height: 1.4; color: var(--text-muted);">Advanced Pharmaceutical<br>Distribution Portal</p>
+
+
+
+            <div style="margin-top: 2rem; border-left: 2px solid var(--primary); padding-left: 1rem; font-size: 0.85rem; opacity: 0.6;">
+                Streamlined for performance,<br>compliance, and real-time<br>order management.
+            </div>
+        </div>
+
+        <div id="view-auth-combined" class="auth-grid">
+            <!-- LOGIN -->
+            <div id="view-login" class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <h2 class="card-title" style="margin:0;">Sign In</h2>
+                    <button type="button" id="musicToggle" onclick="toggleMusic()" style="background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: 0.3s; z-index: 10;">
+                        <span>🔇</span> <span id="musicText">Music Off</span>
+                    </button>
+                </div>
+                
+                <div id="video-loop-container" style="margin-bottom: 1.5rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--glass-border); height: 180px; position: relative; background: #000;">
+                    <!-- Pharma Manufacturing YouTube Loop (Muted) -->
+                    <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
+                        src="https://www.youtube.com/embed/4m2mN1XmXxE?autoplay=1&mute=1&loop=1&playlist=4m2mN1XmXxE&controls=0&showinfo=0&rel=0&modestbranding=1" 
+                        allow="autoplay; encrypted-media">
+                    </iframe>
+                    <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                </div>
+
+
+
+
+
+
+                <form onsubmit="handleLogin(event)">
+
+                    <div class="form-group">
+                        <label>Login ID</label>
+                        <input type="text" id="login-id" placeholder="e.g. EMY123456" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-pass" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="loginBtn">Login</button>
+                </form>
+                <div style="margin-top: 0.75rem; text-align: center;">
+                    <a href="#" onclick="switchView('forgot')" style="color: var(--primary); font-size: 0.75rem; text-decoration: none; opacity: 0.8;">Forgot credentials?</a>
+                </div>
+            </div>
+
+            <!-- REGISTER -->
+            <div id="view-register" class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h2 class="card-title" style="margin:0;">New Partner</h2>
+                        <p class="card-subtitle" style="margin:0;">Join the professional network</p>
+                    </div>
+                </div>
+
+                <form onsubmit="handleRegister(event)" style="margin-top: 1rem;">
+
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group"><label>Firm Name</label><input type="text" id="reg-name" required style="text-transform: uppercase;"></div>
+                        <div class="form-group"><label>Email</label><input type="email" id="reg-email" required></div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group"><label>Phone</label><input type="tel" id="reg-phone" required></div>
+                        <div class="form-group"><label>Password</label><input type="password" id="reg-pass" required></div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 0.75rem;">
+                        <div class="form-group">
+                            <label>GSTIN</label>
+                            <input type="text" id="reg-gst" required maxlength="15" oninput="handleGstInput(this)">
+                            <div id="gst-status" style="font-size: 0.6rem; margin-top: 4px;"></div>
+                        </div>
+                        <div class="form-group"><label>PAN</label><input type="text" id="reg-pan" required maxlength="10"></div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group"><label>Drug License</label><input type="text" id="reg-dl" required></div>
+                        <div class="form-group"><label>FSSAI No.</label><input type="text" id="reg-fssai" required></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0.5rem;"><label>Address</label><input type="text" id="reg-address" required></div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group"><label>City</label><input type="text" id="reg-city" required></div>
+                        <div class="form-group"><label>Pincode</label><input type="number" id="reg-pin" required oninput="handlePinInput(this)"></div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <input type="text" id="reg-state" required readonly style="background: rgba(255,255,255,0.05); color: var(--text-muted);">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" id="regBtn">Welcome to EMYRIS-OMS</button>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- SUCCESS VIEW -->
+        <div id="view-reg-success" class="glass-card hidden" style="max-width: 600px; text-align: center; animation: fadeInUp 0.8s ease-out;">
+            <h2 class="card-title" style="color: var(--accent);">Registration Successful!</h2>
+            <p class="card-subtitle">Your application is under review. Please save your details.</p>
+            
+            <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 1.5rem; border-radius: 16px; margin: 1.5rem 0; text-align: left;">
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+                    <label style="color: var(--primary); font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">Portal Credentials</label>
+                    <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 5px;">
+                        <div>ID: <strong id="success-login-id" style="color: #fff; font-size: 1.2rem;">-</strong></div>
+                        <div>PW: <strong id="success-password" style="color: #fff; font-size: 1.2rem;">-</strong></div>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">Firm Name</label><div id="summary-name" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">Email</label><div id="summary-email" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">GSTIN</label><div id="summary-gst" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">DL No.</label><div id="summary-dl" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+                    <div style="grid-column: span 2;"><label style="font-size: 0.65rem; color: var(--text-muted);">Address</label><div id="summary-address" style="font-weight: 600; font-size: 0.8rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">City</label><div id="summary-city" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+                    <div><label style="font-size: 0.65rem; color: var(--text-muted);">State</label><div id="summary-state" style="font-weight: 600; font-size: 0.85rem;">-</div></div>
+
+                </div>
+            </div>
+            <button class="btn-primary" onclick="window.location.reload()">Finish</button>
+        </div>
+
+        <!-- FORGOT VIEW -->
+        <div id="view-forgot" class="glass-card hidden" style="max-width: 450px;">
+            <h2 class="card-title">Recovery</h2>
+            <p class="card-subtitle">Send credentials to your email</p>
+            <form onsubmit="handleForgotPassword(event)">
+                <div class="form-group">
+                    <label>Registered Email</label>
+                    <input type="email" id="forgot-email" required>
+                </div>
+                <button type="submit" class="btn-primary" id="forgotBtn">Recover Account</button>
+            </form>
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="#" onclick="switchView('login')" style="color: var(--primary); font-size: 0.8rem;">Back to Login</a>
+            </div>
+        </div>
+
+        <!-- PIN VIEW -->
+        <div id="view-pin" class="glass-card hidden" style="max-width: 450px; text-align: center;">
+            <h2 class="card-title">Verify PIN</h2>
+            <p class="card-subtitle">Check your email for the 6-digit code</p>
+            <form onsubmit="handleVerifyPin(event)">
+                <div class="form-group">
+                    <input type="text" id="login-pin-input" required maxlength="6" style="text-align: center; font-size: 2rem; letter-spacing: 8px;">
+                </div>
+                <button type="submit" class="btn-primary" id="pinBtn">Verify</button>
+            </form>
+        </div>
+        </div>
+
+        <!-- LANDING FOOTER (FIXED BOTTOM) -->
+
+        <footer id="landing-footer" class="landing-footer" style="position: fixed; bottom: 0; left: 0; width: 100%; border-top: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); padding: 0.75rem 5%; z-index: 100;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted);">
+                <div style="flex: 1;"><div class="footer-title" style="color: #fff; font-weight: 700;">EMYRIS OMS</div><p style="font-size: 0.6rem; opacity: 0.6;">v1.0.4 Secure Portal</p></div>
+
+                <div style="flex: 2; display: flex; gap: 2rem; justify-content: center;">
+                    <span id="land-web">🌐 www.emyrisbio.com</span>
+                    <span id="land-tollfree">📞 7993163300</span>
+                    <span id="land-email">✉️ contact@emyrisbio.com</span>
+                    <span id="land-phone">💬 WhatsApp: +91-XXXXXXXXXX</span>
+                </div>
+                <div style="flex: 1; text-align: right;"><span id="land-address">EMYRIS BIOLIFESCIENCES PVT. LTD.</span></div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ORDERING VIEW (RESTORED FROM BACKUP) -->
+    <div id="view-order" class="container hidden" style="max-width: 1400px; margin-bottom: 120px;">
+        <nav class="navbar">
+            <div class="logo">EMYRIS OMS</div>
+            <div id="userMenu" class="hidden" style="display: flex; align-items: center; gap: 1.5rem;">
+                <button type="button" id="musicToggleMain" onclick="toggleMusic()" style="background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: 0.3s; z-index: 10;">
+                    <span>🔇</span> <span id="musicTextMain">Music Off</span>
+                </button>
+                <span id="stockistName" style="font-weight: 700; color: #fff;"></span>
+                <button class="btn" onclick="handleLogout()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; border-radius: 12px;">Logout</button>
+            </div>
+
+        </nav>
+
+        <div id="marquee" class="hidden" style="background: rgba(99, 102, 241, 0.1); padding: 10px; border-radius: 12px; margin-bottom: 2rem; overflow: hidden; white-space: nowrap;">
+            <div id="marquee-content" style="display: inline-block; animation: marquee linear infinite;">Welcome to EMYRIS OMS Portal</div>
+        </div>
+
+        <div style="width: 100%; height: 220px; border-radius: 28px; overflow: hidden; margin-bottom: 2rem; position: relative; border: 1px solid var(--glass-border); background: #070a13;">
+            <style>
+                @keyframes kenBurns {
+                    0% { transform: scale(1.05) translate(0, 0); }
+                    50% { transform: scale(1.15) translate(-1%, -1%); }
+                    100% { transform: scale(1.05) translate(0, 0); }
+                }
+            </style>
+            <!-- Dynamic Image Layer -->
+            <img src="assets/hero.png" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.5) contrast(1.1); animation: kenBurns 25s ease-in-out infinite; z-index: 0;" alt="Emyris Hero">
+
+            <!-- Subtle Data Flow Overlay -->
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position: absolute; inset: 0; opacity: 0.4; z-index: 1;" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#6366f1" stop-opacity="0" />
+                        <stop offset="50%" stop-color="#10b981" stop-opacity="1" />
+                        <stop offset="100%" stop-color="#a855f7" stop-opacity="0" />
+                    </linearGradient>
+                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+                <g stroke="url(#lineGrad)" stroke-width="3" fill="none" filter="url(#glow)">
+                    <path d="M -100 110 Q 300 200 700 110 T 1500 110" stroke-dasharray="150 1200" stroke-dashoffset="0">
+                        <animate attributeName="stroke-dashoffset" from="1350" to="0" dur="5s" repeatCount="indefinite" />
+                    </path>
+                    <path d="M -100 50 Q 400 150 800 50 T 1600 50" stroke-dasharray="100 1300" stroke-dashoffset="0">
+                        <animate attributeName="stroke-dashoffset" from="1400" to="0" dur="7s" repeatCount="indefinite" />
+                    </path>
+                </g>
+                <!-- Distribution Nodes -->
+                <g fill="#10b981" filter="url(#glow)">
+                    <circle cx="20%" cy="65%" r="3"><animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite"/></circle>
+                    <circle cx="45%" cy="40%" r="4"><animate attributeName="opacity" values="0.2;0.8;0.2" dur="3s" repeatCount="indefinite"/></circle>
+                    <circle cx="70%" cy="75%" r="3"><animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" repeatCount="indefinite"/></circle>
+                </g>
+            </svg>
+
+            <!-- Text Overlay Layer -->
+            <div style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(15,23,42,0.95) 0%, rgba(15,23,42,0.7) 40%, transparent 100%); display: flex; align-items: center; padding: 0 3rem; z-index: 2;">
+                <div style="max-width: 500px;"><h2 style="font-size: 2.2rem; font-weight: 900; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 4px 20px rgba(0,0,0,0.5);">Advanced Order Management</h2></div>
+            </div>
+        </div>
+
+        <div style="background: var(--card-bg); border: 1px solid var(--glass-border); padding: 2rem; border-radius: 28px; margin-bottom: 2rem;">
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr 1.5fr; gap: 2rem;">
+                <div><h1 id="co-name" style="font-size: 1.8rem; margin-bottom: 0.5rem;">EMYRIS BIOLIFESCIENCES</h1><p id="co-address" style="opacity: 0.8; font-size: 0.8rem;"></p></div>
+                <div style="text-align: center; background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 1rem;">
+                    <div style="font-size: 0.65rem; color: var(--primary); font-weight: 800;">📞 Toll-Free Support</div>
+                    <div id="co-tollfree" style="font-size: 1.5rem; font-weight: 900;">7993163300</div>
+                    <div id="co-phone" style="font-size: 0.8rem; opacity: 0.7; margin-top: 5px;">WhatsApp: +91-XXXXXXXXXX</div>
+                </div>
+                <div style="text-align: right;">
+                    <span id="co-web1" style="display: block; color: var(--accent); font-weight: 700; font-size: 0.8rem;"></span>
+                    <span id="co-email1" style="display: block; font-size: 0.8rem; margin-top: 8px;"></span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+            <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
+            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Billing Details</button>
+        </div>
+
+        <div id="section-place-order">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div class="category-scroll" id="categoryChips"></div>
+                <input type="text" id="productSearch" placeholder="Search product..." onkeyup="searchProducts(this.value)" style="width: 300px;">
+            </div>
+            <div class="excel-container">
+                <table class="excel-table">
+                    <thead>
+                        <tr><th>Product Name</th><th>PACK</th><th>HSN</th><th>MRP (₹)</th><th>PTR (₹)</th><th>PTS (₹)</th><th>AUTH NOTE</th><th>GST %</th><th>Order Qty</th><th>BONUS</th><th>Total (₹)</th></tr>
+                    </thead>
+                    <tbody id="excelProductBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="section-order-history" class="hidden"><div id="history-container"></div></div>
+    </div>
+
+    <div id="orderFooter" class="sticky-footer hidden">
+        <div style="display: flex; gap: 2rem;">
+            <div><span style="font-size: 0.6rem; opacity: 0.5;">TAXABLE</span><div id="footer-subtotal" style="font-weight: 800;">₹0.00</div></div>
+            <div><span style="font-size: 0.6rem; opacity: 0.5;">GST</span><div id="footer-gst" style="font-weight: 800;">₹0.00</div></div>
+            <div><span style="font-size: 0.6rem; opacity: 0.5;">ROUND OFF</span><div id="footer-roundoff" style="font-weight: 800;">₹0.00</div></div>
+            <div style="padding-left: 1rem; border-left: 1px solid var(--glass-border);"><span style="font-size: 0.6rem; opacity: 0.5;">SUB TOTAL (INCL. GST)</span><div id="footer-net" style="font-weight: 800; color: var(--accent);">₹0.00</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 2rem;">
+            <div style="text-align: right;"><span style="color: var(--primary); font-size: 0.65rem; font-weight: 800;">GRAND TOTAL</span><div id="footer-total" style="font-size: 1.4rem; font-weight: 900;">₹0.00</div></div>
+            <button class="btn-primary" style="width: auto; padding: 0.75rem 2rem;" onclick="placeOrder()">PLACE ORDER</button>
+        </div>
+    </div>
+
+    <footer id="global-footer" class="hidden">
+        <div class="container" style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem 0;">
+            <div><span id="f-co-web"></span> • <span id="f-co-phone"></span> • <span id="f-co-email"></span></div>
+            <div id="f-co-address" style="margin-top: 5px;"></div>
+        </div>
+    </footer>
+    <!-- INVOICE DETAIL MODAL -->
+    <div id="orderDetailModal" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 95%; max-width: 900px; padding: 0; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+            
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02);">
+                <div>
+                    <h3 id="detail-order-no" style="font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0; letter-spacing: -0.5px;">Invoice Details</h3>
+                    <p id="detail-date" style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600; margin: 5px 0 0; text-transform: uppercase; letter-spacing: 0.5px;"></p>
+                </div>
+                <button onclick="closeOrderModal()" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; width: 36px; height: 36px; border-radius: 10px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.color='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#fff';">✕</button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div style="padding: 2rem; overflow-y: auto; flex: 1;">
+                <!-- Status + Item Count Row -->
+                <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                    <div style="flex: 1; background: rgba(99, 102, 241, 0.08); padding: 1.25rem; border-radius: 16px; border: 1px solid rgba(99,102,241,0.2); display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px;">Order Status</span>
+                        <div id="detail-status" style="font-weight: 800; font-size: 1.1rem; letter-spacing: 1px; color: #fff;">—</div>
+                    </div>
+                    <div style="flex: 1; background: rgba(16, 185, 129, 0.08); padding: 1.25rem; border-radius: 16px; border: 1px solid rgba(16,185,129,0.2); display: flex; flex-direction: column; justify-content: center; align-items: flex-start;">
+                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 6px;">Total Items</span>
+                        <div id="detail-item-count" style="font-weight: 800; font-size: 1.1rem; color: #10b981;">0</div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; margin-bottom: 2rem;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead style="background: rgba(255,255,255,0.03);">
+                            <tr>
+                                <th style="padding: 1rem 1.25rem; text-align: left; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);">Product Item</th>
+                                <th style="padding: 1rem 1.25rem; text-align: right; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);">Req Rate</th>
+                                <th style="padding: 1rem 1.25rem; text-align: right; color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);">App Rate</th>
+                                <th style="padding: 1rem 1.25rem; text-align: center; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);">Qty</th>
+                                <th style="padding: 1rem 1.25rem; text-align: center; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);">Bonus</th>
+                                <th style="padding: 1rem 1.25rem; text-align: right; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border);">Line Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-items-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Totals -->
+                <div style="display: flex; justify-content: flex-end;">
+                    <div style="width: 350px; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-size: 0.9rem;">
+                            <span style="color:var(--text-muted); font-weight: 600;">Taxable Value</span>
+                            <span id="detail-subtotal" style="font-weight:700; color: #fff;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem; font-size: 0.9rem;">
+                            <span style="color:var(--text-muted); font-weight: 600;">GST Amount</span>
+                            <span id="detail-gst" style="font-weight:700; color: #fff;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px dashed rgba(255,255,255,0.1); font-size: 0.9rem;">
+                            <span style="color:var(--text-muted); font-weight: 600;">Round Off</span>
+                            <span id="detail-roundoff" style="font-weight:700; color: #fff;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 800; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Net Payable</span>
+                            <span id="detail-total" style="color: var(--primary); font-size: 1.8rem; font-weight: 900; letter-spacing: -1px;">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding: 1.5rem 2rem; border-top: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
+                <button onclick="closeOrderModal()" style="padding: 0.8rem 2rem; border-radius: 12px; background: transparent; border: 1px solid var(--glass-border); color: #fff; font-weight: 700; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">Close Window</button>
+                <button id="btn-download-invoice" class="hidden" onclick="downloadStockistInvoice()" style="background: var(--primary); color: #fff; border: none; padding: 0.8rem 2rem; border-radius: 12px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(99,102,241,0.3);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Download Tax Invoice
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <script src="script.js?v=1.0.4"></script>
+
+    <style>
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    </style>
+    <audio id="bgMusic" loop preload="auto">
+        <source src="https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" type="audio/mpeg">
+    </audio>
+</body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</html>
