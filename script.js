@@ -458,7 +458,7 @@ async function loadSettings() {
 
 async function loadMasters() {
     try {
-        const res = await fetch(`${API_BASE}/admin/categories`);
+        const res = await fetch(`${API_BASE}/categories`);
         const catsMaster = await res.json();
         
         // Combine categories from master and existing products to ensure nothing is missed
