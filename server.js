@@ -350,6 +350,13 @@ app.post('/api/admin/hsns', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/admin/hsns/:id', async (req, res) => {
+    try {
+        await db.HSN.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/gst', async (req, res) => {
     try {
         const data = await db.GST.findAll();
@@ -361,6 +368,13 @@ app.post('/api/admin/gst', async (req, res) => {
     try {
         const item = await db.GST.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/gst/:id', async (req, res) => {
+    try {
+        await db.GST.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -378,6 +392,13 @@ app.post('/api/admin/groups', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/admin/groups/:id', async (req, res) => {
+    try {
+        await db.Group.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/hq', async (req, res) => {
     try {
         const data = await db.HQ.findAll();
@@ -389,6 +410,13 @@ app.post('/api/admin/hq', async (req, res) => {
     try {
         const item = await db.HQ.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/hq/:id', async (req, res) => {
+    try {
+        await db.HQ.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -407,6 +435,16 @@ app.post('/api/admin/expense-categories', async (req, res) => {
 });
 
 // --- PRODUCT MANAGEMENT ---
+
+app.get('/api/admin/products', async (req, res) => {
+    try {
+        const products = await db.Product.findAll({ 
+            include: [{ model: db.Batch, as: 'batches' }],
+            order: [['name', 'ASC']]
+        });
+        res.json(products);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 app.get('/api/products', async (req, res) => {
     try {
@@ -462,6 +500,55 @@ app.post('/api/admin/settings', async (req, res) => {
         else await settings.update(req.body);
         res.json({ success: true, settings });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- STOCKIST MANAGEMENT ---
+
+app.get('/api/admin/stockists', async (req, res) => {
+    try {
+        const { type } = req.query;
+        let where = {};
+        if (type === 'pending') where.approved = false;
+        else if (type === 'approved') where.approved = true;
+
+        const stockists = await db.Stockist.findAll({ 
+            where,
+            order: [['name', 'ASC']]
+        });
+        res.json(stockists);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/stockists', async (req, res) => {
+    try {
+        const stockist = await db.Stockist.create(req.body);
+        res.json({ success: true, stockist });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/stockists/:id', async (req, res) => {
+    try {
+        const stockist = await db.Stockist.findByPk(req.params.id);
+        if (!stockist) return res.status(404).json({ success: false, message: 'Stockist not found' });
+        await stockist.update(req.body);
+        res.json({ success: true, stockist });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/admin/stockists/:id/approve', async (req, res) => {
+    try {
+        const stockist = await db.Stockist.findByPk(req.params.id);
+        if (!stockist) return res.status(404).json({ success: false, message: 'Stockist not found' });
+        await stockist.update({ approved: true });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/admin/stockists/:id', async (req, res) => {
+    try {
+        await db.Stockist.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // --- MEDIA UPLOADS (Cloudinary) ---
