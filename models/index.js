@@ -38,6 +38,8 @@ db.Payment = require('./payment')(sequelize, DataTypes);
 db.ExpenseCategory = require('./expenseCategory')(sequelize, DataTypes);
 db.Expense = require('./expense')(sequelize, DataTypes);
 db.Media = require('./media')(sequelize, DataTypes);
+db.PurchaseItem = require('./purchaseItem')(sequelize, DataTypes);
+db.NoteItem = require('./noteItem')(sequelize, DataTypes);
 
 // Define Relationships
 db.Product.hasMany(db.Batch, { as: 'batches', foreignKey: 'productId' });
@@ -61,13 +63,19 @@ db.Invoice.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
 db.Stockist.hasMany(db.FinancialNote, { foreignKey: 'stockistId' });
 db.FinancialNote.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
 
-db.Stockist.hasMany(db.PurchaseEntry, { foreignKey: 'supplierId' });
-db.PurchaseEntry.belongsTo(db.Stockist, { foreignKey: 'supplierId' });
+db.Stockist.hasMany(db.PurchaseEntry, { as: 'purchases', foreignKey: 'supplierId' });
+db.PurchaseEntry.belongsTo(db.Stockist, { as: 'Supplier', foreignKey: 'supplierId' });
 
 db.Stockist.hasMany(db.Payment, { foreignKey: 'stockistId' });
 db.Payment.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
 
 db.ExpenseCategory.hasMany(db.Expense, { foreignKey: 'categoryId' });
 db.Expense.belongsTo(db.ExpenseCategory, { foreignKey: 'categoryId' });
+
+db.PurchaseEntry.hasMany(db.PurchaseItem, { as: 'items', foreignKey: 'purchaseEntryId' });
+db.PurchaseItem.belongsTo(db.PurchaseEntry, { foreignKey: 'purchaseEntryId' });
+
+db.FinancialNote.hasMany(db.NoteItem, { as: 'items', foreignKey: 'financialNoteId' });
+db.NoteItem.belongsTo(db.FinancialNote, { foreignKey: 'financialNoteId' });
 
 module.exports = db;

@@ -98,10 +98,39 @@ app.get('/api/admin/db-stats', async (req, res) => {
             usedMB,
             capacityMB,
             percent,
-            dbType: 'PostgreSQL'
+            dbType: 'PostgreSQL',
+            counters: (await db.Company.findOne())?.documentCounters || {}
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+async function getNextDocNo(type) {
+    let settings = await db.Company.findOne();
+    if (!settings) settings = await db.Company.create({});
+    
+    const counters = settings.documentCounters || {};
+    const count = (counters[type] || 0) + 1;
+    counters[type] = count;
+    
+    await settings.update({ documentCounters: counters });
+    
+    const year = new Date().getFullYear();
+    const nextYear = (year + 1).toString().slice(-2);
+    const tag = `${year.toString().slice(-2)}${nextYear}`;
+    
+    const prefixes = {
+        invoice: `INV-${tag}-`,
+        purchase: `PUR-${tag}-`,
+        lossCn: `LCN-${tag}-`,
+        lossDn: `LDN-${tag}-`,
+        expense: `EXP-${tag}-`,
+        paymentIn: `PAYIN-${tag}-`,
+        paymentOut: `PAYOUT-${tag}-`
+    };
+    
+    return (prefixes[type] || 'DOC-') + count.toString().padStart(4, '0');
+}
+
 const PORT = process.env.PORT || 4000;
 
 // Database Initialization & Server Start
@@ -191,8 +220,7 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
         let newGstAmount = 0;
 
         for (const i of allItems) {
-            const product = await db.Product.findByPk(i.productId);
-            const rate = product ? product.gstPercent : 12;
+            const rate = i.gstPercent || 12;
             newSubTotal += i.totalValue;
             newGstAmount += Number(((i.totalValue * rate) / 100).toFixed(2));
         }
@@ -485,6 +513,30 @@ app.put('/api/admin/products/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/admin/products/bulk', async (req, res) => {
+    try {
+        const { products } = req.body;
+        let success = 0;
+        let failed = 0;
+
+        for (const p of products) {
+            try {
+                await db.Product.create({
+                    ...p,
+                    active: true,
+                    qtyAvailable: p.qtyAvailable || 0,
+                    bonusScheme: { buy: p.buy || 0, get: p.get || 0 }
+                });
+                success++;
+            } catch (e) { 
+                console.error("Bulk Product Fail:", e.message);
+                failed++; 
+            }
+        }
+        res.json({ success: true, results: { success, failed } });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- SETTINGS ---
 
 app.get('/api/admin/settings', async (req, res) => {
@@ -533,6 +585,33 @@ app.post('/api/admin/stockists', async (req, res) => {
         const stockist = await db.Stockist.create(req.body);
         res.json({ success: true, stockist });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/admin/stockists/bulk', async (req, res) => {
+    try {
+        const { stockists } = req.body;
+        let success = 0;
+        let failed = 0;
+
+        for (const s of stockists) {
+            try {
+                // Check for existing loginId
+                const existing = await db.Stockist.findOne({ where: { loginId: s.loginId } });
+                if (existing) { failed++; continue; }
+
+                await db.Stockist.create({
+                    ...s,
+                    approved: true,
+                    outstandingBalance: s.outstandingBalance || 0
+                });
+                success++;
+            } catch (e) { 
+                console.error("Bulk Stockist Fail:", e.message);
+                failed++; 
+            }
+        }
+        res.json({ success: true, results: { success, failed } });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/admin/stockists/:id', async (req, res) => {
@@ -690,7 +769,7 @@ app.get('/api/admin/orders', async (req, res) => {
 
 app.put('/api/admin/orders/:id/approve', async (req, res) => {
     try {
-        const { approvedBy, selectedHq } = req.body;
+        const { approvedBy, selectedHq, batchSelections } = req.body;
         const order = await db.Order.findByPk(req.params.id, {
             include: [{ model: db.OrderItem, as: 'items' }]
         });
@@ -705,21 +784,35 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
                 if (product) {
                     await product.decrement('qtyAvailable', { by: totalDeduction });
                     
-                    const batches = await db.Batch.findAll({ 
-                        where: { productId: item.productId },
-                        order: [['expDate', 'ASC']]
-                    });
-
+                    const selectedBatchNo = batchSelections ? batchSelections[item.id] : null;
                     let firstBatch = null;
-                    for (const b of batches) {
-                        if (totalDeduction <= 0) break;
-                        if (b.qtyAvailable > 0) {
-                            if (!firstBatch) firstBatch = b;
-                            const deduct = Math.min(b.qtyAvailable, totalDeduction);
-                            await b.decrement('qtyAvailable', { by: deduct });
-                            totalDeduction -= deduct;
+
+                    if (selectedBatchNo) {
+                        const targetBatch = await db.Batch.findOne({ where: { productId: item.productId, batchNo: selectedBatchNo } });
+                        if (targetBatch && targetBatch.qtyAvailable >= totalDeduction) {
+                            await targetBatch.decrement('qtyAvailable', { by: totalDeduction });
+                            firstBatch = targetBatch;
+                            totalDeduction = 0;
                         }
                     }
+
+                    if (totalDeduction > 0) {
+                        const batches = await db.Batch.findAll({ 
+                            where: { productId: item.productId },
+                            order: [['expDate', 'ASC']]
+                        });
+
+                        for (const b of batches) {
+                            if (totalDeduction <= 0) break;
+                            if (b.qtyAvailable > 0 && b.batchNo !== selectedBatchNo) {
+                                if (!firstBatch) firstBatch = b;
+                                const deduct = Math.min(b.qtyAvailable, totalDeduction);
+                                await b.decrement('qtyAvailable', { by: deduct });
+                                totalDeduction -= deduct;
+                            }
+                        }
+                    }
+                    
                     if (firstBatch) {
                         await item.update({
                             batch: firstBatch.batchNo,
@@ -749,6 +842,57 @@ app.get('/api/admin/invoices', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
+    try {
+        const order = await db.Order.findByPk(req.params.orderId, {
+            include: [{ model: db.OrderItem, as: 'items' }]
+        });
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+        
+        // Check if invoice already exists
+        const existing = await db.Invoice.findOne({ where: { orderId: order.id } });
+        if (existing) return res.status(400).json({ success: false, message: 'Invoice already generated for this order' });
+
+        const invoiceNo = await getNextDocNo('invoice');
+        
+        // Ensure totals are rounded
+        const roundedGrandTotal = Math.round(order.grandTotal);
+
+        const newInvoice = await db.Invoice.create({
+            invoiceNo,
+            orderId: order.id,
+            stockistId: order.stockistId,
+            subTotal: order.subTotal,
+            gstAmount: order.gstAmount,
+            grandTotal: roundedGrandTotal,
+            outstandingAmount: roundedGrandTotal,
+            status: 'approved'
+        });
+
+        // Copy Items
+        for (const item of order.items) {
+            await db.InvoiceItem.create({
+                invoiceId: newInvoice.id,
+                productId: item.productId,
+                name: item.name,
+                batch: item.batch,
+                qty: item.qty,
+                priceUsed: item.priceUsed,
+                mrp: item.mrp,
+                gstPercent: item.gstPercent,
+                totalValue: item.totalValue,
+                bonusQty: item.bonusQty || 0
+            });
+        }
+
+        await order.update({ status: 'invoiced' });
+        res.json({ success: true, invoice: newInvoice });
+    } catch (err) { 
+        console.error("Invoice Generation Error:", err);
+        res.status(500).json({ error: e.message }); 
+    }
+});
+
 // Admin: Direct Sale (Online/Manual) -> Creates Order + Deducts Inventory + Generates Invoice
 
 app.post('/api/admin/direct-sale', async (req, res) => {
@@ -764,6 +908,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
             subTotal,
             gstAmount,
             grandTotal,
+            outstandingAmount: grandTotal,
             status: 'approved'
         });
 
@@ -795,7 +940,10 @@ app.post('/api/admin/direct-sale', async (req, res) => {
 
 app.get('/api/admin/purchase-entries', async (req, res) => {
     try {
-        const entries = await db.PurchaseEntry.findAll({ order: [['createdAt', 'DESC']] });
+        const entries = await db.PurchaseEntry.findAll({ 
+            include: [{ model: db.PurchaseItem, as: 'items' }, { model: db.Stockist, as: 'Supplier' }],
+            order: [['createdAt', 'DESC']] 
+        });
         res.json(entries);
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -821,6 +969,12 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
                     defaults: { ...item, qtyAvailable: 0 }
                 });
                 await batch.increment('qtyAvailable', { by: item.qty });
+                
+                await db.PurchaseItem.create({
+                    ...item,
+                    productId: item.productId,
+                    purchaseEntryId: entry.id
+                });
             }
         }
 
@@ -838,7 +992,7 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
 app.get('/api/admin/financial-notes', async (req, res) => {
     try {
         const notes = await db.FinancialNote.findAll({ 
-            include: [{ model: db.Stockist }],
+            include: [{ model: db.Stockist }, { model: db.NoteItem, as: 'items' }],
             order: [['createdAt', 'DESC']]
         });
         res.json(notes);
@@ -861,8 +1015,15 @@ app.post('/api/admin/financial-notes', async (req, res) => {
 
         // Inventory Logic for Salable Return / Purchase Return
         const adjFactor = reason === 'Salable Return' ? 1 : (reason === 'Purchase Return' ? -1 : 0);
-        if (adjFactor !== 0) {
-            for (const item of items) {
+        
+        for (const item of items) {
+            // Save Note Item regardless of inventory impact
+            await db.NoteItem.create({
+                ...item,
+                financialNoteId: newNote.id
+            });
+
+            if (adjFactor !== 0) {
                 const product = await db.Product.findByPk(item.productId);
                 if (product) {
                     const adj = adjFactor * item.qty;
@@ -916,21 +1077,26 @@ app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
 
 app.post('/api/admin/payments', async (req, res) => {
     try {
-        const { partyId, amount, method, type } = req.body;
+        const { party, amount, method, type, date } = req.body;
+        const partyId = party; // Map from frontend
+        
+        const paymentNo = await getNextDocNo(type === 'RECEIPT' ? 'paymentIn' : 'paymentOut');
+
         const payment = await db.Payment.create({
+            paymentNo,
             stockistId: partyId,
             amount,
             method,
             type,
-            date: new Date()
+            date: date || new Date()
         });
 
         const stockist = await db.Stockist.findByPk(partyId);
         const adj = type === 'RECEIPT' ? -amount : amount;
         if (stockist) await stockist.increment('outstandingBalance', { by: adj });
 
-        res.json({ success: true, payment });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        res.json({ success: true, payment: { ...payment.toJSON(), linkedBills: [] } });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 app.get('/api/admin/payments', async (req, res) => {
@@ -952,9 +1118,13 @@ app.get('/api/admin/expenses', async (req, res) => {
 
 app.post('/api/admin/expenses', async (req, res) => {
     try {
-        const expense = await db.Expense.create(req.body);
+        const expenseNo = await getNextDocNo('expense');
+        const expense = await db.Expense.create({
+            ...req.body,
+            expenseNo
+        });
         res.json({ success: true, expense });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // --- AUDIT REPORT ---
@@ -962,10 +1132,10 @@ app.post('/api/admin/expenses', async (req, res) => {
 app.get('/api/admin/reports/full-audit', async (req, res) => {
     try {
         const [invoices, purchases, payments, notes, expenses] = await Promise.all([
-            db.Invoice.findAll({ include: [db.Stockist] }),
-            db.PurchaseEntry.findAll({ include: [db.Stockist] }),
+            db.Invoice.findAll({ include: [{ model: db.Stockist }, { model: db.InvoiceItem, as: 'items' }] }),
+            db.PurchaseEntry.findAll({ include: [{ model: db.Stockist, as: 'Supplier' }, { model: db.PurchaseItem, as: 'items' }] }),
             db.Payment.findAll({ include: [db.Stockist] }),
-            db.FinancialNote.findAll({ include: [db.Stockist] }),
+            db.FinancialNote.findAll({ include: [{ model: db.Stockist }, { model: db.NoteItem, as: 'items' }] }),
             db.Expense.findAll({ include: [db.ExpenseCategory] })
         ]);
         res.json({ invoices, purchases, payments, notes, expenses });

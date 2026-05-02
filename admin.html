@@ -174,12 +174,12 @@
         .glass-card:hover { border-color: rgba(255, 255, 255, 0.15); }
         .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 2rem; display: flex; align-items: center; gap: 12px; color: #fff; letter-spacing: -0.2px; text-transform: uppercase; }
 
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; margin-bottom: 2rem; }
         .stat-card { 
             background: rgba(255,255,255,0.02); 
             backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border); 
-            padding: 1rem; 
+            padding: 0.75rem 1rem; 
             border-radius: 16px; 
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -187,6 +187,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            min-height: 80px;
         }
         .stat-card:hover { transform: translateY(-5px); border-color: var(--primary); background: rgba(99, 102, 241, 0.05); box-shadow: 0 15px 30px -10px rgba(0,0,0,0.5); }
         .stat-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%); opacity: 0; transition: 0.5s; pointer-events: none; }
@@ -276,15 +277,30 @@
         .content > div { }
         .content > div:not(.hidden) { animation: fadeIn 0.4s ease-out; }
 
-        /* Remove spin buttons from number inputs */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; 
-            margin: 0; 
+        /* Search Autocomplete */
+        .search-results {
+            position: absolute;
+            background: #1e293b;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 10000;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 5px;
         }
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
+        .search-results table { width: 100%; border-collapse: collapse; }
+        .search-results th { background: rgba(255,255,255,0.03); padding: 8px; font-size: 0.65rem; color: var(--primary); text-align: left; position: sticky; top: 0; z-index: 10001; }
+        .search-results tr { border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; }
+        .search-results tr:hover { background: rgba(99, 102, 241, 0.1); }
+        .search-results td { padding: 10px 8px; font-size: 0.8rem; }
+        .search-results .stock-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; }
+        .search-results .stock-ok { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .search-results .stock-low { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .search-results .stock-out { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .search-container { position: relative; width: 100%; }
     </style>
 </head>
 <body>
@@ -385,11 +401,19 @@
                     </div>
                     <div class="stat-card">
                         <span class="stat-label">Revenue (Ex. GST)</span>
-                        <div class="stat-value">₹<span id="stat-revenue" style="font-size: 1.5rem;">0.00</span></div>
+                        <div class="stat-value" id="stat-revenue" style="font-size: 1.1rem; font-weight: 900;">₹0.00</div>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-label">Pending Approvals</span>
+                        <span class="stat-label">Pending Orders</span>
                         <div class="stat-value" id="stat-pending">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 3px solid #10b981;">
+                        <span class="stat-label" style="color: #10b981;">Pay-In Counter</span>
+                        <div class="stat-value" id="stat-payin-count" style="color: #10b981;">0</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 3px solid #ef4444;">
+                        <span class="stat-label" style="color: #ef4444;">Pay-Out Counter</span>
+                        <div class="stat-value" id="stat-payout-count" style="color: #ef4444;">0</div>
                     </div>
                     <div class="stat-card">
                         <span class="stat-label">Stockists</span>
@@ -1759,7 +1783,7 @@
             </div>
 
             <!-- FIXED CALCULATION STRIP -->
-            <div id="order-calc-strip" style="position: sticky; bottom: -2rem; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--primary); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+            <div id="order-calc-strip" style="position: sticky; bottom: 0; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--primary); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">TOTAL ITEMS:</span>
                     <span id="strip-order-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
@@ -1772,6 +1796,10 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
                     <span id="strip-order-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">ROUND OFF:</span>
+                    <span id="strip-order-roundoff" style="font-size: 1rem; font-weight: 800; color: #f59e0b;">₹0.00</span>
                 </div>
                 <div style="margin-left: auto; background: var(--primary); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.7rem; font-weight: 900; color: #fff; letter-spacing: 1px;">ORDER VALUE:</span>
@@ -1827,9 +1855,11 @@
                 <!-- INVENTORY LINK FIELDS (Hidden by default) -->
                 <div id="note-inventory-fields" class="hidden" style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px dashed var(--glass-border);">
                     <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 10px; font-weight: 700;">📦 INVENTORY IMPACT DETAILS</p>
-                    <div class="form-group">
+                    <div class="form-group search-container">
                         <label>Select Product</label>
-                        <select id="note-product" onchange="updateNoteBatches(this.value)"></select>
+                        <input type="text" id="note-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'NOTE')">
+                        <input type="hidden" id="note-product">
+                        <div id="note-search-results" class="search-results"></div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                         <div class="form-group">
@@ -1878,9 +1908,11 @@
 
                 <!-- ── Header Fields ───────────────────────────── -->
                 <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:0.85rem;margin-bottom:0.85rem;">
-                    <div>
+                    <div class="search-container">
                         <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Party / Stockist</label>
-                        <select id="return-party" required onchange="updateNotePartyDetails(this.value,'return-party-info')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;"></select>
+                        <input type="text" id="return-party-search" placeholder="Type Name..." oninput="handlePartySearch(this, 'RETURN')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;">
+                        <input type="hidden" id="return-party" required>
+                        <div id="return-party-search-results" class="search-results"></div>
                         <div id="return-party-info" style="font-size:0.6rem;color:var(--accent);margin-top:3px;min-height:0.8rem;"></div>
                     </div>
                     <div>
@@ -2059,9 +2091,11 @@
                 <div style="background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.1); margin-bottom: 1.5rem;">
                     <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); margin-bottom: 1rem;">Item Line Entry</h4>
                     <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
-                        <div>
-                            <label style="font-size: 0.65rem;">Product</label>
-                            <select id="pur-prod-select" onchange="updateProductEntryMeta(this.value)"></select>
+                        <div class="search-container">
+                            <label style="font-size: 0.65rem;">Product Search</label>
+                            <input type="text" id="pur-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'PURCHASE')">
+                            <input type="hidden" id="pur-prod-select">
+                            <div id="pur-search-results" class="search-results"></div>
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Manufacturer</label>
@@ -2130,6 +2164,10 @@
                             <span style="opacity: 0.7;">GST Amount:</span>
                             <span id="pur-gst-total" style="font-weight: 700;">₹0.00</span>
                         </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 5px;">
+                            <span style="opacity: 0.7;">Round Off:</span>
+                            <span id="pur-roundoff" style="font-weight: 700;">₹0.00</span>
+                        </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                             <span style="font-weight: 800; font-size: 1rem;">NET PAYABLE:</span>
                             <span id="pur-total" style="font-weight: 900; font-size: 1.1rem; color: var(--primary);">₹0.00</span>
@@ -2160,12 +2198,11 @@
                 <input type="hidden" id="sale-type-input">
                 <!-- PARTY & HEADER INFO -->
                 <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
-                    <div class="form-group">
+                    <div class="form-group search-container">
                         <label>Select Party / Customer</label>
-                        <select id="sale-party" required onchange="updateSalePartyContext()"></select>
-                        <div style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted);">
-                            * For Online Orders, select 'Online Customer' or appropriate party.
-                        </div>
+                        <input type="text" id="sale-party-search" placeholder="Type Customer Name/City..." oninput="handlePartySearch(this, 'SALE')">
+                        <input type="hidden" id="sale-party" required>
+                        <div id="sale-party-search-results" class="search-results"></div>
                     </div>
                     <div>
                         <div class="form-group">
@@ -2202,9 +2239,11 @@
                 <div style="background: rgba(16, 185, 129, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(16, 185, 129, 0.1); margin-bottom: 1.5rem;">
                     <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 1rem;">Item Line Entry</h4>
                     <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
-                        <div>
-                            <label style="font-size: 0.65rem;">Product</label>
-                            <select id="sale-prod-select" onchange="updateSaleProductMeta(this.value)"></select>
+                        <div class="search-container">
+                            <label style="font-size: 0.65rem;">Product Search</label>
+                            <input type="text" id="sale-prod-search" placeholder="Type Name/HSN/Group..." oninput="handleProductSearch(this, 'SALE')">
+                            <input type="hidden" id="sale-prod-select">
+                            <div id="sale-search-results" class="search-results"></div>
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Select Batch</label>
@@ -2264,6 +2303,10 @@
                             <span style="opacity: 0.7;">GST Amount:</span>
                             <span id="sale-gst-total" style="font-weight: 700;">₹0.00</span>
                         </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 5px;">
+                            <span style="opacity: 0.7;">Round Off:</span>
+                            <span id="sale-roundoff" style="font-weight: 700;">₹0.00</span>
+                        </div>
                         <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                             <span style="font-weight: 800; font-size: 1rem;">NET RECEIVABLE:</span>
                             <span id="sale-total" style="font-weight: 900; font-size: 1.1rem; color: var(--accent);">₹0.00</span>
@@ -2278,7 +2321,7 @@
             </form>
 
             <!-- FIXED CALCULATION STRIP -->
-            <div id="sale-calc-strip" style="position: sticky; bottom: -2rem; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--accent); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+            <div id="sale-calc-strip" style="position: sticky; bottom: 0; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--accent); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.6rem; font-weight: 900; color: var(--accent); letter-spacing: 1px;">TOTAL ITEMS:</span>
                     <span id="strip-sale-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
@@ -2291,6 +2334,10 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
                     <span id="strip-sale-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">ROUND OFF:</span>
+                    <span id="strip-sale-roundoff" style="font-size: 1rem; font-weight: 800; color: #fff; opacity: 0.8;">₹0.00</span>
                 </div>
                 <div style="margin-left: auto; background: var(--accent); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.7rem; font-weight: 900; color: #000; letter-spacing: 1px;">NET VALUE:</span>

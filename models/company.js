@@ -35,6 +35,7 @@ module.exports = (sequelize, DataTypes) => {
         documentCounters: { type: DataTypes.JSONB, defaultValue: {} },
         musicUrl: { type: DataTypes.STRING(1024), defaultValue: "" },
         videoUrl: { type: DataTypes.STRING(1024), defaultValue: "" },
-        musicVolume: { type: DataTypes.FLOAT, defaultValue: 0.5 }
+        musicVolume: { type: DataTypes.FLOAT, defaultValue: 0.5 },
+        referenceInvoiceUrl: { type: DataTypes.STRING(1024), defaultValue: "" }
     });
 };

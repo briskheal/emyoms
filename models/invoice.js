@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
         subTotal: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         gstAmount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         grandTotal: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+        outstandingAmount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         status: { type: DataTypes.STRING, defaultValue: 'approved' },
         dueDate: { type: DataTypes.DATE }
     });

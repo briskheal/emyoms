@@ -286,7 +286,7 @@ async function refreshDashboard() {
         const totalRevenue = approvedOrders.reduce((sum, o) => sum + (Number(o.subTotal) || 0), 0);
         const revenueEl = document.getElementById('stat-revenue');
         if (revenueEl) {
-            revenueEl.innerText = totalRevenue.toLocaleString('en-IN', {
+            revenueEl.innerText = '₹' + totalRevenue.toLocaleString('en-IN', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
@@ -339,14 +339,26 @@ async function updateDBStats() {
         }
         if (barEl) {
             barEl.style.width = `${stats.percent}%`;
-            // Color warning if usage > 80%
             if (parseFloat(stats.percent) > 80) {
                 barEl.style.background = '#ef4444';
                 textEl.style.color = '#ef4444';
             }
         }
+
+        // Update Document Counters on Dashboard
+        if (stats.counters) {
+            const payIn = stats.counters.paymentIn || 0;
+            const payOut = stats.counters.paymentOut || 0;
+            if (document.getElementById('stat-payin-count')) {
+                document.getElementById('stat-payin-count').innerText = payIn;
+            }
+            if (document.getElementById('stat-payout-count')) {
+                document.getElementById('stat-payout-count').innerText = payOut;
+            }
+        }
     } catch (e) { console.error("DB stats fail", e); }
 }
+
 
 async function loadOrders() {
     try {
@@ -1841,6 +1853,7 @@ function viewOrderDetails(id) {
     if (document.getElementById('strip-order-count')) document.getElementById('strip-order-count').innerText = o.items.length;
     if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `₹${roundOffValue}`;
     if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const rejectBtn = document.getElementById('detail-reject-btn');
@@ -1950,6 +1963,7 @@ function updateModalTotals(orderId, triggerItemId) {
     // Update Sticky Strip if present
     if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `₹${roundOff}`;
     if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
@@ -2245,6 +2259,7 @@ function addPurchaseItem() {
         mfgDate: mfg || 'N/A',
         expDate: exp || 'N/A',
         gstPercent: gstPct || 12,
+        hsn: prod.hsn || '',
         totalValue: qty * rate
     });
     
@@ -2284,9 +2299,14 @@ function renderPurchaseItems() {
         </tr>`;
     }).join('');
 
-    document.getElementById('pur-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN');
-    document.getElementById('pur-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN');
-    document.getElementById('pur-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN');
+    const total = subTotal + gstTotal;
+    const rounded = Math.round(total);
+    const roundOff = rounded - total;
+
+    document.getElementById('pur-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits:2});
+    document.getElementById('pur-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2});
+    if (document.getElementById('pur-roundoff')) document.getElementById('pur-roundoff').innerText = '₹' + roundOff.toFixed(2);
+    document.getElementById('pur-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:2});
 }
 
 async function savePurchaseEntry(e) {
@@ -2511,6 +2531,7 @@ function addSaleItem() {
         qty: qty,
         rate: rate,
         gstPercent: gstPct,
+        hsn: prod.hsn || '',
         totalValue: qty * rate
     });
 
@@ -2542,15 +2563,21 @@ function renderSaleItems() {
         </tr>`;
     }).join('');
 
+    const total = subTotal + gstTotal;
+    const rounded = Math.round(total);
+    const roundOff = rounded - total;
+
     document.getElementById('sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
     document.getElementById('sale-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    document.getElementById('sale-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN', {minimumFractionDigits: 2});
+    if (document.getElementById('sale-roundoff')) document.getElementById('sale-roundoff').innerText = '₹' + roundOff.toFixed(2);
+    document.getElementById('sale-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2});
 
     // Update Strip
     if (document.getElementById('strip-sale-count')) document.getElementById('strip-sale-count').innerText = directSaleItems.length;
     if (document.getElementById('strip-sale-subtotal')) document.getElementById('strip-sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
     if (document.getElementById('strip-sale-gst')) document.getElementById('strip-sale-gst').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    if (document.getElementById('strip-sale-total')) document.getElementById('strip-sale-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN', {minimumFractionDigits: 2});
+    if (document.getElementById('strip-sale-roundoff')) document.getElementById('strip-sale-roundoff').innerText = '₹' + roundOff.toFixed(2);
+    if (document.getElementById('strip-sale-total')) document.getElementById('strip-sale-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
 async function saveDirectSale(e) {
@@ -3014,12 +3041,12 @@ function addReturnRow() {
     const selBase   = inputBase + 'cursor:pointer;';
 
     row.innerHTML = `
-        <td style="${cellStyle}padding-left:8px;">
-            <select class="return-prod-select" onchange="updateReturnRowData('${id}',this.value)" required
-                style="${selBase}font-size:0.71rem;">
-                <option value="">â€” Product â€”</option>
-                ${allProducts.map(p=>`<option value="${p._id}">${p.name} (${p.packing})</option>`).join('')}
-            </select>
+        <td style="${cellStyle}padding-left:8px;" class="search-container">
+            <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
+                oninput="handleProductSearch(this, 'RETURN-${id}')"
+                style="${inputBase}font-size:0.71rem;">
+            <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
+            <div id="return-search-results-${id}" class="search-results"></div>
         </td>
         <td style="${cellStyle}">
             <input type="text" id="return-hsn-${id}" readonly
@@ -4590,3 +4617,170 @@ async function generateSampleMatchedPDF({
 
     doc.save(filename);
 }
+// --- PRODUCT SEARCH ENGINE (AUTOCOMPLETE) ---
+function handleProductSearch(input, context) {
+    const query = input.value.toLowerCase().trim();
+    const resultsDiv = document.getElementById(
+        context.startsWith('RETURN-') ? `return-search-results-${context.replace('RETURN-', '')}` :
+        context === 'SALE' ? 'sale-search-results' : 
+        context === 'PURCHASE' ? 'pur-search-results' : 'note-search-results'
+    );
+    
+    if (!query || query.length < 2) {
+        resultsDiv.style.display = 'none';
+        return;
+    }
+
+    const matches = allProducts.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        (p.hsn && p.hsn.toLowerCase().includes(query)) ||
+        (p.group && p.group.toLowerCase().includes(query)) ||
+        (p.category && p.category.toLowerCase().includes(query))
+    ).slice(0, 15);
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">No matches found for "${query}"</div>`;
+        resultsDiv.style.display = 'block';
+        return;
+    }
+
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Packing</th>
+                <th>Stock</th>
+                <th>MRP</th>
+                <th>PTS</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    matches.forEach(p => {
+        const stock = p.qtyAvailable || 0;
+        const stockClass = stock > 50 ? 'stock-ok' : (stock > 0 ? 'stock-low' : 'stock-out');
+        const stockLabel = stock > 0 ? stock : 'OUT';
+
+        html += `<tr onclick="selectProduct('${p._id}', '${context}')">
+            <td>
+                <div style="font-weight:700; color:#fff;">${p.name}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted);">${p.hsn || '-'} | ${p.group || 'GENERAL'}</div>
+            </td>
+            <td>${p.packing || '-'}</td>
+            <td><span class="stock-badge ${stockClass}">${stockLabel}</span></td>
+            <td>₹${p.mrp}</td>
+            <td style="color:var(--accent); font-weight:700;">₹${p.pts}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    resultsDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+}
+
+function selectProduct(id, context) {
+    const p = allProducts.find(x => x._id == id);
+    if (!p) return;
+
+    if (context === 'SALE') {
+        document.getElementById('sale-prod-search').value = p.name;
+        document.getElementById('sale-prod-select').value = id;
+        document.getElementById('sale-search-results').style.display = 'none';
+        updateSaleProductMeta(id);
+    } else if (context === 'PURCHASE') {
+        document.getElementById('pur-prod-search').value = p.name;
+        document.getElementById('pur-prod-select').value = id;
+        document.getElementById('pur-search-results').style.display = 'none';
+        updateProductEntryMeta(id);
+    } else if (context === 'NOTE') {
+        document.getElementById('note-prod-search').value = p.name;
+        document.getElementById('note-product').value = id;
+        document.getElementById('note-search-results').style.display = 'none';
+        updateNoteBatches(id);
+    } else if (context.startsWith('RETURN-')) {
+        const rowId = context.replace('RETURN-', '');
+        document.getElementById(`return-prod-search-${rowId}`).value = p.name;
+        document.getElementById(`return-prod-select-${rowId}`).value = id;
+        document.getElementById(`return-search-results-${rowId}`).style.display = 'none';
+        updateReturnRowData(rowId, id);
+    }
+}
+
+function handlePartySearch(input, context) {
+    const query = input.value.toLowerCase().trim();
+    const resultsDiv = document.getElementById(
+        context === 'SALE' ? 'sale-party-search-results' : 
+        context === 'PURCHASE' ? 'pur-party-search-results' : 'return-party-search-results'
+    );
+    
+    if (!query || query.length < 2) {
+        resultsDiv.style.display = 'none';
+        return;
+    }
+
+    const matches = allStockists.filter(s => {
+        const nameMatch = s.name.toLowerCase().includes(query);
+        const cityMatch = (s.city || '').toLowerCase().includes(query);
+        const typeMatch = (context === 'PURCHASE') ? s.partyType === 'SUPPLIER' : (s.partyType || 'STOCKIST') === 'STOCKIST';
+        return (nameMatch || cityMatch) && typeMatch;
+    }).slice(0, 10);
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = `<div style="padding:10px; text-align:center; color:var(--text-muted); font-size:0.75rem;">No parties found.</div>`;
+        resultsDiv.style.display = 'block';
+        return;
+    }
+
+    let html = `<table>
+        <thead>
+            <tr>
+                <th>Party Name</th>
+                <th>City</th>
+                <th>Outstanding</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    matches.forEach(s => {
+        html += `<tr onclick="selectParty('${s._id}', '${context}')">
+            <td>
+                <div style="font-weight:700; color:#fff;">${s.name}</div>
+                <div style="font-size:0.6rem; color:var(--text-muted);">${s.gst || 'No GST'}</div>
+            </td>
+            <td>${s.city || '-'}</td>
+            <td style="color:#f59e0b; font-weight:700;">₹${(s.outstandingBalance || 0).toLocaleString()}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    resultsDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+}
+
+function selectParty(id, context) {
+    const s = allStockists.find(x => x._id == id);
+    if (!s) return;
+
+    if (context === 'SALE') {
+        document.getElementById('sale-party-search').value = s.name;
+        document.getElementById('sale-party').value = id;
+        document.getElementById('sale-party-search-results').style.display = 'none';
+        updateSalePartyContext();
+    } else if (context === 'PURCHASE') {
+        document.getElementById('pur-supplier-search').value = s.name;
+        document.getElementById('pur-supplier').value = id;
+        document.getElementById('pur-party-search-results').style.display = 'none';
+    } else if (context === 'RETURN') {
+        document.getElementById('return-party-search').value = s.name;
+        document.getElementById('return-party').value = id;
+        document.getElementById('return-party-search-results').style.display = 'none';
+        updateNotePartyDetails(id, 'return-party-info');
+    }
+}
+
+// Global click listener to close search results
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-container')) {
+        document.querySelectorAll('.search-results').forEach(el => el.style.display = 'none');
+    }
+});

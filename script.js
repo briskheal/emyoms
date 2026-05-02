@@ -777,6 +777,8 @@ async function placeOrder() {
             masterRate: Number(p.pts) || 0,
             negotiationNote: negotiationNotes[pid] || (locked ? locked.note : ''),
             mrp: p.mrp,
+            gstPercent: p.gstPercent || 12,
+            hsn: p.hsn || '',
             totalValue: Number(qty * rate) || 0
         };
     });
