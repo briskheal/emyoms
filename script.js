@@ -494,7 +494,8 @@ async function loadMasters() {
 async function fetchProducts() {
     try {
         const res = await fetch(`${API_BASE}/products`);
-        allProducts = await res.json();
+        const data = await res.json();
+        allProducts = data.map(p => ({ ...p, _id: p._id || p.id }));
     } catch (e) { console.error("Fetch products failed"); }
 }
 
@@ -552,21 +553,22 @@ function renderExcelProducts() {
     }
 
     tbody.innerHTML = filtered.map(p => {
-        const qty = cart[p._id] || '';
-        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const pId = p._id || p.id;
+        const qty = cart[pId] || '';
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === pId || n.product === pId) && new Date(n.expiryDate) > new Date());
         
         const masterRate = parseFloat(p.pts || 0);
-        const currentRate = askingRates[p._id] !== undefined ? parseFloat(askingRates[p._id]) : (locked ? parseFloat(locked.lockedRate || 0) : masterRate);
-        const note = negotiationNotes[p._id] || (locked ? locked.note : '');
+        const currentRate = askingRates[pId] !== undefined ? parseFloat(askingRates[pId]) : (locked ? parseFloat(locked.lockedRate || 0) : masterRate);
+        const note = negotiationNotes[pId] || (locked ? locked.note : '');
         
         const totalVal = Number(qty || 0) * currentRate;
         const totalFormatted = totalVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
         const isWarning = currentRate < masterRate;
-        const free = manualBonuses[p._id] !== undefined ? manualBonuses[p._id] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0);
+        const free = manualBonuses[pId] !== undefined ? manualBonuses[pId] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0);
 
         return `
-            <tr id="row-${p._id}">
+            <tr id="row-${pId}">
                 <td>
                     <div class="${isWarning ? 'price-warning' : ''}" style="font-weight: 800; color: ${isWarning ? '#f59e0b' : 'var(--primary)'};">${p.name}</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">${p.category || 'GENERAL'}</div>
@@ -590,16 +592,16 @@ function renderExcelProducts() {
                 <td style="text-align: center; color: #ffffff; font-weight: 600;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
                     <input type="number" class="qty-input" value="${qty}" min="0" step="1"
-                        oninput="updateCart('${p._id}', this.value, this)" 
+                        oninput="updateCart('${pId}', this.value, this)" 
                         style="width: 80px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700;">
                 </td>
                 <td style="text-align: center;">
                     <input type="number" class="bonus-input" value="${free}" min="0" step="1"
-                        id="bonus-${p._id}"
-                        oninput="updateBonus('${p._id}', this.value)"
+                        id="bonus-${pId}"
+                        oninput="updateBonus('${pId}', this.value)"
                         style="width: 70px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-weight: 700; color: #10b981;">
                 </td>
-                <td style="text-align: right;" class="total-cell" id="total-${p._id}">₹${totalFormatted}</td>
+                <td style="text-align: right;" class="total-cell" id="total-${pId}">₹${totalFormatted}</td>
             </tr>
         `;
     }).join('');
@@ -636,7 +638,12 @@ function updateCart(pid, qty, inputEl) {
         qty = 0;
         if (inputEl) inputEl.value = 0;
     }
-    const p = allProducts.find(x => x._id === pid);
+    const p = allProducts.find(x => (x._id || x.id) === pid);
+    if (!p) {
+        console.warn("⚠️ Product not found in catalog:", pid);
+        return;
+    }
+
     if (qty > 0) cart[pid] = qty;
     else {
         delete cart[pid];
@@ -645,7 +652,7 @@ function updateCart(pid, qty, inputEl) {
 
     // --- SMART PRICING LOGIC ---
     // Use the same priority as the final order: Negotiated > Locked > Master
-    const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+    const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === (p._id || p.id) || n.product === (p._id || p.id)) && new Date(n.expiryDate) > new Date());
     const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? (locked.lockedRate || 0) : (p.pts || p.ptr || 0)));
 
     const rowTotal = (Number(qty || 0) * Number(rate || 0)).toFixed(2);
@@ -691,11 +698,13 @@ function updateFooter() {
     let itemCount = 0;
 
     Object.keys(cart).forEach(pid => {
-        const p = allProducts.find(x => x._id === pid);
+        const p = allProducts.find(x => (x._id || x.id) === pid);
+        if (!p) return;
+
         const qty = cart[pid];
         
         // Use Negotiated Rate for Calculations
-        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === (p._id || p.id) && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? (locked.lockedRate || 0) : (p.pts || p.ptr || 0)));
         
         const itemVal = Number(qty || 0) * rate;
