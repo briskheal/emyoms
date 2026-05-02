@@ -555,7 +555,7 @@ function renderExcelProducts() {
     tbody.innerHTML = filtered.map(p => {
         const pId = p._id || p.id;
         const qty = cart[pId] || '';
-        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === pId || n.product === pId) && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId == pId || n.product == pId) && new Date(n.expiryDate) > new Date());
         
         const masterRate = parseFloat(p.pts || 0);
         const currentRate = askingRates[pId] !== undefined ? parseFloat(askingRates[pId]) : (locked ? parseFloat(locked.lockedRate || 0) : masterRate);
@@ -638,7 +638,7 @@ function updateCart(pid, qty, inputEl) {
         qty = 0;
         if (inputEl) inputEl.value = 0;
     }
-    const p = allProducts.find(x => (x._id || x.id) === pid);
+    const p = allProducts.find(x => (x._id || x.id) == pid);
     if (!p) {
         console.warn("⚠️ Product not found in catalog:", pid);
         return;
@@ -652,7 +652,7 @@ function updateCart(pid, qty, inputEl) {
 
     // --- SMART PRICING LOGIC ---
     // Use the same priority as the final order: Negotiated > Locked > Master
-    const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === (p._id || p.id) || n.product === (p._id || p.id)) && new Date(n.expiryDate) > new Date());
+    const locked = currentUser?.negotiatedPrices?.find(n => (n.productId == (p._id || p.id) || n.product == (p._id || p.id)) && new Date(n.expiryDate) > new Date());
     const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? (locked.lockedRate || 0) : (p.pts || p.ptr || 0)));
 
     const rowTotal = (Number(qty || 0) * Number(rate || 0)).toFixed(2);
@@ -698,13 +698,13 @@ function updateFooter() {
     let itemCount = 0;
 
     Object.keys(cart).forEach(pid => {
-        const p = allProducts.find(x => (x._id || x.id) === pid);
+        const p = allProducts.find(x => (x._id || x.id) == pid);
         if (!p) return;
 
         const qty = cart[pid];
         
         // Use Negotiated Rate for Calculations
-        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === (p._id || p.id) && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId == (p._id || p.id) || n.product == (p._id || p.id)) && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? (locked.lockedRate || 0) : (p.pts || p.ptr || 0)));
         
         const itemVal = Number(qty || 0) * rate;
@@ -748,8 +748,8 @@ async function placeOrder() {
 
     // Validate negotiation notes
     for (const pid of Object.keys(cart)) {
-        const p = allProducts.find(x => (x._id || x.id) === pid);
-        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === (p._id || p.id) || n.product === (p._id || p.id)) && new Date(n.expiryDate) > new Date());
+        const p = allProducts.find(x => (x._id || x.id) == pid);
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId == (p._id || p.id) || n.product == (p._id || p.id)) && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
         
         if (rate < parseFloat(p.pts || 0) && !negotiationNotes[pid] && !(locked && locked.note)) {
@@ -765,9 +765,9 @@ async function placeOrder() {
     btn.innerHTML = `⏳ PLACING ORDER...`;
 
     const orderItems = pids.map(pid => {
-        const p = allProducts.find(x => (x._id || x.id) === pid);
+        const p = allProducts.find(x => (x._id || x.id) == pid);
         const qty = cart[pid];
-        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === (p._id || p.id) || n.product === (p._id || p.id)) && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId == (p._id || p.id) || n.product == (p._id || p.id)) && new Date(n.expiryDate) > new Date());
         const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || 0));
         
         return {
@@ -787,7 +787,7 @@ async function placeOrder() {
     const subTotal = orderItems.reduce((a, b) => a + (b.totalValue || 0), 0);
     let gstAmt = 0;
     orderItems.forEach(item => {
-        const p = allProducts.find(x => x._id === item.product);
+        const p = allProducts.find(x => (x._id || x.id) == item.productId);
         if (p) {
             gstAmt += Number(((item.totalValue || 0) * (p.gstPercent || 12) / 100).toFixed(2));
         }
@@ -996,7 +996,7 @@ function toggleMusic() {
 
 
 function viewOrderDetails(orderId) {
-    const o = myOrdersHistory.find(x => x._id === orderId);
+    const o = myOrdersHistory.find(x => x._id == orderId);
     if (!o) {
         console.error("❌ Order not found in history:", orderId);
         return;

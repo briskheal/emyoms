@@ -755,7 +755,7 @@ async function deleteProduct(id) {
 }
 
 function editProduct(id) {
-    const p = allProducts.find(x => x._id === id);
+    const p = allProducts.find(x => x._id == id);
     if (!p) return;
     document.getElementById('prod-id').value = p._id;
     document.getElementById('prod-name').value = p.name;
@@ -1511,7 +1511,7 @@ function openPartyModal(id = null) {
     document.getElementById('party-id').value = id || '';
     
     if (id) {
-        const s = allStockists.find(x => x._id === id);
+        const s = allStockists.find(x => x._id == id);
         if (s) {
             document.getElementById('party-name').value = s.name || '';
             document.getElementById('party-type').value = s.partyType || 'STOCKIST';
@@ -1744,7 +1744,7 @@ function filterOrderHistory(val) {
 }
 
 function viewOrderDetails(id) {
-    const o = allOrders.find(x => x._id === id);
+    const o = allOrders.find(x => x._id == id);
     if (!o) return;
 
     document.getElementById('detail-order-no').innerText = `Order #${o.orderNo}`;
@@ -1762,7 +1762,7 @@ function viewOrderDetails(id) {
         const isNegotiated = item.askingRate && item.askingRate !== item.masterRate;
         
         const pId = item.productId || item.product; // Handle both mapping variants
-        const p = allProducts.find(pr => (pr._id || pr.id) === pId) || { batches: [] };
+        const p = allProducts.find(pr => (pr._id || pr.id) == pId) || { batches: [] };
         let batchCellHtml = '';
         if (o.status === 'pending') {
             const reqQty = (item.qty || 0) + (item.bonusQty || 0);
@@ -1979,7 +1979,7 @@ async function negotiateItem(orderId, itemId, action, btn) {
 }
 
 async function approveOrder(id) {
-    const o = allOrders.find(x => x._id === id);
+    const o = allOrders.find(x => x._id == id);
     if (!o) return;
 
     const batchSelections = {};
@@ -2033,7 +2033,7 @@ function closeOrderModal() {
 let currentLedgerPartyId = null;
 
 async function viewLedger(id) {
-    const s = allStockists.find(x => x._id === id);
+    const s = allStockists.find(x => x._id == id);
     if (!s) return;
 
     currentLedgerPartyId = id;
@@ -2651,7 +2651,7 @@ function filterNotes() {
 }
 
 function updateNotePartyDetails(id, infoId = 'note-party-info') {
-    const s = allStockists.find(x => x._id === id);
+    const s = allStockists.find(x => x._id == id);
     const info = document.getElementById(infoId);
     if (s && info) {
         info.innerText = `Current Outstanding: ₹${s.outstandingBalance.toLocaleString('en-IN')}`;
@@ -2722,7 +2722,7 @@ async function reviewPDCNClaim(id, action) {
 }
 
 async function editNote(id) {
-    const note = allNotes.find(x => x._id === id);
+    const note = allNotes.find(x => x._id == id);
     if (!note) return;
     currentEditingNoteId = id;
     // Any note that was created with items OR belongs to a multi-item module goes to unified table
@@ -3050,7 +3050,7 @@ async function saveMultiItemReturn(e) {
     e.preventDefault();
     const reasonValue = document.getElementById('return-reason').value;
     const pId = document.getElementById('return-party').value;
-    const pName = allStockists.find(s => s._id === pId)?.name || 'Direct Customer';
+    const pName = allStockists.find(s => s._id == pId)?.name || 'Direct Customer';
     
     // Strict Header Validation
     if(!pId) return alert("❌ Please select a Party.");
@@ -3309,7 +3309,7 @@ async function generateSampleMatchedPDF({
 
 async function viewInvoicePDF(id) {
     try {
-        const inv = allInvoices.find(x => x._id === id);
+        const inv = allInvoices.find(x => x._id == id);
         if (!inv) return alert("Invoice not found");
         const party = allStockists.find(s => s._id === (inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
@@ -3329,7 +3329,7 @@ async function viewInvoicePDF(id) {
 
 async function downloadInvoicePDF(id) {
     try {
-        const inv = allInvoices.find(x => x._id === id);
+        const inv = allInvoices.find(x => x._id == id);
         if (!inv) return alert("Invoice not found");
         const party = allStockists.find(s => s._id === (inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
@@ -3363,7 +3363,7 @@ function previewInvoiceStyle(style) {
 }
 
 function viewPurchaseDetails(id) {
-    const p = allPurchaseEntries.find(x => x._id === id);
+    const p = allPurchaseEntries.find(x => x._id == id);
     if (!p) return;
     
     let itemSummary = p.items.map(i => `${i.name} [Batch: ${i.batch || 'N/A'}] - Qty: ${i.qty}`).join('\n');
@@ -3371,7 +3371,7 @@ function viewPurchaseDetails(id) {
 }
 
 function editPurchaseEntry(id) {
-    const p = allPurchaseEntries.find(x => x._id === id);
+    const p = allPurchaseEntries.find(x => x._id == id);
     if (!p) return;
 
     openPurchaseModal();
@@ -3432,7 +3432,7 @@ function setInvoiceStyle(style) {
 }
 
 function updateSupplierDetailsDisplay(id) {
-    const s = allStockists.find(x => x._id === id);
+    const s = allStockists.find(x => x._id == id);
     const box = document.getElementById('supplier-compliance-box');
     if (!box) return;
     if (!s) { box.innerHTML = 'Select a supplier to view compliance data.'; return; }
@@ -3445,7 +3445,7 @@ function updateSupplierDetailsDisplay(id) {
 }
 
 function updateProductEntryMeta(id) {
-    const p = allProducts.find(x => x._id === id);
+    const p = allProducts.find(x => x._id == id);
     if (!p) return;
     document.getElementById('pur-rate').value = p.pts || 0;
     document.getElementById('pur-gst-pct').value = p.gstPercent || p.gst || 12;
