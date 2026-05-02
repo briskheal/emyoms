@@ -137,6 +137,69 @@ app.put('/api/admin/company', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// --- MULTIMEDIA & BRANDING UPLOADS ---
+
+app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+        const { type } = req.body;
+
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: type === 'video' ? 'video' : 'auto',
+            folder: 'emyoms/media'
+        });
+
+        // Clean up local file
+        fs.unlinkSync(req.file.path);
+
+        const company = await db.Company.findOne();
+        if (type === 'music') await company.update({ musicUrl: result.secure_url });
+        else if (type === 'video') await company.update({ videoUrl: result.secure_url });
+
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+app.post('/api/admin/settings/upload-design', docUpload.single('design'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: 'auto',
+            folder: 'emyoms/blueprints'
+        });
+
+        fs.unlinkSync(req.file.path);
+
+        const company = await db.Company.findOne();
+        await company.update({ referenceInvoiceUrl: result.secure_url });
+
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/admin/upload-logo', docUpload.single('logo'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyoms/branding' });
+        fs.unlinkSync(req.file.path);
+        const company = await db.Company.findOne();
+        await company.update({ logoImage: result.secure_url });
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/admin/upload-signature', docUpload.single('signature'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyoms/branding' });
+        fs.unlinkSync(req.file.path);
+        const company = await db.Company.findOne();
+        await company.update({ signatureImage: result.secure_url });
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 const PORT = process.env.PORT || 4000;
 
 // Database Initialization & Server Start
@@ -872,7 +935,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
         res.json({ success: true, invoice: newInvoice });
     } catch (err) { 
         console.error("Invoice Generation Error:", err);
-        res.status(500).json({ error: e.message }); 
+        res.status(500).json({ error: err.message }); 
     }
 });
 
@@ -944,18 +1007,30 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
         });
 
         for (const item of items) {
-            const product = await db.Product.findByPk(item.productId);
+            const pId = item.productId || item.product;
+            const bNo = item.batchNo || item.batch;
+            const product = await db.Product.findByPk(pId);
             if (product) {
                 await product.increment('qtyAvailable', { by: item.qty });
                 let [batch] = await db.Batch.findOrCreate({
-                    where: { productId: item.productId, batchNo: item.batch },
-                    defaults: { ...item, qtyAvailable: 0 }
+                    where: { productId: pId, batchNo: bNo },
+                    defaults: { 
+                        productId: pId,
+                        batchNo: bNo,
+                        mfgDate: item.mfgDate,
+                        expDate: item.expDate,
+                        mrp: item.mrp || product.mrp,
+                        pts: item.pts || product.pts,
+                        ptr: item.ptr || product.ptr,
+                        qtyAvailable: 0 
+                    }
                 });
                 await batch.increment('qtyAvailable', { by: item.qty });
                 
                 await db.PurchaseItem.create({
                     ...item,
-                    productId: item.productId,
+                    productId: pId,
+                    batch: bNo,
                     purchaseEntryId: entry.id
                 });
             }
@@ -985,7 +1060,17 @@ app.get('/api/admin/financial-notes', async (req, res) => {
 app.post('/api/admin/financial-notes', async (req, res) => {
     try {
         const { noteType, partyId, amount, reason, items } = req.body;
-        const noteNo = await getNextDocNo(noteType === 'CN' ? 'lossCn' : 'lossDn');
+        
+        let counterKey = (noteType === 'CN') ? 'lcn' : 'ldn'; // Defaults
+        if (noteType === 'CN') {
+            if (reason === 'Salable Return') counterKey = 'scn';
+            else if (reason === 'Price Diff CN') counterKey = 'pdcn';
+        } else {
+            if (reason === 'Purchase Return') counterKey = 'pdn';
+            else if (reason === 'Price Diff DN') counterKey = 'pddn';
+        }
+
+        const noteNo = await getNextDocNo(counterKey);
 
         const newNote = await db.FinancialNote.create({
             noteNo,

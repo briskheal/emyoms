@@ -38,6 +38,40 @@ function formatMMYY(el) {
     }
 }
 
+}
+
+let currentPickerTarget = null;
+function openMonthYearPicker(targetId) {
+    currentPickerTarget = targetId;
+    const modal = document.getElementById('monthYearPickerModal');
+    const yearSelect = document.getElementById('picker-year');
+    const currentYear = new Date().getFullYear();
+    
+    // Populate years (10 years back, 20 years forward)
+    let yearHtml = '';
+    for (let y = currentYear - 5; y <= currentYear + 15; y++) {
+        const shortYear = String(y).slice(-2);
+        yearHtml += `<option value="${shortYear}">${y}</option>`;
+    }
+    yearSelect.innerHTML = yearHtml;
+    yearSelect.value = String(currentYear).slice(-2);
+    
+    modal.classList.remove('hidden');
+}
+
+function closeMonthYearPicker() {
+    document.getElementById('monthYearPickerModal').classList.add('hidden');
+}
+
+function confirmMonthYearSelection() {
+    const month = document.getElementById('picker-month').value;
+    const year = document.getElementById('picker-year').value;
+    if (currentPickerTarget) {
+        document.getElementById(currentPickerTarget).value = `${month}-${year}`;
+    }
+    closeMonthYearPicker();
+}
+
 function checkBatchStatus(expDate) {
     if (!expDate || expDate === 'N/A' || expDate === '-') return { status: 'ok', label: '' };
     
@@ -159,6 +193,7 @@ window.onload = async () => {
     
     // Load all data sequentially to ensure dependencies are met
     try {
+        await loadMasters();
         await loadProducts();
         await loadStockists();
         await loadOrders();
@@ -205,16 +240,31 @@ function renderSettings() {
     safeSetVal('cnt-ldn-next', c.ldn?.nextNumber || 1);
     safeSetVal('cnt-lcn-pre', c.lcn?.prefix || '');
     safeSetVal('cnt-lcn-next', c.lcn?.nextNumber || 1);
-    safeSetVal('cnt-payin-pre', c.payin?.prefix || '');
     safeSetVal('cnt-payin-next', c.payin?.nextNumber || 1);
     safeSetVal('cnt-payout-pre', c.payout?.prefix || '');
     safeSetVal('cnt-payout-next', c.payout?.nextNumber || 1);
+    safeSetVal('cnt-exp-pre', c.expense?.prefix || '');
+    safeSetVal('cnt-exp-next', c.expense?.nextNumber || 1);
 
     // Media
     safeSetVal('set-music-url', companyProfile.musicUrl || '');
     safeSetVal('set-video-url', companyProfile.videoUrl || '');
     const volEl = document.getElementById('globalVolume');
     if (volEl) volEl.value = companyProfile.musicVolume || 0.5;
+
+    // Branding Previews
+    if (companyProfile.logoImage) {
+        document.getElementById('logo-preview').innerHTML = `<img src="${companyProfile.logoImage}" style="max-height:60px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">`;
+    }
+    if (companyProfile.signatureImage) {
+        document.getElementById('signature-preview').innerHTML = `<img src="${companyProfile.signatureImage}" style="max-height:60px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">`;
+    }
+    if (companyProfile.referenceInvoiceUrl) {
+        document.getElementById('design-preview-link').innerHTML = `<a href="${companyProfile.referenceInvoiceUrl}" target="_blank" style="color:var(--accent);">📄 View Current Blueprint</a>`;
+        document.getElementById('design-status-badge').innerHTML = `<span class="badge badge-approved">BLUEPRINT LOADED</span>`;
+    } else {
+        document.getElementById('design-status-badge').innerHTML = `<span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;">NO BLUEPRINT</span>`;
+    }
 }
 
 async function saveSettings(e) {
@@ -230,7 +280,8 @@ async function saveSettings(e) {
         ldn: { prefix: safeGetVal('cnt-ldn-pre'), nextNumber: Number(safeGetVal('cnt-ldn-next')) || 1 },
         lcn: { prefix: safeGetVal('cnt-lcn-pre'), nextNumber: Number(safeGetVal('cnt-lcn-next')) || 1 },
         payin: { prefix: safeGetVal('cnt-payin-pre'), nextNumber: Number(safeGetVal('cnt-payin-next')) || 1 },
-        payout: { prefix: safeGetVal('cnt-payout-pre'), nextNumber: Number(safeGetVal('cnt-payout-next')) || 1 }
+        payout: { prefix: safeGetVal('cnt-payout-pre'), nextNumber: Number(safeGetVal('cnt-payout-next')) || 1 },
+        expense: { prefix: safeGetVal('cnt-exp-pre'), nextNumber: Number(safeGetVal('cnt-exp-next')) || 1 }
     };
 
     const data = {
@@ -710,15 +761,25 @@ async function loadStockists(type = '') {
 
 async function loadMasters() {
     try {
+        const fetchJSON = (url) => fetch(url).then(r => r.ok ? r.json() : []);
+        
         const [cats, hsns, gst, groups, hq, expCats] = await Promise.all([
-            fetch(`${API_BASE}/categories`).then(r => r.json()),
-            fetch(`${API_BASE}/hsns`).then(r => r.json()),
-            fetch(`${API_BASE}/gst`).then(r => r.json()),
-            fetch(`${API_BASE}/groups`).then(r => r.json()),
-            fetch(`${API_BASE}/hq`).then(r => r.json()),
-            fetch(`${API_BASE}/expense-categories`).then(r => r.json())
+            fetchJSON(`${API_BASE}/categories`),
+            fetchJSON(`${API_BASE}/hsns`),
+            fetchJSON(`${API_BASE}/gst`),
+            fetchJSON(`${API_BASE}/groups`),
+            fetchJSON(`${API_BASE}/hq`),
+            fetchJSON(`${API_BASE}/expense-categories`)
         ]);
-        window.masters = { categories: cats, hsns, gst, groups, hq, expenseCategories: expCats };
+        
+        window.masters = { 
+            categories: cats || [], 
+            hsns: hsns || [], 
+            gst: gst || [], 
+            groups: groups || [], 
+            hq: hq || [], 
+            expenseCategories: expCats || [] 
+        };
 
         renderMasterLists();
         updateDatalists();
@@ -1014,7 +1075,8 @@ async function addMaster(type) {
     }
 
     try {
-        const endpoint = `${API_BASE}/admin/${type === 'expense-categories' ? 'expense-categories' : type}`;
+        const apiType = type === 'expenseCategories' ? 'expense-categories' : type;
+        const endpoint = `${API_BASE}/admin/${apiType}`;
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1039,7 +1101,8 @@ async function addMaster(type) {
 async function deleteMaster(type, id) {
     if (!confirm("Delete this master entry?")) return;
     try {
-        const endpoint = `${API_BASE}/admin/${type}/${id}`;
+        const apiType = type === 'expenseCategories' ? 'expense-categories' : type;
+        const endpoint = `${API_BASE}/admin/${apiType}/${id}`;
         await fetch(endpoint, { method: 'DELETE' });
         loadMasters();
     } catch (e) { alert("Delete failed"); }
@@ -1194,6 +1257,8 @@ async function loadSettings() {
             if (dc.pddn) { setC('cnt-pddn-pre', dc.pddn.prefix); setC('cnt-pddn-next', dc.pddn.nextNumber); }
             if (dc.lossDn) { setC('cnt-ldn-pre', dc.lossDn.prefix); setC('cnt-ldn-next', dc.lossDn.nextNumber); }
             if (dc.lossCn) { setC('cnt-lcn-pre', dc.lossCn.prefix); setC('cnt-lcn-next', dc.lossCn.nextNumber); }
+            if (dc.payin) { setC('cnt-payin-pre', dc.payin.prefix); setC('cnt-payin-next', dc.payin.nextNumber); }
+            if (dc.payout) { setC('cnt-payout-pre', dc.payout.prefix); setC('cnt-payout-next', dc.payout.nextNumber); }
         }
     } catch (e) { console.error("Load settings fail", e); }
 }
@@ -1218,6 +1283,36 @@ async function uploadInvoiceDesign() {
             alert("Upload failed: " + result.error);
         }
     } catch (e) { alert("Upload error occurred."); }
+}
+
+async function uploadLogo() {
+    const fileInput = document.getElementById('logo-file');
+    if (!fileInput.files.length) return alert("Please select a logo file.");
+    const formData = new FormData();
+    formData.append('logo', fileInput.files[0]);
+    try {
+        const res = await fetch('/api/admin/upload-logo', { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Logo uploaded successfully!");
+            loadSettings();
+        } else alert("Upload failed: " + result.error);
+    } catch (e) { alert("Upload error."); }
+}
+
+async function uploadSignature() {
+    const fileInput = document.getElementById('signature-file');
+    if (!fileInput.files.length) return alert("Please select a signature file.");
+    const formData = new FormData();
+    formData.append('signature', fileInput.files[0]);
+    try {
+        const res = await fetch('/api/admin/upload-signature', { method: 'POST', body: formData });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Signature uploaded successfully!");
+            loadSettings();
+        } else alert("Upload failed: " + result.error);
+    } catch (e) { alert("Upload error."); }
 }
 
 function toggleMusic() {
@@ -1487,7 +1582,9 @@ async function saveSettings(e) {
                 pdcn: { prefix: document.getElementById('cnt-pdcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pdcn-next')?.value || 1) },
                 pddn: { prefix: document.getElementById('cnt-pddn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pddn-next')?.value || 1) },
                 lossDn: { prefix: document.getElementById('cnt-ldn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-ldn-next')?.value || 1) },
-                lossCn: { prefix: document.getElementById('cnt-lcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-lcn-next')?.value || 1) }
+                lossCn: { prefix: document.getElementById('cnt-lcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-lcn-next')?.value || 1) },
+                payin: { prefix: document.getElementById('cnt-payin-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-payin-next')?.value || 1) },
+                payout: { prefix: document.getElementById('cnt-payout-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-payout-next')?.value || 1) }
             }
         };
 
@@ -1839,8 +1936,8 @@ function renderOrderHistory(filter = '') {
             <td style="font-weight:600;">${o.stockist ? o.stockist.name : 'Unknown'}</td>
             <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${o.items.length}</td>
-            <td style="text-align:right; font-weight:700;">₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td style="text-align:center;"><span class="badge ${o.status === 'approved' ? 'badge-approved' : (o.status === 'invoiced' ? 'badge-approved' : (o.status === 'rejected' ? 'badge-pending' : 'badge-pending'))}" style="${o.status === 'rejected' ? 'background:#ef4444; color:#fff;' : (o.status === 'invoiced' ? 'background:var(--accent); color:#fff;' : '')}">${o.status.toUpperCase()}</span></td>
+            <td style="text-align:right; font-weight:700;">₹${(o.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:center;"><span class="badge ${(o.status || 'pending') === 'approved' ? 'badge-approved' : ((o.status || 'pending') === 'invoiced' ? 'badge-approved' : ((o.status || 'pending') === 'rejected' ? 'badge-pending' : 'badge-pending'))}" style="${(o.status || 'pending') === 'rejected' ? 'background:#ef4444; color:#fff;' : ((o.status || 'pending') === 'invoiced' ? 'background:var(--accent); color:#fff;' : '')}">${(o.status || 'PENDING').toUpperCase()}</span></td>
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="viewOrderDetails('${o._id}')">VIEW ORDER</button>
             </td>
@@ -1862,8 +1959,9 @@ function viewOrderDetails(id) {
     document.getElementById('detail-stockist-code').innerText = o.stockistCode || 'N/A';
     
     const statusEl = document.getElementById('detail-status');
-    statusEl.innerText = o.status.toUpperCase();
-    statusEl.style.background = o.status === 'approved' ? '#10b981' : (o.status === 'invoiced' ? 'var(--accent)' : (o.status === 'rejected' ? '#ef4444' : '#f59e0b'));
+    const status = o.status || 'pending';
+    statusEl.innerText = status.toUpperCase();
+    statusEl.style.background = status === 'approved' ? '#10b981' : (status === 'invoiced' ? 'var(--accent)' : (status === 'rejected' ? '#ef4444' : '#f59e0b'));
     statusEl.style.color = '#fff';
 
     const itemsBody = document.getElementById('detail-items-body');
@@ -1896,8 +1994,8 @@ function viewOrderDetails(id) {
             <tr style="transition: all 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <td style="position: sticky; left: 0; z-index: 5; background: #0f172a; font-weight: 700; color: #f1f5f9; border-right: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem;">${item.name}</td>
                 <td style="text-align:center;">${batchCellHtml}</td>
-                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">₹${(item.masterRate || item.priceUsed).toFixed(2)}</td>
-                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">₹${(item.askingRate || item.priceUsed).toFixed(2)}</td>
+                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">₹${(item.masterRate || item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">₹${(item.askingRate || item.priceUsed || 0).toFixed(2)}</td>
                 <td style="text-align:center; font-style:italic; font-size:0.7rem; color: #94a3b8; line-height: 1.2;">${item.negotiationNote || '-'}</td>
                 <td style="text-align:center;">
                     <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
@@ -2295,19 +2393,10 @@ function openPurchaseModal() {
     purchaseItems = [];
     renderPurchaseItems();
     
-    // Populate Supplier Dropdown (Only show parties of type SUPPLIER)
-    const select = document.getElementById('pur-supplier');
-    if(select) {
-        select.innerHTML = '<option value="">-- Select Supplier --</option>' + 
-            allStockists.filter(s => s.partyType === 'SUPPLIER').map(s => `<option value="${s._id}">${s.name}</option>`).join('');
-    }
-
-    // Populate Product Dropdown
-    const prodSelect = document.getElementById('pur-prod-select');
-    if(prodSelect) {
-        prodSelect.innerHTML = '<option value="">-- Select Product --</option>' + 
-            allProducts.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
-    }
+    // Supplier Search initialization
+    document.getElementById('pur-supplier-search').value = '';
+    document.getElementById('pur-supplier').value = '';
+    document.getElementById('supplier-compliance-box').innerHTML = 'Select a supplier to view compliance data.';
 
     document.getElementById('purchaseModal').classList.remove('hidden');
 }
@@ -2330,13 +2419,15 @@ function addPurchaseItem() {
     
     const prod = allProducts.find(p => p._id === prodId);
     purchaseItems.push({
-        product: prodId,
+        productId: prodId,
+        product: prodId, // Backward compatibility
         name: prod.name,
         manufacturer: manfName || prod.manufacturer || 'N/A',
         qty: qty,
         bonusQty: 0,
         purchaseRate: rate,
         batch: batch || 'N/A',
+        batchNo: batch || 'N/A', // Forward compatibility
         mfgDate: mfg || 'N/A',
         expDate: exp || 'N/A',
         gstPercent: gstPct || 12,
@@ -2585,14 +2676,14 @@ function updateSaleBatchMeta(batchNo) {
 function calculateSaleLineTotal() {
     const qty = Number(document.getElementById('sale-qty').value || 0);
     const rate = Number(document.getElementById('sale-rate').value || 0);
-    const gstPct = Number(document.getElementById('sale-gst-pct').value || 0);
+    const gstPct = Number(document.getElementById('sale-gst-pct').value || 12);
     
-    const taxable = Number(qty || 0) * Number(rate || 0);
-    const gst = (taxable * Number(gstPct || 0)) / 100;
-    const total = Number(taxable) + Number(gst);
+    const taxable = qty * rate;
+    const gst = (taxable * gstPct) / 100;
+    const total = taxable + gst;
     
     const el = document.getElementById('sale-line-total');
-    if (el) el.innerText = '₹' + total.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    if (el) el.innerText = '₹' + (total || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
 function addSaleItem() {
@@ -2650,14 +2741,14 @@ function renderSaleItems() {
 
     document.getElementById('sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
     document.getElementById('sale-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    if (document.getElementById('sale-roundoff')) document.getElementById('sale-roundoff').innerText = '₹' + roundOff.toFixed(2);
+    if (document.getElementById('sale-roundoff')) document.getElementById('sale-roundoff').innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
     document.getElementById('sale-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2});
 
     // Update Strip
     if (document.getElementById('strip-sale-count')) document.getElementById('strip-sale-count').innerText = directSaleItems.length;
     if (document.getElementById('strip-sale-subtotal')) document.getElementById('strip-sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
     if (document.getElementById('strip-sale-gst')) document.getElementById('strip-sale-gst').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    if (document.getElementById('strip-sale-roundoff')) document.getElementById('strip-sale-roundoff').innerText = '₹' + roundOff.toFixed(2);
+    if (document.getElementById('strip-sale-roundoff')) document.getElementById('strip-sale-roundoff').innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
     if (document.getElementById('strip-sale-total')) document.getElementById('strip-sale-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
@@ -3585,7 +3676,11 @@ function editPurchaseEntry(id) {
     }));
     
     renderPurchaseItems();
-    updateSupplierDetailsDisplay(p.supplier);
+    const supplier = allStockists.find(s => s._id == p.supplier);
+    if (supplier) {
+        document.getElementById('pur-supplier-search').value = supplier.name;
+        updateSupplierDetailsDisplay(p.supplier);
+    }
 }
 
 function setInvoiceStyle(style) {
@@ -4880,6 +4975,7 @@ function selectParty(id, context) {
         document.getElementById('pur-supplier-search').value = s.name;
         document.getElementById('pur-supplier').value = id;
         document.getElementById('pur-party-search-results').style.display = 'none';
+        updateSupplierDetailsDisplay(id);
     } else if (context === 'RETURN') {
         document.getElementById('return-party-search').value = s.name;
         document.getElementById('return-party').value = id;
