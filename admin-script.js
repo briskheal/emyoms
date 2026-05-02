@@ -38,8 +38,6 @@ function formatMMYY(el) {
     }
 }
 
-}
-
 let currentPickerTarget = null;
 function openMonthYearPicker(targetId) {
     currentPickerTarget = targetId;
@@ -210,10 +208,10 @@ window.onload = async () => {
 
 async function loadSettings() {
     try {
-        const res = await fetch('/api/admin/company');
+        const res = await fetch(`${API_BASE}/admin/settings?t=${Date.now()}`);
         const data = await res.json();
-        if (data.success) {
-            companyProfile = data.company;
+        if (data) {
+            companyProfile = data;
             renderSettings();
         }
     } catch (e) { console.error("Load settings fail", e); }
@@ -221,55 +219,114 @@ async function loadSettings() {
 
 function renderSettings() {
     if (!companyProfile) return;
+    const s = companyProfile;
+
+    const safeSetCheck = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!val;
+    };
+
+    // 1. Basic Info
+    safeSetVal('set-name', s.name);
+    safeSetVal('set-tollfree', s.tollFree);
+    if (s.websites) {
+        safeSetVal('set-web1', s.websites[0] || '');
+        safeSetVal('set-web2', s.websites[1] || '');
+    }
+    if (s.emails) {
+        safeSetVal('set-email1', s.emails[0] || '');
+        safeSetVal('set-email2', s.emails[1] || '');
+        safeSetVal('set-email3', s.emails[2] || '');
+    }
+    safeSetVal('set-phone', s.phones ? s.phones[0] : '');
+    safeSetVal('set-address', s.address);
+    safeSetVal('set-admin-email', s.adminEmail);
+
+    // 2. Tax & Bank
+    safeSetVal('set-gst-no', s.gstNo);
+    safeSetVal('set-pan-no', s.panNo);
+    safeSetVal('set-dl-no', s.dlNo);
+    safeSetVal('set-fssai-no', s.fssaiNo);
+    safeSetVal('set-bank-details', s.bankDetails);
+    safeSetVal('set-upi-id', s.upiId);
+    safeSetVal('set-bank-acc', s.bankAccountNo);
+    safeSetVal('set-bank-ifsc', s.bankIfsc);
+    safeSetVal('set-payment-due-days', s.paymentDueDays);
+    safeSetVal('set-default-supply', s.defaultPlaceOfSupply);
+
+    // 3. Terms
+    safeSetVal('set-invoice-terms', s.invoiceTerms);
+    safeSetVal('set-cn-terms', s.cnTerms);
+    safeSetVal('set-dn-terms', s.dnTerms);
+    safeSetVal('set-gst-rate', s.gstRate);
+    safeSetCheck('set-invoice-bank-visible', s.invoiceBankVisible);
+    safeSetCheck('set-cn-bank-visible', s.cnBankVisible);
+    safeSetCheck('set-dn-bank-visible', s.dnBankVisible);
+
+    // 4. Counters
+    const c = s.documentCounters || {};
+    const setC = (id, val) => { const el = document.getElementById(id); if(el) el.value = (val !== undefined && val !== null) ? val : ''; };
     
-    // Counters
-    const c = companyProfile.documentCounters || {};
-    safeSetVal('cnt-inv-pre', c.invoice?.prefix || '');
-    safeSetVal('cnt-inv-next', c.invoice?.nextNumber || 1);
-    safeSetVal('cnt-pur-pre', c.purchase?.prefix || '');
-    safeSetVal('cnt-pur-next', c.purchase?.nextNumber || 1);
-    safeSetVal('cnt-scn-pre', c.scn?.prefix || '');
-    safeSetVal('cnt-scn-next', c.scn?.nextNumber || 1);
-    safeSetVal('cnt-pdn-pre', c.pdn?.prefix || '');
-    safeSetVal('cnt-pdn-next', c.pdn?.nextNumber || 1);
-    safeSetVal('cnt-pdcn-pre', c.pdcn?.prefix || '');
-    safeSetVal('cnt-pdcn-next', c.pdcn?.nextNumber || 1);
-    safeSetVal('cnt-pddn-pre', c.pddn?.prefix || '');
-    safeSetVal('cnt-pddn-next', c.pddn?.nextNumber || 1);
-    safeSetVal('cnt-ldn-pre', c.ldn?.prefix || '');
-    safeSetVal('cnt-ldn-next', c.ldn?.nextNumber || 1);
-    safeSetVal('cnt-lcn-pre', c.lcn?.prefix || '');
-    safeSetVal('cnt-lcn-next', c.lcn?.nextNumber || 1);
-    safeSetVal('cnt-payin-next', c.payin?.nextNumber || 1);
-    safeSetVal('cnt-payout-pre', c.payout?.prefix || '');
-    safeSetVal('cnt-payout-next', c.payout?.nextNumber || 1);
-    safeSetVal('cnt-exp-pre', c.expense?.prefix || '');
-    safeSetVal('cnt-exp-next', c.expense?.nextNumber || 1);
+    setC('cnt-inv-pre', c.invoice?.prefix);
+    setC('cnt-inv-next', c.invoice?.nextNumber);
+    setC('cnt-pur-pre', c.purchase?.prefix);
+    setC('cnt-pur-next', c.purchase?.nextNumber);
+    setC('cnt-scn-pre', c.scn?.prefix || c.saleReturn?.prefix);
+    setC('cnt-scn-next', c.scn?.nextNumber || c.saleReturn?.nextNumber);
+    setC('cnt-pdn-pre', c.pdn?.prefix || c.purchaseReturn?.prefix);
+    setC('cnt-pdn-next', c.pdn?.nextNumber || c.purchaseReturn?.nextNumber);
+    setC('cnt-pdcn-pre', c.pdcn?.prefix);
+    setC('cnt-pdcn-next', c.pdcn?.nextNumber);
+    setC('cnt-pddn-pre', c.pddn?.prefix);
+    setC('cnt-pddn-next', c.pddn?.nextNumber);
+    setC('cnt-ldn-pre', c.ldn?.prefix || c.lossDn?.prefix);
+    setC('cnt-ldn-next', c.ldn?.nextNumber || c.lossDn?.nextNumber);
+    setC('cnt-lcn-pre', c.lcn?.prefix || c.lossCn?.prefix);
+    setC('cnt-lcn-next', c.lcn?.nextNumber || c.lossCn?.nextNumber);
+    setC('cnt-payin-pre', c.payin?.prefix);
+    setC('cnt-payin-next', c.payin?.nextNumber);
+    setC('cnt-payout-pre', c.payout?.prefix);
+    setC('cnt-payout-next', c.payout?.nextNumber);
+    setC('cnt-exp-pre', c.expense?.prefix);
+    setC('cnt-exp-next', c.expense?.nextNumber);
 
-    // Media
-    safeSetVal('set-music-url', companyProfile.musicUrl || '');
-    safeSetVal('set-video-url', companyProfile.videoUrl || '');
-    const volEl = document.getElementById('globalVolume');
-    if (volEl) volEl.value = companyProfile.musicVolume || 0.5;
+    // 5. Media & Branding
+    safeSetVal('set-music-url', s.musicUrl);
+    safeSetVal('set-video-url', s.videoUrl);
+    if (document.getElementById('globalVolume')) document.getElementById('globalVolume').value = s.musicVolume || 0.5;
 
-    // Branding Previews
-    if (companyProfile.logoImage) {
-        document.getElementById('logo-preview').innerHTML = `<img src="${companyProfile.logoImage}" style="max-height:60px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">`;
+    if (s.logoImage) {
+        const logoPreview = document.getElementById('logo-preview');
+        if (logoPreview) { logoPreview.src = s.logoImage; logoPreview.style.display = 'block'; }
     }
-    if (companyProfile.signatureImage) {
-        document.getElementById('signature-preview').innerHTML = `<img src="${companyProfile.signatureImage}" style="max-height:60px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">`;
+    if (s.signatureImage) {
+        const sigPreview = document.getElementById('sig-preview');
+        if (sigPreview) { sigPreview.src = s.signatureImage; sigPreview.style.display = 'block'; }
     }
-    if (companyProfile.referenceInvoiceUrl) {
-        document.getElementById('design-preview-link').innerHTML = `<a href="${companyProfile.referenceInvoiceUrl}" target="_blank" style="color:var(--accent);">📄 View Current Blueprint</a>`;
-        document.getElementById('design-status-badge').innerHTML = `<span class="badge badge-approved">BLUEPRINT LOADED</span>`;
-    } else {
-        document.getElementById('design-status-badge').innerHTML = `<span class="badge" style="background:rgba(239,68,68,0.1); color:#ef4444;">NO BLUEPRINT</span>`;
+    
+    if (s.referenceInvoiceUrl) {
+        const designLink = document.getElementById('design-preview-link');
+        const designBadge = document.getElementById('design-status-badge');
+        if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent);">📄 View Current Blueprint</a>`;
+        if (designBadge) designBadge.innerHTML = `<span class="badge badge-approved">BLUEPRINT LOADED</span>`;
     }
+
+    if (s.scrollingMessage) {
+        safeSetVal('set-msg-text', s.scrollingMessage.text);
+        safeSetVal('set-msg-color', s.scrollingMessage.color);
+        safeSetVal('set-msg-speed', s.scrollingMessage.speed);
+    }
+
+    setInvoiceStyle(s.invoiceStyle || 'classic');
 }
 
 async function saveSettings(e) {
     if (e) e.preventDefault();
     
+    const btn = document.getElementById('save-settings-btn') || (e && e.submitter) || (e && e.target && e.target.querySelector('button[type="submit"]'));
+    const originalHtml = btn ? btn.innerHTML : "SAVE SETTINGS";
+    if (btn) { btn.disabled = true; btn.innerHTML = "⏳ SAVING TO CLOUD..."; }
+
     const counters = {
         invoice: { prefix: safeGetVal('cnt-inv-pre'), nextNumber: Number(safeGetVal('cnt-inv-next')) || 1 },
         purchase: { prefix: safeGetVal('cnt-pur-pre'), nextNumber: Number(safeGetVal('cnt-pur-next')) || 1 },
@@ -285,25 +342,58 @@ async function saveSettings(e) {
     };
 
     const data = {
+        name: safeGetVal('set-name'),
+        tollFree: safeGetVal('set-tollfree'),
+        websites: [safeGetVal('set-web1'), safeGetVal('set-web2')].filter(v => v),
+        emails: [safeGetVal('set-email1'), safeGetVal('set-email2'), safeGetVal('set-email3')].filter(v => v),
+        phones: [safeGetVal('set-phone')].filter(v => v),
+        adminEmail: safeGetVal('set-admin-email'),
+        address: safeGetVal('set-address'),
+        gstNo: safeGetVal('set-gst-no'),
+        panNo: safeGetVal('set-pan-no'),
+        dlNo: safeGetVal('set-dl-no'),
+        fssaiNo: safeGetVal('set-fssai-no'),
+        bankDetails: safeGetVal('set-bank-details'),
+        gstRate: Number(safeGetVal('set-gst-rate')),
+        invoiceTerms: safeGetVal('set-invoice-terms'),
+        cnTerms: safeGetVal('set-cn-terms'),
+        dnTerms: safeGetVal('set-dn-terms'),
+        invoiceBankVisible: document.getElementById('set-invoice-bank-visible')?.checked || false,
+        cnBankVisible: document.getElementById('set-cn-bank-visible')?.checked || false,
+        dnBankVisible: document.getElementById('set-dn-bank-visible')?.checked || false,
+        upiId: safeGetVal('set-upi-id'),
+        bankAccountNo: safeGetVal('set-bank-acc'),
+        bankIfsc: safeGetVal('set-bank-ifsc'),
+        paymentDueDays: Number(safeGetVal('set-payment-due-days')) || 21,
+        defaultPlaceOfSupply: safeGetVal('set-default-supply'),
+        signatureImage: safeGetVal('set-signature-b64'),
+        logoImage: safeGetVal('set-logo-b64'),
         documentCounters: counters,
         musicUrl: safeGetVal('set-music-url'),
         videoUrl: safeGetVal('set-video-url'),
-        musicVolume: Number(document.getElementById('globalVolume')?.value || 0.5)
+        musicVolume: Number(document.getElementById('globalVolume')?.value || 0.5),
+        scrollingMessage: {
+            text: safeGetVal('set-msg-text'),
+            color: safeGetVal('set-msg-color'),
+            speed: Number(safeGetVal('set-msg-speed'))
+        },
+        invoiceStyle: safeGetVal('set-inv-style')
     };
 
     try {
-        const res = await fetch('/api/admin/company', {
-            method: 'PUT',
+        const res = await fetch(`${API_BASE}/admin/settings`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         const result = await res.json();
         if (result.success) {
             alert("✅ Global Settings Saved Successfully!");
-            companyProfile = result.company;
+            companyProfile = result.settings;
             renderSettings();
         }
     } catch (e) { alert("Failed to save settings"); }
+    finally { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } }
 }
 
 // Helper functions removed from here as they are defined at the top of the file.
@@ -453,8 +543,17 @@ async function refreshDashboard() {
             momBadge.style.color = growth >= 0 ? '#10b981' : '#ef4444';
         }
 
+        if (companyProfile && companyProfile.documentCounters) {
+            const dc = companyProfile.documentCounters;
+            if (document.getElementById('stat-payin-count')) {
+                document.getElementById('stat-payin-count').innerText = (dc.payin?.nextNumber || 1) - 1;
+            }
+            if (document.getElementById('stat-payout-count')) {
+                document.getElementById('stat-payout-count').innerText = (dc.payout?.nextNumber || 1) - 1;
+            }
+        }
+
         renderCharts(currentOrders, allOrders);
-        updateDBStats();
     } catch (e) { console.error("Dashboard refresh fail", e); }
 }
 
@@ -1108,160 +1207,7 @@ async function deleteMaster(type, id) {
     } catch (e) { alert("Delete failed"); }
 }
 
-async function loadSettings() {
-    try {
-        const res = await fetch(`${API_BASE}/admin/settings?t=${Date.now()}`, { cache: 'no-store' });
-        const s = await res.json() || {};
-        companyProfile = s;
-        
-        const safeSetCheck = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.checked = !!val;
-        };
 
-        safeSetVal('set-name', s.name);
-        safeSetVal('set-tollfree', s.tollFree);
-        
-        if (s.websites) {
-            safeSetVal('set-web1', s.websites[0]);
-            safeSetVal('set-web2', s.websites[1]);
-        }
-        
-        if (s.emails) {
-            safeSetVal('set-email1', s.emails[0]);
-            safeSetVal('set-email2', s.emails[1]);
-            safeSetVal('set-email3', s.emails[2]);
-        }
-
-        safeSetVal('set-phone', s.phones ? s.phones[0] : '');
-        safeSetVal('set-address', s.address);
-        safeSetVal('set-admin-email', s.adminEmail);
-
-        safeSetVal('set-gst-no', s.gstNo);
-        safeSetVal('set-pan-no', s.panNo);
-        safeSetVal('set-dl-no', s.dlNo);
-        safeSetVal('set-fssai-no', s.fssaiNo);
-        
-        safeSetVal('set-bank-details', s.bankDetails);
-        safeSetVal('set-invoice-terms', s.invoiceTerms);
-        safeSetVal('set-cn-terms', s.cnTerms);
-        safeSetVal('set-dn-terms', s.dnTerms);
-        safeSetVal('set-gst-rate', s.gstRate);
-        
-        safeSetCheck('set-invoice-bank-visible', s.invoiceBankVisible);
-        safeSetCheck('set-cn-bank-visible', s.cnBankVisible);
-        safeSetCheck('set-dn-bank-visible', s.dnBankVisible);
-
-        safeSetVal('set-upi-id', s.upiId);
-        safeSetVal('set-bank-acc', s.bankAccountNo);
-        safeSetVal('set-bank-ifsc', s.bankIfsc);
-        safeSetVal('set-payment-due-days', s.paymentDueDays);
-        safeSetVal('set-default-supply', s.defaultPlaceOfSupply);
-        
-        safeSetVal('set-signature-b64', s.signatureImage);
-        const sigPreview = document.getElementById('sig-preview');
-        if (sigPreview) {
-            if (s.signatureImage) {
-                sigPreview.src = s.signatureImage;
-                sigPreview.style.display = 'block';
-            } else {
-                sigPreview.style.display = 'none';
-            }
-        }
-
-        safeSetVal('set-logo-b64', s.logoImage);
-        const logoPreview = document.getElementById('logo-preview');
-        if (logoPreview) {
-            if (s.logoImage) {
-                logoPreview.src = s.logoImage;
-                logoPreview.style.display = 'block';
-            } else {
-                logoPreview.style.display = 'none';
-            }
-        }
-
-        if (document.getElementById('footer-co-name')) document.getElementById('footer-co-name').innerText = s.name || 'EMYRIS OMS';
-        if (document.getElementById('footer-co-address')) document.getElementById('footer-co-address').innerText = s.address || '';
-        
-        if (s.scrollingMessage) {
-            safeSetVal('set-msg-text', s.scrollingMessage.text);
-            safeSetVal('set-msg-color', s.scrollingMessage.color);
-            safeSetVal('set-msg-speed', s.scrollingMessage.speed);
-        }
-        
-        // Multimedia handled below
-
-        setInvoiceStyle(s.invoiceStyle || 'classic');
-
-        // Sync Volume Slider
-        if (s.musicVolume !== undefined) {
-            const volSlider = document.getElementById('globalVolume');
-            if (volSlider) {
-                volSlider.value = s.musicVolume;
-                if (document.getElementById('volumePercent')) document.getElementById('volumePercent').innerText = `${Math.round(s.musicVolume * 100)}%`;
-                const audio = document.getElementById('bgMusic');
-                if (audio) audio.volume = s.musicVolume;
-            }
-        }
-
-        if (s.musicUrl && s.musicUrl.trim() !== '') {
-            const musicName = s.musicUrl.split('/').pop().split('?')[0];
-            if (document.getElementById('current-music-name')) document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
-            safeSetVal('set-music-url', s.musicUrl);
-            
-            const audio = document.getElementById('bgMusic');
-            if (audio) {
-                const targetSrc = s.musicUrl.startsWith('http') ? s.musicUrl : window.location.origin + s.musicUrl;
-                if (audio.src !== targetSrc) {
-                    audio.src = targetSrc;
-                    audio.load();
-                }
-                audio.volume = s.musicVolume || 0.5;
-                if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
-                    audio.play().catch(() => {});
-                }
-            }
-        }
-
-        if (s.videoUrl && s.videoUrl.trim() !== '') {
-            const videoName = s.videoUrl.split('/').pop().split('?')[0];
-            if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
-            safeSetVal('set-video-url', s.videoUrl);
-        }
-
-        const designBadge = document.getElementById('design-status-badge');
-        const designLink = document.getElementById('design-preview-link');
-        if (s.referenceInvoiceUrl) {
-            if (designBadge) designBadge.innerHTML = '<span class="badge badge-approved" style="font-size:0.6rem;">READY TO MATCH</span>';
-            if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent); text-decoration:none;">📄 View Uploaded Sample</a>`;
-        } else {
-            if (designBadge) designBadge.innerHTML = '<span class="badge badge-pending" style="font-size:0.6rem;">NO SAMPLE</span>';
-            if (designLink) designLink.innerHTML = '';
-        }
-
-        // Remove redundant/incorrect supply sync
-        if (s.defaultPlaceOfSupply) {
-            const supplyEl = document.getElementById('set-default-supply');
-            if (supplyEl) supplyEl.value = s.defaultPlaceOfSupply;
-        }
-
-        // Load Counters
-        if (s.documentCounters) {
-            const dc = s.documentCounters;
-            const setC = (id, val) => { const el = document.getElementById(id); if(el) el.value = (val !== undefined && val !== null) ? val : ''; };
-            if (dc.invoice) { setC('cnt-inv-pre', dc.invoice.prefix); setC('cnt-inv-next', dc.invoice.nextNumber); }
-            if (dc.purchase) { setC('cnt-pur-pre', dc.purchase.prefix); setC('cnt-pur-next', dc.purchase.nextNumber); }
-            if (dc.saleReturn) { setC('cnt-scn-pre', dc.saleReturn.prefix); setC('cnt-scn-next', dc.saleReturn.nextNumber); }
-            if (dc.purchaseReturn) { setC('cnt-pdn-pre', dc.purchaseReturn.prefix); setC('cnt-pdn-next', dc.purchaseReturn.nextNumber); }
-            if (dc.pdcn) { setC('cnt-pdcn-pre', dc.pdcn.prefix); setC('cnt-pdcn-next', dc.pdcn.nextNumber); }
-            if (dc.pddn) { setC('cnt-pddn-pre', dc.pddn.prefix); setC('cnt-pddn-next', dc.pddn.nextNumber); }
-            if (dc.lossDn) { setC('cnt-ldn-pre', dc.lossDn.prefix); setC('cnt-ldn-next', dc.lossDn.nextNumber); }
-            if (dc.lossCn) { setC('cnt-lcn-pre', dc.lossCn.prefix); setC('cnt-lcn-next', dc.lossCn.nextNumber); }
-            if (dc.payin) { setC('cnt-payin-pre', dc.payin.prefix); setC('cnt-payin-next', dc.payin.nextNumber); }
-            if (dc.payout) { setC('cnt-payout-pre', dc.payout.prefix); setC('cnt-payout-next', dc.payout.nextNumber); }
-        }
-    } catch (e) { console.error("Load settings fail", e); }
-}
 
 async function uploadInvoiceDesign() {
     const fileInput = document.getElementById('invoice-design-file');
@@ -1502,122 +1448,7 @@ async function deleteFromMedia(id) {
 }
 
 
-async function saveSettings(e) {
-    if (e) e.preventDefault();
-    
-    // 1. Identify Button & State
-    const btn = document.getElementById('save-settings-btn') || (e && e.submitter) || (e && e.target && e.target.querySelector('button[type="submit"]'));
-    const originalHtml = btn ? btn.innerHTML : "SAVE SETTINGS";
-    
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = "⏳ SAVING TO CLOUD...";
-    }
-    
-    try {
-        // 2. Collect Data
-        let mUrl = document.getElementById('set-music-url') ? document.getElementById('set-music-url').value.trim() : '';
-        let vUrl = document.getElementById('set-video-url') ? document.getElementById('set-video-url').value.trim() : '';
 
-        const fixDrive = (url) => {
-            if (url && url.includes('drive.google.com') && url.includes('/d/')) {
-                const parts = url.split('/d/');
-                if (parts.length > 1) {
-                    const id = parts[1].split('/')[0];
-                    return `https://drive.google.com/uc?export=download&id=${id}`;
-                }
-            }
-            return url;
-        };
-
-        const data = {
-            name: safeGetVal('set-name'),
-
-            tollFree: safeGetVal('set-tollfree'),
-            websites: [
-                safeGetVal('set-web1'),
-                safeGetVal('set-web2')
-            ].filter(v => v),
-            emails: [
-                safeGetVal('set-email1'),
-                safeGetVal('set-email2'),
-                safeGetVal('set-email3')
-            ].filter(v => v),
-            phones: [safeGetVal('set-phone')].filter(v => v),
-            adminEmail: safeGetVal('set-admin-email'),
-            address: safeGetVal('set-address'),
-            gstNo: safeGetVal('set-gst-no'),
-            panNo: safeGetVal('set-pan-no'),
-            dlNo: safeGetVal('set-dl-no'),
-            fssaiNo: safeGetVal('set-fssai-no'),
-            bankDetails: safeGetVal('set-bank-details'),
-            gstRate: Number(safeGetVal('set-gst-rate')),
-            invoiceTerms: safeGetVal('set-invoice-terms'),
-            cnTerms: safeGetVal('set-cn-terms'),
-            dnTerms: safeGetVal('set-dn-terms'),
-            invoiceBankVisible: document.getElementById('set-invoice-bank-visible')?.checked || false,
-            cnBankVisible: document.getElementById('set-cn-bank-visible')?.checked || false,
-            dnBankVisible: document.getElementById('set-dn-bank-visible')?.checked || false,
-            upiId: safeGetVal('set-upi-id'),
-            bankAccountNo: safeGetVal('set-bank-acc'),
-            bankIfsc: safeGetVal('set-bank-ifsc'),
-            paymentDueDays: Number(safeGetVal('set-payment-due-days') || safeGetVal('set-due-days')) || 21,
-            defaultPlaceOfSupply: safeGetVal('set-default-supply'),
-            signatureImage: safeGetVal('set-signature-b64'),
-            logoImage: safeGetVal('set-logo-b64'),
-            scrollingMessage: {
-                text: safeGetVal('set-msg-text'),
-                color: safeGetVal('set-msg-color'),
-                speed: Number(safeGetVal('set-msg-speed'))
-            },
-            invoiceStyle: safeGetVal('set-inv-style'),
-            musicVolume: Number(safeGetVal('globalVolume')),
-            musicUrl: fixDrive(safeGetVal('set-music-url')),
-            videoUrl: fixDrive(safeGetVal('set-video-url')),
-            documentCounters: {
-                invoice: { prefix: document.getElementById('cnt-inv-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-inv-next')?.value || 1) },
-                purchase: { prefix: document.getElementById('cnt-pur-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pur-next')?.value || 1) },
-                saleReturn: { prefix: document.getElementById('cnt-scn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-scn-next')?.value || 1) },
-                purchaseReturn: { prefix: document.getElementById('cnt-pdn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pdn-next')?.value || 1) },
-                pdcn: { prefix: document.getElementById('cnt-pdcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pdcn-next')?.value || 1) },
-                pddn: { prefix: document.getElementById('cnt-pddn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pddn-next')?.value || 1) },
-                lossDn: { prefix: document.getElementById('cnt-ldn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-ldn-next')?.value || 1) },
-                lossCn: { prefix: document.getElementById('cnt-lcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-lcn-next')?.value || 1) },
-                payin: { prefix: document.getElementById('cnt-payin-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-payin-next')?.value || 1) },
-                payout: { prefix: document.getElementById('cnt-payout-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-payout-next')?.value || 1) }
-            }
-        };
-
-        const res = await fetch(`${API_BASE}/admin/settings`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        if (res.ok) {
-            alert("✅ SETTINGS SAVED SUCCESSFULY!\n\nYour changes are now live across all portals.");
-            await loadSettings(); 
-        } else {
-            const errBody = await res.text();
-            let errorMessage = "Server Error";
-            try {
-                const errJson = JSON.parse(errBody);
-                errorMessage = errJson.error || errJson.message || "Server Error";
-            } catch (e) {
-                errorMessage = `HTTP ${res.status}: ${errBody.substring(0, 50)}`;
-            }
-            alert("❌ SAVE FAILED: " + errorMessage);
-        }
-    } catch (e) { 
-        console.error("Save Error:", e);
-        alert("❌ CRITICAL ERROR: " + (e.message || "Could not connect to server. Please check your internet.")); 
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    }
-}
 
 // --- PARTY MASTER LOGIC ---
 
