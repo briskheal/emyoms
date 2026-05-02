@@ -211,6 +211,7 @@ function switchTab(tabId, el, subType = null) {
     }
 
     // 3. Trigger Data Renders
+    if (tabId === 'stockists') renderStockists();
     if (tabId === 'masters') renderMasterLists();
     if (tabId === 'orders') renderOrderHistory();
     if (tabId === 'invoices') renderInvoices();
@@ -2083,22 +2084,32 @@ function renderInvoices() {
     const tbody = document.getElementById('invoiceTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = allInvoices.map(inv => `
+    if (!allInvoices || allInvoices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 2rem;">No invoices found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = allInvoices.map(inv => {
+        const partyName = inv.Stockist?.name || inv.stockistName || 'N/A';
+        const subTotal = Number(inv.subTotal || 0);
+        const gstAmount = Number(inv.gstAmount || 0);
+        const grandTotal = Number(inv.grandTotal || 0);
+        return `
         <tr>
             <td style="font-family:monospace; font-weight:700; color:var(--accent);">${inv.invoiceNo}</td>
-            <td style="font-weight:600;">${inv.stockistName}</td>
+            <td style="font-weight:600;">${partyName}</td>
             <td>${new Date(inv.createdAt).toLocaleDateString('en-GB')}</td>
-            <td style="text-align:right;">₹${inv.subTotal.toLocaleString('en-IN')}</td>
-            <td style="text-align:right;">₹${inv.gstAmount.toLocaleString('en-IN')}</td>
-            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${inv.grandTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:right;">₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right;">₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="downloadInvoicePDF('${inv._id}')">DOWNLOAD PDF</button>
             </td>
             <td style="text-align:center;">
                 <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewInvoicePDF('${inv._id}')" title="View PDF">👁️</button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 async function generateInvoice(orderId) {
