@@ -555,11 +555,11 @@ function renderExcelProducts() {
         const qty = cart[p._id] || '';
         const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
         
-        const masterRate = parseFloat(p.pts) || 0;
-        const currentRate = askingRates[p._id] !== undefined ? parseFloat(askingRates[p._id]) : (locked ? parseFloat(locked.lockedRate) : masterRate);
+        const masterRate = parseFloat(p.pts || 0);
+        const currentRate = askingRates[p._id] !== undefined ? parseFloat(askingRates[p._id]) : (locked ? parseFloat(locked.lockedRate || 0) : masterRate);
         const note = negotiationNotes[p._id] || (locked ? locked.note : '');
         
-        const totalVal = qty ? (qty * currentRate) : 0;
+        const totalVal = Number(qty || 0) * currentRate;
         const totalFormatted = totalVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
         const isWarning = currentRate < masterRate;
@@ -646,9 +646,9 @@ function updateCart(pid, qty, inputEl) {
     // --- SMART PRICING LOGIC ---
     // Use the same priority as the final order: Negotiated > Locked > Master
     const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
-    const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
+    const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? (locked.lockedRate || 0) : (p.pts || p.ptr || 0)));
 
-    const rowTotal = (qty * rate).toFixed(2);
+    const rowTotal = (Number(qty || 0) * Number(rate || 0)).toFixed(2);
     const totalEl = document.getElementById(`total-${pid}`);
     if (totalEl) {
         totalEl.innerText = `₹${parseFloat(rowTotal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -696,19 +696,19 @@ function updateFooter() {
         
         // Use Negotiated Rate for Calculations
         const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
-        const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
+        const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? (locked.lockedRate || 0) : (p.pts || p.ptr || 0)));
         
-        const itemVal = qty * rate;
-        const itemGst = Number(((itemVal * (p.gstPercent || 12)) / 100).toFixed(2));
+        const itemVal = Number(qty || 0) * rate;
+        const itemGst = Number(((itemVal * parseFloat(p.gstPercent || 12)) / 100).toFixed(2));
         
         taxableValue += itemVal;
         gstTotal += itemGst;
         itemCount++;
     });
 
-    const netAmount = (taxableValue || 0) + (gstTotal || 0);
+    const netAmount = Number(taxableValue || 0) + Number(gstTotal || 0);
     const grandTotal = Math.round(netAmount) || 0;
-    const roundOff = (grandTotal - netAmount).toFixed(2);
+    const roundOff = (Number(grandTotal) - Number(netAmount)).toFixed(2);
 
     // Update UI elements
     const taxableEl = document.getElementById('footer-subtotal');

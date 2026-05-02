@@ -2367,11 +2367,11 @@ function updateSaleProductMeta(prodId) {
     // Check for negotiated price
     const partyId = document.getElementById('sale-party').value;
     const party = allStockists.find(s => s._id === partyId);
-    let finalRate = prod.pts || 0;
+    let finalRate = parseFloat(prod.pts || 0);
     
     if (party && party.negotiatedPrices) {
         const neg = party.negotiatedPrices.find(n => n.productId === prodId || n.product === prodId);
-        if (neg) finalRate = neg.lockedRate || neg.price || finalRate;
+        if (neg) finalRate = parseFloat(neg.lockedRate || neg.price || finalRate);
     }
     
     document.getElementById('sale-rate').value = finalRate;
@@ -2387,9 +2387,9 @@ function calculateSaleLineTotal() {
     const rate = Number(document.getElementById('sale-rate').value || 0);
     const gstPct = Number(document.getElementById('sale-gst-pct').value || 0);
     
-    const taxable = qty * rate;
-    const gst = (taxable * gstPct) / 100;
-    const total = taxable + gst;
+    const taxable = Number(qty || 0) * Number(rate || 0);
+    const gst = (taxable * Number(gstPct || 0)) / 100;
+    const total = Number(taxable) + Number(gst);
     
     const el = document.getElementById('sale-line-total');
     if (el) el.innerText = '₹' + total.toLocaleString('en-IN', {minimumFractionDigits: 2});
@@ -2549,8 +2549,12 @@ async function exportGSTR1() {
     } catch (e) { alert("Report export failed"); }
 }
 
+function updateDirectSaleStats() {
+    const totalVal = allProducts.reduce((sum, p) => sum + (Number(p.qtyAvailable || 0) * Number(p.pts || 0)), 0);
+}
+
 function refreshInventoryVal() {
-    const totalVal = allProducts.reduce((sum, p) => sum + ((p.qtyAvailable || 0) * (p.pts || 0)), 0);
+    const totalVal = allProducts.reduce((sum, p) => sum + (Number(p.qtyAvailable || 0) * Number(p.pts || 0)), 0);
     const valEl = document.getElementById('report-inventory-val');
     if (valEl) {
         valEl.innerText = '₹' + totalVal.toLocaleString('en-IN', {
