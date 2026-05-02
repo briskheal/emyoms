@@ -535,7 +535,8 @@
                                 <tr>
                                     <th>Firm Name</th>
                                     <th>Type</th>
-                                    <th>City</th>
+                                    <th>Contact</th>
+                                    <th>HQ / Base</th>
                                     <th style="text-align: right;">Outstanding</th>
                                     <th>Status</th>
                                     <th style="text-align: right;">Actions</th>
@@ -1578,6 +1579,7 @@
                     <div id="party-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🤝 Manage Party Record</div>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="btn btn-ghost" id="btn-party-order" onclick="openDirectOrderFromParty()" style="padding:5px 12px;font-size:0.72rem; border-color: var(--accent); color: var(--accent); display:none;">🛒 NEW DIRECT ORDER</button>
                     <button type="button" class="btn btn-ghost" onclick="closePartyModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Cancel</button>
                     <button type="button" class="btn btn-primary" id="btn-save-party" onclick="document.getElementById('partyForm').requestSubmit()" style="padding:5px 15px;font-size:0.72rem; background: var(--accent);">SAVE & APPROVE</button>
                 </div>

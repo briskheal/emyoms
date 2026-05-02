@@ -747,11 +747,11 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         const { party, items, subTotal, gstAmount, grandTotal } = req.body;
         
         const invoiceNo = await getNextDocNo('invoice');
-        const stockist = await db.Stockist.findByPk(party);
+        const stockist = await db.Stockist.findByPk(parseInt(party));
 
         const newInvoice = await db.Invoice.create({
             invoiceNo,
-            stockistId: party,
+            stockistId: parseInt(party),
             subTotal,
             gstAmount,
             grandTotal,
@@ -759,14 +759,16 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         });
 
         for (const item of items) {
-            const product = await db.Product.findByPk(item.productId);
+            const productId = parseInt(item.productId || item.product);
+            const product = await db.Product.findByPk(productId);
             if (product) {
                 await product.decrement('qtyAvailable', { by: item.qty });
-                const batch = await db.Batch.findOne({ where: { productId: item.productId, batchNo: item.batch } });
+                const batch = await db.Batch.findOne({ where: { productId, batchNo: item.batch } });
                 if (batch) await batch.decrement('qtyAvailable', { by: item.qty });
 
                 await db.InvoiceItem.create({
                     ...item,
+                    productId,
                     invoiceId: newInvoice.id
                 });
             }

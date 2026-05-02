@@ -21,7 +21,10 @@ module.exports = (sequelize, DataTypes) => {
         city: DataTypes.STRING,
         state: DataTypes.STRING,
         pincode: DataTypes.STRING,
-        hq: { type: DataTypes.STRING, defaultValue: "" }
+        hq: { type: DataTypes.STRING, defaultValue: "" },
+        bankName: DataTypes.STRING,
+        bankAccountNo: DataTypes.STRING,
+        bankIfsc: DataTypes.STRING
     }, {
         indexes: [
             { fields: ['loginId'] },

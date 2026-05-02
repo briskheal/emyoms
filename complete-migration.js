@@ -197,6 +197,20 @@ async function completeMigration() {
             }
         }
 
+        // 7. Sync Stockist Billing Details
+        const mongoStockists = await mongoose.connection.db.collection('stockists').find().toArray();
+        console.log(`Syncing billing details for ${mongoStockists.length} Stockists...`);
+        for (const ms of mongoStockists) {
+            const sqlS = await db.Stockist.findOne({ where: { loginId: ms.loginId } });
+            if (sqlS) {
+                await sqlS.update({
+                    bankName: ms.bankName || sqlS.bankName,
+                    bankAccountNo: ms.bankAccountNo || sqlS.bankAccountNo,
+                    bankIfsc: ms.bankIfsc || sqlS.bankIfsc
+                });
+            }
+        }
+
         console.log('✅ MIGRATION COMPLETED!');
         process.exit(0);
     } catch (e) {

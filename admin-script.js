@@ -590,7 +590,8 @@ async function loadStockists(type = '') {
     try {
         const res = await fetch(`${API_BASE}/admin/stockists${type ? `?type=${type}` : ''}`);
         if (!res.ok) throw new Error("HTTP " + res.status);
-        allStockists = await res.json();
+        const data = await res.json();
+        allStockists = data.map(s => ({ ...s, _id: s._id || s.id }));
         renderStockists();
     } catch (e) { console.error("Load parties fail", e); }
 }
@@ -1437,7 +1438,8 @@ function renderStockists(list = null) {
         <tr>
             <td style="font-weight:600; color:#fff;">${s.name}</td>
             <td style="font-size:0.75rem; font-weight:700; color:var(--primary);">${s.partyType || 'STOCKIST'}</td>
-            <td>${s.city || '-'}</td>
+            <td>${s.phone || '-'}</td>
+            <td style="font-size:0.7rem; font-weight:800; color:#f59e0b;">${s.hq || '-'}</td>
             <td style="text-align:right; font-weight:700; color:${(s.outstandingBalance || 0) < 0 ? '#ef4444' : '#10b981'}; font-family:monospace;">₹${(s.outstandingBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}" style="font-size:0.6rem;">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
             <td style="text-align:right; white-space:nowrap;">
@@ -1480,7 +1482,7 @@ function openPartyModal(id = null) {
     document.getElementById('party-id').value = id || '';
     
     if (id) {
-        const s = allStockists.find(x => x._id == id);
+        const s = (allStockists || []).find(x => (x._id == id || x.id == id));
         if (s) {
             document.getElementById('party-name').value = s.name || '';
             document.getElementById('party-type').value = s.partyType || 'STOCKIST';
@@ -1514,6 +1516,10 @@ function openPartyModal(id = null) {
                 document.getElementById('party-modal-title').innerText = "🤝 Update Party Record";
                 document.getElementById('btn-save-party').innerText = "UPDATE RECORD";
                 document.getElementById('btn-save-party').style.background = "var(--primary)";
+                
+                // Show Order Button for approved parties
+                const orderBtn = document.getElementById('btn-party-order');
+                if (orderBtn) orderBtn.style.display = 'inline-flex';
             }
         }
     } else {
@@ -1527,6 +1533,10 @@ function openPartyModal(id = null) {
         const randomPass = Math.random().toString(36).slice(-8).toUpperCase();
         document.getElementById('party-login').value = randomId;
         document.getElementById('party-pass').value = randomPass;
+
+        // Hide Order Button for new/pending parties
+        const orderBtn = document.getElementById('btn-party-order');
+        if (orderBtn) orderBtn.style.display = 'none';
     }
     modal.classList.remove('hidden');
 }
@@ -2303,7 +2313,7 @@ function refreshSaleParties(selectedId = null) {
     
     select.innerHTML = '<option value="">-- Select Party / Customer --</option>' +
         '<option value="NEW" style="color:var(--accent); font-weight:bold; background:rgba(16, 185, 129, 0.1);">➕ [NEW] CREATE NEW CUSTOMER</option>' +
-        allStockists.map(s => `<option value="${s._id}">${s.name} (${s.city})</option>`).join('');
+        (allStockists || []).map(s => `<option value="${s._id || s.id}">${s.name} (${s.city || ''})</option>`).join('');
     
     if (selectedId) {
         select.value = selectedId;
@@ -2311,47 +2321,79 @@ function refreshSaleParties(selectedId = null) {
 }
 
 function openDirectSaleModal(type) {
-    document.getElementById('saleForm').reset();
-    document.getElementById('sale-type-input').value = type;
-    directSaleItems = [];
-    renderSaleItems();
+    try {
+        const form = document.getElementById('saleForm');
+        if (form) form.reset();
+        
+        const typeInput = document.getElementById('sale-type-input');
+        if (typeInput) typeInput.value = type;
+        
+        directSaleItems = [];
+        renderSaleItems();
 
-    // UI Adjustments based on type
-    const title = document.getElementById('sale-modal-title');
-    const subtitle = document.getElementById('sale-modal-subtitle');
-    const channelSelect = document.getElementById('sale-channel');
+        // UI Adjustments based on type
+        const title = document.getElementById('sale-modal-title');
+        const subtitle = document.getElementById('sale-modal-subtitle');
+        const channelSelect = document.getElementById('sale-channel');
 
-    if (type === 'ONLINE') {
-        title.innerText = '🌐 New Online Platform Order';
-        subtitle.innerText = 'ONLINE SALES MODULE';
-        subtitle.style.color = 'var(--primary)';
-        channelSelect.value = 'ONLINE';
-    } else {
-        title.innerText = '🏢 New Direct Company Sale';
-        subtitle.innerText = 'DIRECT SALES MODULE';
-        subtitle.style.color = 'var(--accent)';
-        channelSelect.value = 'DIRECT';
-    }
-
-    // Populate Party Dropdown
-    refreshSaleParties();
-    const select = document.getElementById('sale-party');
-    if (select) {
-        select.onchange = (e) => {
-            if (e.target.value === 'NEW') {
-                openPartyModal();
+        if (title) {
+            if (type === 'ONLINE') {
+                title.innerText = '🌐 New Online Platform Order';
+                if (subtitle) {
+                    subtitle.innerText = 'ONLINE SALES MODULE';
+                    subtitle.style.color = 'var(--primary)';
+                }
+                if (channelSelect) channelSelect.value = 'ONLINE';
+            } else {
+                title.innerText = '🏢 New Direct Company Sale';
+                if (subtitle) {
+                    subtitle.innerText = 'DIRECT SALES MODULE';
+                    subtitle.style.color = 'var(--accent)';
+                }
+                if (channelSelect) channelSelect.value = 'DIRECT';
             }
-        };
-    }
+        }
 
-    // Populate Product Dropdown
-    const prodSelect = document.getElementById('sale-prod-select');
-    if (prodSelect) {
-        prodSelect.innerHTML = '<option value="">-- Select Product --</option>' +
-            allProducts.map(p => `<option value="${p._id}">${p.name}</option>`).join('');
-    }
+        // Populate Party Dropdown
+        refreshSaleParties();
+        const select = document.getElementById('sale-party');
+        if (select) {
+            select.onchange = (e) => {
+                if (e.target.value === 'NEW') {
+                    openPartyModal();
+                }
+            };
+        }
 
-    document.getElementById('directSaleModal').classList.remove('hidden');
+        // Populate Product Dropdown
+        const prodSelect = document.getElementById('sale-prod-select');
+        if (prodSelect) {
+            prodSelect.innerHTML = '<option value="">-- Select Product --</option>' +
+                (allProducts || []).map(p => `<option value="${p._id || p.id}">${p.name}</option>`).join('');
+        }
+
+        document.getElementById('directSaleModal').classList.remove('hidden');
+    } catch (e) {
+        console.error("Error opening Direct Sale modal:", e);
+        alert("Failed to open Order Entry. Please refresh data.");
+    }
+}
+
+function openDirectOrderFromParty() {
+    const partyId = document.getElementById('party-id').value;
+    if (!partyId) return;
+    
+    closePartyModal();
+    openDirectSaleModal('DIRECT');
+    
+    // Set the party in the sale modal after it opens
+    setTimeout(() => {
+        const select = document.getElementById('sale-party');
+        if (select) {
+            select.value = partyId;
+            updateSalePartyContext();
+        }
+    }, 100);
 }
 
 function closeSaleModal() {
