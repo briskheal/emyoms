@@ -587,7 +587,11 @@ async function loadProducts() {
         const res = await fetch(`${API_BASE}/products`);
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        allProducts = data.map(p => ({ ...p, _id: p._id || p.id }));
+        allProducts = data.map(p => ({ 
+            ...p, 
+            _id: p._id || p.id,
+            batches: (p.batches || []).map(b => ({ ...b, _id: b._id || b.id }))
+        }));
         renderProducts();
         updateDatalists();
     } catch (e) { 
@@ -1262,6 +1266,9 @@ async function fetchMediaLibrary() {
                 <div style="font-size: 0.75rem; color: #fff; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.name}">
                     ${item.name}
                 </div>
+                <div style="margin-bottom: 8px;">
+                    <input type="text" readonly value="${item.url}" style="width:100%; font-size:0.6rem; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); color:var(--accent); padding:2px 5px; border-radius:4px;" onclick="this.select(); document.execCommand('copy'); alert('Link Copied!')">
+                </div>
                 <div style="display: flex; gap: 5px;">
                     <button class="btn btn-primary" style="flex:1; padding: 4px; font-size: 0.6rem;" onclick="selectFromLibrary('${item.url}', '${item.type}')">ACTIVATE</button>
                     <button class="btn btn-ghost" style="padding: 4px; font-size: 0.6rem; color: #ef4444;" onclick="deleteFromMedia('${item._id}')">🗑️</button>
@@ -1272,10 +1279,23 @@ async function fetchMediaLibrary() {
 }
 
 function selectFromLibrary(url, type) {
-    const inputId = type === 'music' ? 'set-music-url' : 'set-video-url';
-    if (document.getElementById(inputId)) {
-        document.getElementById(inputId).value = url;
-        alert(`✅ ${type.toUpperCase()} link updated from library! Click SAVE to apply.`);
+    let inputId = '';
+    if (type === 'music') inputId = 'set-music-url';
+    else if (type === 'video') inputId = 'set-video-url';
+    else if (type === 'document') inputId = 'invoice-design-file';
+
+    if (inputId && document.getElementById(inputId)) {
+        if (type === 'document') {
+            companyProfile.referenceInvoiceUrl = url;
+            const designBadge = document.getElementById('design-status-badge');
+            if (designBadge) designBadge.innerHTML = '<span class="badge badge-approved" style="font-size:0.6rem;">READY (FROM LIBRARY)</span>';
+            const designLink = document.getElementById('design-preview-link');
+            if (designLink) designLink.innerHTML = `<a href="${url}" target="_blank" style="color:var(--accent); text-decoration:none;">📄 View Selected Blueprint</a>`;
+            alert(`✅ BLUEPRINT selected from library! Click SAVE ALL CHANGES below to finalize.`);
+        } else {
+            document.getElementById(inputId).value = url;
+            alert(`✅ ${type.toUpperCase()} link updated from library! Click SAVE to apply.`);
+        }
     }
 }
 
@@ -1292,7 +1312,7 @@ async function saveSettings(e) {
     if (e) e.preventDefault();
     
     // 1. Identify Button & State
-    const btn = document.getElementById('save-settings-btn');
+    const btn = document.getElementById('save-settings-btn') || (e && e.submitter) || (e && e.target && e.target.querySelector('button[type="submit"]'));
     const originalHtml = btn ? btn.innerHTML : "SAVE SETTINGS";
     
     if (btn) {
@@ -1347,8 +1367,8 @@ async function saveSettings(e) {
             upiId: safeGetVal('set-upi-id'),
             bankAccountNo: safeGetVal('set-bank-acc'),
             bankIfsc: safeGetVal('set-bank-ifsc'),
-            paymentDueDays: Number(safeGetVal('set-payment-due-days')) || 21,
-            defaultPlaceOfSupply: safeGetVal('set-supply'),
+            paymentDueDays: Number(safeGetVal('set-payment-due-days') || safeGetVal('set-due-days')) || 21,
+            defaultPlaceOfSupply: safeGetVal('set-default-supply'),
             signatureImage: safeGetVal('set-signature-b64'),
             logoImage: safeGetVal('set-logo-b64'),
             scrollingMessage: {
@@ -2425,11 +2445,13 @@ function updateSaleProductMeta(prodId) {
     const batchSelect = document.getElementById('sale-batch-select');
     if (batchSelect) {
         batchSelect.innerHTML = '<option value="">-- Select Batch --</option>' +
-            (prod.batches || []).filter(b => b.qtyAvailable > 0).map(b => {
+            (prod.batches || []).map(b => {
                 const info = checkBatchStatus(b.expDate);
+                const isOutOfStock = (b.qtyAvailable || 0) <= 0;
                 const disabled = info.status === 'expired' ? 'disabled' : '';
-                const color = info.status === 'expired' ? '#ef4444' : (info.status === 'near' ? '#f59e0b' : '');
-                return `<option value="${b.batchNo}" ${disabled} style="color:${color}">${b.batchNo} (Qty: ${b.qtyAvailable}${info.label})</option>`;
+                const color = info.status === 'expired' ? '#ef4444' : (info.status === 'near' ? '#f59e0b' : (isOutOfStock ? '#6b7280' : ''));
+                const stockLabel = isOutOfStock ? ' [OUT OF STOCK]' : ` (Qty: ${b.qtyAvailable}${info.label})`;
+                return `<option value="${b.batchNo}" ${disabled} style="color:${color}">${b.batchNo}${stockLabel}</option>`;
             }).join('');
     }
 
@@ -3246,10 +3268,10 @@ function numberToWords(num) {
 }
 
 async function generateStandardPDF({ 
-    title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = "Document.pdf"
+    doc: passedDoc, title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = "Document.pdf"
 }) {
     const { jsPDF } = window.jspdf || window;
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const doc = passedDoc || new jsPDF('p', 'mm', 'a4');
     const style = (companyProfile && companyProfile.invoiceStyle) || 'classic';
 
     if (style === 'sample') {
@@ -3349,17 +3371,22 @@ async function viewInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id == id);
         if (!inv) return alert("Invoice not found");
-        const party = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
+        const partyData = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
             { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
         ];
-        const doc = new jspdf.jsPDF();
+        const doc = new jspdf.jsPDF('p', 'mm', 'a4');
         await generateStandardPDF({
             doc, title: "TAX INVOICE", docNo: inv.invoiceNo, date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
-            party: { name: inv.stockistName, address: party.address, gst: party.gstNo || party.gst, dl: party.dlNo || party.dl },
-            items: inv.items.map(it => ({ ...it, price: it.priceUsed })),
-            grandTotal: inv.grandTotal, extraFields
+            party: { 
+                name: inv.stockist?.name || inv.stockistName || 'Direct Customer', 
+                address: partyData.address || '', 
+                gst: partyData.gstNo || partyData.gst || '', 
+                dl: partyData.dlNo || partyData.dl || '' 
+            },
+            items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
+            grandTotal: Number(inv.grandTotal || 0), extraFields
         });
         window.open(doc.output('bloburl'), '_blank');
     } catch (e) { alert("View failed"); }
@@ -3369,16 +3396,21 @@ async function downloadInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id == id);
         if (!inv) return alert("Invoice not found");
-        const party = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
+        const partyData = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
             { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
         ];
         await generateStandardPDF({
             title: "TAX INVOICE", docNo: inv.invoiceNo, date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
-            party: { name: inv.stockistName, address: party.address, gst: party.gstNo || party.gst, dl: party.dlNo || party.dl },
-            items: inv.items.map(it => ({ ...it, price: it.priceUsed })),
-            grandTotal: inv.grandTotal, extraFields, filename: `Invoice_${inv.invoiceNo}.pdf`
+            party: { 
+                name: inv.stockist?.name || inv.stockistName || 'Direct Customer', 
+                address: partyData.address || '', 
+                gst: partyData.gstNo || partyData.gst || '', 
+                dl: partyData.dlNo || partyData.dl || '' 
+            },
+            items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
+            grandTotal: Number(inv.grandTotal || 0), extraFields, filename: `Invoice_${inv.invoiceNo}.pdf`
         });
     } catch (e) { alert("Download failed"); }
 }
