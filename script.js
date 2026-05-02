@@ -580,14 +580,14 @@ function renderExcelProducts() {
                 <td style="text-align: center;">
                     <input type="number" class="negotiation-input ${isWarning ? 'price-warning' : ''}" 
                         value="${currentRate}" 
-                        oninput="updateRate('${p._id}', this.value, ${masterRate})"
+                        oninput="updateRate('${pId}', this.value, ${masterRate})"
                         title="Master PTS: ₹${masterRate}">
                 </td>
                 <td style="text-align: center;">
                     <input type="text" class="note-input" 
                         value="${note}" 
                         placeholder="Auth Details..."
-                        oninput="updateNote('${p._id}', this.value)">
+                        oninput="updateNote('${pId}', this.value)">
                 </td>
                 <td style="text-align: center; color: #ffffff; font-weight: 600;">${p.gstPercent}%</td>
                 <td style="text-align: center;">
@@ -748,8 +748,8 @@ async function placeOrder() {
 
     // Validate negotiation notes
     for (const pid of Object.keys(cart)) {
-        const p = allProducts.find(x => x._id === pid);
-        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const p = allProducts.find(x => (x._id || x.id) === pid);
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === (p._id || p.id) || n.product === (p._id || p.id)) && new Date(n.expiryDate) > new Date());
         const rate = parseFloat(askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || p.ptr || 0)));
         
         if (rate < parseFloat(p.pts || 0) && !negotiationNotes[pid] && !(locked && locked.note)) {
@@ -765,13 +765,13 @@ async function placeOrder() {
     btn.innerHTML = `⏳ PLACING ORDER...`;
 
     const orderItems = pids.map(pid => {
-        const p = allProducts.find(x => x._id === pid);
+        const p = allProducts.find(x => (x._id || x.id) === pid);
         const qty = cart[pid];
-        const locked = currentUser?.negotiatedPrices?.find(n => n.productId === p._id && new Date(n.expiryDate) > new Date());
+        const locked = currentUser?.negotiatedPrices?.find(n => (n.productId === (p._id || p.id) || n.product === (p._id || p.id)) && new Date(n.expiryDate) > new Date());
         const rate = askingRates[pid] !== undefined ? askingRates[pid] : (locked ? locked.lockedRate : (p.pts || 0));
         
         return {
-            product: pid, // Corrected from productId to match schema
+            productId: pid,
             name: p.name,
             qty: qty,
             bonusQty: manualBonuses[pid] !== undefined ? manualBonuses[pid] : (p.bonusScheme && qty >= p.bonusScheme.buy ? Math.floor(qty / p.bonusScheme.buy) * p.bonusScheme.get : 0),

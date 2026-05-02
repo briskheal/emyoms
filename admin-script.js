@@ -504,7 +504,7 @@ function renderCharts(currentMonthOrders, totalOrders) {
 
     totalOrders.filter(o => o.status === 'approved').forEach(o => {
         o.items.forEach(item => {
-            const prod = allProducts.find(p => p._id === item.product);
+            const prod = allProducts.find(p => (p._id || p.id) === (item.productId || item.product));
             // Normalize Group Name: Remove spaces/dashes and uppercase (e.g. "Group 1" -> "GROUP1")
             let rawGroup = (prod && prod.group) ? prod.group.toUpperCase().replace(/[\s-]/g, '') : 'GENERAL';
             
@@ -576,7 +576,8 @@ async function loadProducts() {
     try {
         const res = await fetch(`${API_BASE}/products`);
         if (!res.ok) throw new Error("HTTP " + res.status);
-        allProducts = await res.json();
+        const data = await res.json();
+        allProducts = data.map(p => ({ ...p, _id: p._id || p.id }));
         renderProducts();
         updateDatalists();
     } catch (e) { 
@@ -1760,7 +1761,8 @@ function viewOrderDetails(id) {
     itemsBody.innerHTML = o.items.map(item => {
         const isNegotiated = item.askingRate && item.askingRate !== item.masterRate;
         
-        const p = allProducts.find(pr => pr._id === item.product) || { batches: [] };
+        const pId = item.productId || item.product; // Handle both mapping variants
+        const p = allProducts.find(pr => (pr._id || pr.id) === pId) || { batches: [] };
         let batchCellHtml = '';
         if (o.status === 'pending') {
             const reqQty = (item.qty || 0) + (item.bonusQty || 0);
@@ -1791,11 +1793,12 @@ function viewOrderDetails(id) {
                 <td style="text-align:center;">
                     <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
                         value="${item.priceUsed.toFixed(2)}" 
+                        oninput="updateModalTotals('${o._id}', '${item._id}')"
                         style="width: 70px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 3px; font-size: 0.75rem;">
                 </td>
                 <td style="text-align:center; font-weight:800; color: #fff;">${item.qty}</td>
                 <td style="text-align:center; color:var(--accent); font-weight:800; font-size: 0.75rem;">+${item.bonusQty || 0}</td>
-                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;">₹${item.totalValue.toFixed(2)}</td>
+                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${item.totalValue.toFixed(2)}</td>
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
                         <div style="display:flex; gap:4px; justify-content:center;">
@@ -1896,6 +1899,42 @@ function viewOrderDetails(id) {
     }
 
     document.getElementById('orderDetailModal').classList.remove('hidden');
+}
+
+function updateModalTotals(orderId, triggerItemId) {
+    const o = allOrders.find(x => x._id === orderId);
+    if (!o) return;
+
+    let subTotal = 0;
+    let gstAmount = 0;
+
+    o.items.forEach(item => {
+        const rateInput = document.getElementById(`rate-${orderId}-${item._id}`);
+        const rate = rateInput ? parseFloat(rateInput.value || 0) : item.priceUsed;
+        const lineTotal = Number(rate) * Number(item.qty);
+        
+        const lineTotalEl = document.getElementById(`linetotal-${orderId}-${item._id}`);
+        if (lineTotalEl) lineTotalEl.innerText = `₹${lineTotal.toFixed(2)}`;
+        
+        const itemGst = (lineTotal * (item.gstPercent || 12)) / 100;
+        subTotal += lineTotal;
+        gstAmount += itemGst;
+    });
+
+    const netAmount = subTotal + gstAmount;
+    const grandTotal = Math.round(netAmount);
+    const roundOff = (grandTotal - netAmount).toFixed(2);
+
+    // Update Modal Summary Fields
+    document.getElementById('detail-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-roundoff').innerText = `₹${roundOff}`;
+    document.getElementById('detail-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+    // Update Sticky Strip if present
+    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 async function rejectOrder(id) {
