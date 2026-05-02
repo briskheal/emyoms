@@ -598,12 +598,12 @@ async function loadStockists(type = '') {
 async function loadMasters() {
     try {
         const [cats, hsns, gst, groups, hq, expCats] = await Promise.all([
-            fetch(`${API_BASE}/admin/categories`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/hsns`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/gst`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/groups`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/masters/hq`).then(r => r.json()),
-            fetch(`${API_BASE}/admin/expenseCategories`).then(r => r.json())
+            fetch(`${API_BASE}/categories`).then(r => r.json()),
+            fetch(`${API_BASE}/hsns`).then(r => r.json()),
+            fetch(`${API_BASE}/gst`).then(r => r.json()),
+            fetch(`${API_BASE}/groups`).then(r => r.json()),
+            fetch(`${API_BASE}/hq`).then(r => r.json()),
+            fetch(`${API_BASE}/expense-categories`).then(r => r.json())
         ]);
         window.masters = { categories: cats, hsns, gst, groups, hq, expenseCategories: expCats };
 
@@ -851,8 +851,8 @@ function renderMasterLists() {
     render('master-group-list', window.masters.groups, 'name', 'groups');
     render('master-hsn-list', window.masters.hsns, 'code', 'hsns');
     render('master-gst-list', window.masters.gst, 'rate', 'gst');
-    render('master-hq-list', window.masters.hq || [], 'name', 'masters/hq');
-    render('master-exp-cat-list', window.masters.expenseCategories || [], 'name', 'expenseCategories');
+    render('master-hq-list', window.masters.hq || [], 'name', 'hq');
+    render('master-exp-cat-list', window.masters.expenseCategories || [], 'name', 'expense-categories');
 }
 
 
@@ -901,7 +901,7 @@ async function addMaster(type) {
     }
 
     try {
-        const endpoint = type === 'hq' ? `${API_BASE}/admin/masters/hq` : `${API_BASE}/admin/${type}`;
+        const endpoint = `${API_BASE}/admin/${type === 'expense-categories' ? 'expense-categories' : type}`;
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -926,7 +926,7 @@ async function addMaster(type) {
 async function deleteMaster(type, id) {
     if (!confirm("Delete this master entry?")) return;
     try {
-        const endpoint = type.includes('/') ? `${API_BASE}/api/admin/${type}/${id}` : `${API_BASE}/admin/${type}/${id}`;
+        const endpoint = `${API_BASE}/admin/${type}/${id}`;
         await fetch(endpoint, { method: 'DELETE' });
         loadMasters();
     } catch (e) { alert("Delete failed"); }

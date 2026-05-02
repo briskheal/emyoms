@@ -37,6 +37,7 @@ db.FinancialNote = require('./financialNote')(sequelize, DataTypes);
 db.Payment = require('./payment')(sequelize, DataTypes);
 db.ExpenseCategory = require('./expenseCategory')(sequelize, DataTypes);
 db.Expense = require('./expense')(sequelize, DataTypes);
+db.Media = require('./media')(sequelize, DataTypes);
 
 // Define Relationships
 db.Product.hasMany(db.Batch, { as: 'batches', foreignKey: 'productId' });

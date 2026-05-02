@@ -307,6 +307,105 @@ app.post('/api/stockist/forgot-id-pw', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// --- GLOBAL MASTERS ---
+
+const addIdAlias = (data) => {
+    if (Array.isArray(data)) return data.map(item => ({ ...item.toJSON(), _id: item.id }));
+    if (data && data.toJSON) return { ...data.toJSON(), _id: data.id };
+    return data;
+};
+
+app.get('/api/categories', async (req, res) => {
+    try {
+        const data = await db.Category.findAll();
+        res.json(addIdAlias(data));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/categories', async (req, res) => {
+    try {
+        const item = await db.Category.create(req.body);
+        res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/categories/:id', async (req, res) => {
+    try {
+        await db.Category.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/hsns', async (req, res) => {
+    try {
+        const data = await db.HSN.findAll();
+        res.json(addIdAlias(data));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/hsns', async (req, res) => {
+    try {
+        const item = await db.HSN.create(req.body);
+        res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/gst', async (req, res) => {
+    try {
+        const data = await db.GST.findAll();
+        res.json(addIdAlias(data));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/gst', async (req, res) => {
+    try {
+        const item = await db.GST.create(req.body);
+        res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/groups', async (req, res) => {
+    try {
+        const data = await db.Group.findAll();
+        res.json(addIdAlias(data));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/groups', async (req, res) => {
+    try {
+        const item = await db.Group.create(req.body);
+        res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/hq', async (req, res) => {
+    try {
+        const data = await db.HQ.findAll();
+        res.json(addIdAlias(data));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/hq', async (req, res) => {
+    try {
+        const item = await db.HQ.create(req.body);
+        res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/expense-categories', async (req, res) => {
+    try {
+        const data = await db.ExpenseCategory.findAll();
+        res.json(addIdAlias(data));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/expense-categories', async (req, res) => {
+    try {
+        const item = await db.ExpenseCategory.create(req.body);
+        res.json({ success: true, item: addIdAlias(item) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- PRODUCT MANAGEMENT ---
 
 app.get('/api/products', async (req, res) => {
@@ -377,12 +476,17 @@ app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => 
             folder: 'emyris_media'
         });
 
-        // Update company profile
+        // Update company profile & Save to Media Library
         const settings = await db.Company.findOne();
         if (settings) {
             if (type === 'music') await settings.update({ musicUrl: result.secure_url });
             else if (type === 'video') await settings.update({ videoUrl: result.secure_url });
         }
+        await db.Media.create({
+            name: req.file.originalname,
+            url: result.secure_url,
+            type: type || 'document'
+        });
 
         // Clean up local file
         fs.unlinkSync(req.file.path);
@@ -408,9 +512,30 @@ app.post('/api/admin/settings/upload-design', docUpload.single('design'), async 
             await settings.update({ referenceInvoiceUrl: result.secure_url });
         }
 
+        await db.Media.create({
+            name: req.file.originalname,
+            url: result.secure_url,
+            type: 'document'
+        });
+
         fs.unlinkSync(req.file.path);
         res.json({ success: true, url: result.secure_url });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// --- MEDIA LIBRARY ENDPOINTS ---
+app.get('/api/admin/media', async (req, res) => {
+    try {
+        const media = await db.Media.findAll({ order: [['createdAt', 'DESC']] });
+        res.json(media);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/media/:id', async (req, res) => {
+    try {
+        await db.Media.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Orders
