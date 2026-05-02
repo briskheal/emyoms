@@ -347,7 +347,13 @@ async function updateDBStats() {
 async function loadOrders() {
     try {
         const res = await fetch(`${API_BASE}/admin/orders`);
-        allOrders = await res.json();
+        const data = await res.json();
+        allOrders = data.map(o => ({ 
+            ...o, 
+            _id: o._id || o.id,
+            stockist: o.stockist || o.Stockist, // Normalize Sequelize capitalized include
+            items: (o.items || []).map(i => ({ ...i, _id: i._id || i.id, productId: i.productId || i.product }))
+        }));
         renderOrderHistory();
     } catch (e) { console.error("Load orders fail"); }
 }
@@ -355,7 +361,12 @@ async function loadOrders() {
 async function loadInvoices() {
     try {
         const res = await fetch(`${API_BASE}/admin/invoices`);
-        allInvoices = await res.json();
+        const data = await res.json();
+        allInvoices = data.map(inv => ({
+            ...inv,
+            _id: inv._id || inv.id,
+            stockist: inv.stockist || inv.Stockist
+        }));
         renderInvoices();
     } catch (e) { console.error("Load invoices fail"); }
 }
@@ -2098,7 +2109,7 @@ function renderInvoices() {
     }
 
     tbody.innerHTML = allInvoices.map(inv => {
-        const partyName = inv.Stockist?.name || inv.stockistName || 'N/A';
+        const partyName = inv.stockist?.name || inv.stockistName || 'N/A';
         const subTotal = Number(inv.subTotal || 0);
         const gstAmount = Number(inv.gstAmount || 0);
         const grandTotal = Number(inv.grandTotal || 0);
@@ -2542,7 +2553,7 @@ async function saveDirectSale(e) {
         dueDate: document.getElementById('sale-due-date').value,
         items: directSaleItems,
         subTotal: Number(document.getElementById('sale-subtotal').innerText.replace(/[^\d.]/g, '')),
-        gstAmount: Number(document.getElementById('sale-gst').innerText.replace(/[^\d.]/g, '')),
+        gstAmount: Number(document.getElementById('sale-gst-total').innerText.replace(/[^\d.]/g, '')),
         grandTotal: Number(document.getElementById('sale-total').innerText.replace(/[^\d.]/g, '')),
         type: document.getElementById('sale-type-input').value
     };
@@ -2641,7 +2652,13 @@ function updateStats() {
 async function loadFinancialNotes() {
     try {
         const res = await fetch('/api/admin/financial-notes');
-        allNotes = await res.json();
+        const data = await res.json();
+        allNotes = data.map(n => ({
+            ...n,
+            _id: n._id || n.id,
+            stockist: n.stockist || n.Stockist,
+            partyName: n.partyName || (n.stockist || n.Stockist)?.name || 'Direct Customer'
+        }));
         renderFinancialNotes();
     } catch (e) { console.error("Load notes fail", e); }
 }
@@ -3866,7 +3883,13 @@ async function deleteFailedEmail(id) {
 async function loadPayments() {
     try {
         const res = await fetch(`${API_BASE}/admin/payments`);
-        allPayments = await res.json();
+        const data = await res.json();
+        allPayments = data.map(p => ({
+            ...p,
+            _id: p._id || p.id,
+            stockist: p.stockist || p.Stockist,
+            partyName: p.partyName || (p.stockist || p.Stockist)?.name || 'Direct Customer'
+        }));
         if (allPayments) renderPayments();
     } catch (e) { console.error("Error loading payments:", e); }
 }

@@ -924,6 +924,16 @@ app.post('/api/admin/payments', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/admin/payments', async (req, res) => {
+    try {
+        const payments = await db.Payment.findAll({ 
+            include: [{ model: db.Stockist }],
+            order: [['date', 'DESC']]
+        });
+        res.json(payments);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/expenses', async (req, res) => {
     try {
         const expenses = await db.Expense.findAll({ include: [{ model: db.ExpenseCategory }] });
