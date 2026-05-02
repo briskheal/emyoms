@@ -7,6 +7,10 @@ const safeGetVal = (id) => {
     const el = document.getElementById(id);
     return el ? el.value.trim() : '';
 };
+const safeSetVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = (val !== undefined && val !== null) ? val : '';
+};
 
 function toggleSidebar() {
     if (!window.matchMedia('(max-width: 1024px)').matches) return; 
@@ -1029,11 +1033,7 @@ async function loadSettings() {
             safeSetVal('set-msg-speed', s.scrollingMessage.speed);
         }
         
-        safeSetVal('set-video-url', s.videoUrl);
-        if (s.videoUrl) {
-            const vidName = s.videoUrl.split('/').pop();
-            if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${vidName}`;
-        }
+        // Multimedia handled below
 
         setInvoiceStyle(s.invoiceStyle || 'classic');
 
@@ -1074,19 +1074,25 @@ async function loadSettings() {
         }
 
         const designBadge = document.getElementById('design-status-badge');
+        const designLink = document.getElementById('design-preview-link');
         if (s.referenceInvoiceUrl) {
             if (designBadge) designBadge.innerHTML = '<span class="badge badge-approved" style="font-size:0.6rem;">READY TO MATCH</span>';
             if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent); text-decoration:none;">📄 View Uploaded Sample</a>`;
         } else {
             if (designBadge) designBadge.innerHTML = '<span class="badge badge-pending" style="font-size:0.6rem;">NO SAMPLE</span>';
+            if (designLink) designLink.innerHTML = '';
         }
 
-        if (companyProfile.defaultPlaceOfSupply) document.getElementById('set-supply').value = companyProfile.defaultPlaceOfSupply;
+        // Remove redundant/incorrect supply sync
+        if (s.defaultPlaceOfSupply) {
+            const supplyEl = document.getElementById('set-default-supply');
+            if (supplyEl) supplyEl.value = s.defaultPlaceOfSupply;
+        }
 
         // Load Counters
         if (s.documentCounters) {
             const dc = s.documentCounters;
-            const setC = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+            const setC = (id, val) => { const el = document.getElementById(id); if(el) el.value = (val !== undefined && val !== null) ? val : ''; };
             if (dc.invoice) { setC('cnt-inv-pre', dc.invoice.prefix); setC('cnt-inv-next', dc.invoice.nextNumber); }
             if (dc.purchase) { setC('cnt-pur-pre', dc.purchase.prefix); setC('cnt-pur-next', dc.purchase.nextNumber); }
             if (dc.saleReturn) { setC('cnt-scn-pre', dc.saleReturn.prefix); setC('cnt-scn-next', dc.saleReturn.nextNumber); }
@@ -3481,7 +3487,8 @@ function setInvoiceStyle(style) {
     const colors = {
         classic: { border: '2px solid var(--primary)', shadow: '0 0 20px rgba(99,102,241,0.3)', bg: 'rgba(99,102,241,0.05)' },
         modern:  { border: '2px solid #10b981', shadow: '0 0 20px rgba(16,185,129,0.3)', bg: 'rgba(16,185,129,0.05)' },
-        compact: { border: '2px solid #f59e0b', shadow: '0 0 20px rgba(245,158,11,0.3)', bg: 'rgba(245,158,11,0.05)' }
+        compact: { border: '2px solid #f59e0b', shadow: '0 0 20px rgba(245,158,11,0.3)', bg: 'rgba(245,158,11,0.05)' },
+        sample:  { border: '2px solid var(--accent)', shadow: '0 0 20px rgba(16,185,129,0.3)', bg: 'rgba(16,185,129,0.05)' }
     };
     styles.forEach(s => {
         const card = document.getElementById(`specimen-${s}`);

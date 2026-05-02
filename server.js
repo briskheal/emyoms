@@ -495,11 +495,20 @@ app.get('/api/admin/settings', async (req, res) => {
 
 app.post('/api/admin/settings', async (req, res) => {
     try {
+        console.log("Settings Update Payload:", JSON.stringify(req.body, null, 2));
         let settings = await db.Company.findOne();
-        if (!settings) settings = await db.Company.create(req.body);
-        else await settings.update(req.body);
+        if (!settings) {
+            settings = await db.Company.create(req.body);
+            console.log("Settings created successfully");
+        } else {
+            await settings.update(req.body);
+            console.log("Settings updated successfully");
+        }
         res.json({ success: true, settings });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        console.error("Settings Update Fail:", e);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 // --- STOCKIST MANAGEMENT ---
