@@ -1649,13 +1649,16 @@
                     <textarea id="party-address" rows="2" style="min-height: 60px; font-size: 0.8rem;"></textarea>
                 </div>
 
-                <!-- ACCOUNTING / HIDDEN -->
+                <!-- BANKING DETAILS -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                    <div class="form-group"><label>Bank Name</label><input type="text" id="party-bank-name" placeholder="Bank Name"></div>
+                    <div class="form-group"><label>Account Number</label><input type="text" id="party-bank-acc" placeholder="Account No"></div>
+                    <div class="form-group"><label>IFSC Code</label><input type="text" id="party-bank-ifsc" placeholder="IFSC Code"></div>
+                </div>
+
                 <div style="display: none;">
                     <input type="number" id="party-limit" value="50000">
                     <input type="number" id="party-balance" value="0">
-                    <input type="text" id="party-bank-name">
-                    <input type="text" id="party-bank-acc">
-                    <input type="text" id="party-bank-ifsc">
                 </div>
 
                 <div style="padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: flex-end; gap: 1rem;">
@@ -1755,6 +1758,27 @@
                 <button class="btn btn-primary" id="detail-approve-btn" style="flex: 2; justify-content: center;">✅ APPROVE ORDER</button>
                 <button class="btn" id="detail-invoice-btn" style="flex: 2; background: var(--accent); color: #fff; justify-content: center; display: none;">🧾 GENERATE INVOICE</button>
                 <button class="btn" id="detail-download-btn" style="flex: 2; background: #6366f1; color: #fff; justify-content: center; display: none;">📥 DOWNLOAD PDF</button>
+            </div>
+
+            <!-- FIXED CALCULATION STRIP -->
+            <div id="order-calc-strip" style="position: sticky; bottom: -2rem; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--primary); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">TOTAL ITEMS:</span>
+                    <span id="strip-order-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
+                </div>
+                <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">TAXABLE:</span>
+                    <span id="strip-order-subtotal" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
+                    <span id="strip-order-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="margin-left: auto; background: var(--primary); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 0.7rem; font-weight: 900; color: #fff; letter-spacing: 1px;">ORDER VALUE:</span>
+                    <span id="strip-order-total" style="font-size: 1.2rem; font-weight: 900; color: #fff;">₹0.00</span>
+                </div>
             </div>
         </div>
     </div>
@@ -2125,7 +2149,7 @@
 
     <!-- MODAL (Direct Sales / Online & Direct) -->
     <div id="directSaleModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 1300px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--accent);">
+        <div class="glass-card" style="width: 1300px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem 5rem 2rem; border-top: 4px solid var(--accent); position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
                 <div>
                     <div id="sale-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">DIRECT SALES MODULE</div>
@@ -2140,7 +2164,7 @@
                 <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
                     <div class="form-group">
                         <label>Select Party / Customer</label>
-                        <select id="sale-party" required></select>
+                        <select id="sale-party" required onchange="updateSalePartyContext()"></select>
                         <div style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted);">
                             * For Online Orders, select 'Online Customer' or appropriate party.
                         </div>
@@ -2190,15 +2214,19 @@
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Rate (Ex. GST)</label>
-                            <input type="number" id="sale-rate" step="0.01" placeholder="0.00">
+                            <input type="number" id="sale-rate" step="0.01" placeholder="0.00" oninput="calculateSaleLineTotal()">
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Qty</label>
-                            <input type="number" id="sale-qty" placeholder="0">
+                            <input type="number" id="sale-qty" placeholder="0" oninput="calculateSaleLineTotal()">
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">GST %</label>
                             <input type="number" id="sale-gst-pct" readonly style="background: rgba(0,0,0,0.2); opacity: 0.7;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem; color: var(--accent);">Line Total</label>
+                            <div id="sale-line-total" style="font-weight: 800; color: #fff; font-size: 1rem; padding: 10px 0;">₹0.00</div>
                         </div>
                         <button type="button" class="btn btn-primary" style="padding: 10px 15px; font-size: 0.7rem; background: var(--accent);" onclick="addSaleItem()">ADD ITEM</button>
                     </div>
@@ -2250,6 +2278,27 @@
                     <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; letter-spacing: 1px; background: var(--accent);">✓ CONFIRM & POST DIRECT SALE</button>
                 </div>
             </form>
+
+            <!-- FIXED CALCULATION STRIP -->
+            <div id="sale-calc-strip" style="position: sticky; bottom: -2rem; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--accent); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--accent); letter-spacing: 1px;">TOTAL ITEMS:</span>
+                    <span id="strip-sale-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
+                </div>
+                <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">TAXABLE:</span>
+                    <span id="strip-sale-subtotal" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
+                    <span id="strip-sale-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="margin-left: auto; background: var(--accent); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 0.7rem; font-weight: 900; color: #000; letter-spacing: 1px;">NET VALUE:</span>
+                    <span id="strip-sale-total" style="font-size: 1.2rem; font-weight: 900; color: #000;">₹0.00</span>
+                </div>
+            </div>
         </div>
     </div>
 

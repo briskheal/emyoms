@@ -1529,6 +1529,9 @@ function openPartyModal(id = null) {
             document.getElementById('party-address').value = s.address || '';
             document.getElementById('party-pincode').value = s.pincode || '';
             document.getElementById('party-hq').value = s.hq || '';
+            document.getElementById('party-bank-name').value = s.bankName || '';
+            document.getElementById('party-bank-acc').value = s.bankAccountNo || '';
+            document.getElementById('party-bank-ifsc').value = s.bankIfsc || '';
 
             // Dynamic Header & Button for Approval
             if (!s.approved) {
@@ -1599,6 +1602,9 @@ async function saveParty(e) {
         address: document.getElementById('party-address').value,
         pincode: document.getElementById('party-pincode').value,
         hq: hq,
+        bankName: document.getElementById('party-bank-name').value,
+        bankAccountNo: document.getElementById('party-bank-acc').value,
+        bankIfsc: document.getElementById('party-bank-ifsc').value,
         approved: true 
     };
 
@@ -1811,6 +1817,12 @@ function viewOrderDetails(id) {
     document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
     document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    // Update Strip
+    if (document.getElementById('strip-order-count')) document.getElementById('strip-order-count').innerText = o.items.length;
+    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const rejectBtn = document.getElementById('detail-reject-btn');
     const approveBtn = document.getElementById('detail-approve-btn');
@@ -2328,6 +2340,11 @@ function closeSaleModal() {
     document.getElementById('directSaleModal').classList.add('hidden');
 }
 
+function updateSalePartyContext() {
+    const prodId = document.getElementById('sale-prod-select').value;
+    if (prodId) updateSaleProductMeta(prodId);
+}
+
 function updateSaleProductMeta(prodId) {
     if (!prodId) return;
     const prod = allProducts.find(p => p._id === prodId);
@@ -2346,11 +2363,36 @@ function updateSaleProductMeta(prodId) {
     }
 
     document.getElementById('sale-gst-pct').value = prod.gstPercent || 12;
-    document.getElementById('sale-rate').value = prod.pts || 0;
+    
+    // Check for negotiated price
+    const partyId = document.getElementById('sale-party').value;
+    const party = allStockists.find(s => s._id === partyId);
+    let finalRate = prod.pts || 0;
+    
+    if (party && party.negotiatedPrices) {
+        const neg = party.negotiatedPrices.find(n => n.productId === prodId || n.product === prodId);
+        if (neg) finalRate = neg.lockedRate || neg.price || finalRate;
+    }
+    
+    document.getElementById('sale-rate').value = finalRate;
+    calculateSaleLineTotal();
 }
 
 function updateSaleBatchMeta(batchNo) {
-    // Optional: can fetch specific rate for batch if needed
+    calculateSaleLineTotal();
+}
+
+function calculateSaleLineTotal() {
+    const qty = Number(document.getElementById('sale-qty').value || 0);
+    const rate = Number(document.getElementById('sale-rate').value || 0);
+    const gstPct = Number(document.getElementById('sale-gst-pct').value || 0);
+    
+    const taxable = qty * rate;
+    const gst = (taxable * gstPct) / 100;
+    const total = taxable + gst;
+    
+    const el = document.getElementById('sale-line-total');
+    if (el) el.innerText = '₹' + total.toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
 function addSaleItem() {
@@ -2404,6 +2446,12 @@ function renderSaleItems() {
     document.getElementById('sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
     document.getElementById('sale-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
     document.getElementById('sale-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    // Update Strip
+    if (document.getElementById('strip-sale-count')) document.getElementById('strip-sale-count').innerText = directSaleItems.length;
+    if (document.getElementById('strip-sale-subtotal')) document.getElementById('strip-sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    if (document.getElementById('strip-sale-gst')) document.getElementById('strip-sale-gst').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    if (document.getElementById('strip-sale-total')) document.getElementById('strip-sale-total').innerText = '₹' + (subTotal + gstTotal).toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
 async function saveDirectSale(e) {
