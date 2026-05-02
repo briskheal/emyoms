@@ -1237,7 +1237,7 @@ async function uploadLogo() {
     const formData = new FormData();
     formData.append('logo', fileInput.files[0]);
     try {
-        const res = await fetch('/api/admin/upload-logo', { method: 'POST', body: formData });
+        const res = await fetch(`${API_BASE}/admin/upload-logo`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
             alert("✅ Logo uploaded successfully!");
@@ -1252,7 +1252,7 @@ async function uploadSignature() {
     const formData = new FormData();
     formData.append('signature', fileInput.files[0]);
     try {
-        const res = await fetch('/api/admin/upload-signature', { method: 'POST', body: formData });
+        const res = await fetch(`${API_BASE}/admin/upload-signature`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
             alert("✅ Signature uploaded successfully!");
@@ -1781,6 +1781,7 @@ function filterOrderHistory(val) {
 }
 
 function viewOrderDetails(id) {
+    try {
     const o = allOrders.find(x => x._id == id);
     if (!o) return;
 
@@ -1830,13 +1831,13 @@ function viewOrderDetails(id) {
                 <td style="text-align:center; font-style:italic; font-size:0.7rem; color: #94a3b8; line-height: 1.2;">${item.negotiationNote || '-'}</td>
                 <td style="text-align:center;">
                     <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
-                        value="${item.priceUsed.toFixed(2)}" 
+                        value="${(item.priceUsed || 0).toFixed(2)}" 
                         oninput="updateModalTotals('${o._id}', '${item._id}')"
                         style="width: 70px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 3px; font-size: 0.75rem;">
                 </td>
-                <td style="text-align:center; font-weight:800; color: #fff;">${item.qty}</td>
+                <td style="text-align:center; font-weight:800; color: #fff;">${item.qty || 0}</td>
                 <td style="text-align:center; color:var(--accent); font-weight:800; font-size: 0.75rem;">+${item.bonusQty || 0}</td>
-                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${item.totalValue.toFixed(2)}</td>
+                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${(item.totalValue || 0).toFixed(2)}</td>
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
                         <div style="display:flex; gap:4px; justify-content:center;">
@@ -1894,7 +1895,7 @@ function viewOrderDetails(id) {
     // Invoice Buttons logic
     const invoiceBtn = document.getElementById('detail-invoice-btn');
     const downloadBtn = document.getElementById('detail-download-btn');
-    const inv = allInvoices.find(i => i.order === o._id || (i.order && i.order._id === o._id));
+    const inv = allInvoices.find(i => (i.orderId || i.order?._id || i.order) == o._id);
 
     if (o.status === 'approved') {
         invoiceBtn.style.display = 'inline-flex';
@@ -1938,10 +1939,16 @@ function viewOrderDetails(id) {
     }
 
     document.getElementById('orderDetailModal').classList.remove('hidden');
+    } catch (err) {
+        console.error("Critical error in viewOrderDetails:", err);
+        alert("⚠️ Failed to load order details. Please check console for errors.");
+        // Attempt to open anyway if modal ID exists
+        if (document.getElementById('orderDetailModal')) document.getElementById('orderDetailModal').classList.remove('hidden');
+    }
 }
 
 function updateModalTotals(orderId, triggerItemId) {
-    const o = allOrders.find(x => x._id === orderId);
+    const o = allOrders.find(x => x._id == orderId);
     if (!o) return;
 
     let subTotal = 0;

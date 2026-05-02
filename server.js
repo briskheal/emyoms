@@ -739,7 +739,29 @@ app.post('/api/admin/settings/upload-design', docUpload.single('design'), async 
             type: 'document'
         });
 
-        fs.unlinkSync(req.file.path);
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/admin/upload-logo', docUpload.single('logo'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: 'No logo file' });
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyris_branding' });
+        const settings = await db.Company.findOne();
+        if (settings) await settings.update({ logoImage: result.secure_url });
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.json({ success: true, url: result.secure_url });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/admin/upload-signature', docUpload.single('signature'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, error: 'No signature file' });
+        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyris_branding' });
+        const settings = await db.Company.findOne();
+        if (settings) await settings.update({ signatureImage: result.secure_url });
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.json({ success: true, url: result.secure_url });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
