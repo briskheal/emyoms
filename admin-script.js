@@ -1032,8 +1032,8 @@ async function loadSettings() {
             }
         }
 
-        if (s.musicUrl) {
-            const musicName = s.musicUrl.split('/').pop();
+        if (s.musicUrl && s.musicUrl.trim() !== '') {
+            const musicName = s.musicUrl.split('/').pop().split('?')[0];
             if (document.getElementById('current-music-name')) document.getElementById('current-music-name').innerText = `Current: ${musicName}`;
             safeSetVal('set-music-url', s.musicUrl);
             
@@ -1044,17 +1044,15 @@ async function loadSettings() {
                     audio.src = targetSrc;
                     audio.load();
                 }
-                if (s.musicUrl.includes('google.com') || s.musicUrl.includes('dropbox')) {
-                    audio.crossOrigin = "anonymous";
-                }
+                audio.volume = s.musicVolume || 0.5;
                 if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
                     audio.play().catch(() => {});
                 }
             }
         }
 
-        if (s.videoUrl) {
-            const videoName = s.videoUrl.split('/').pop();
+        if (s.videoUrl && s.videoUrl.trim() !== '') {
+            const videoName = s.videoUrl.split('/').pop().split('?')[0];
             if (document.getElementById('current-video-name')) document.getElementById('current-video-name').innerText = `Current: ${videoName}`;
             safeSetVal('set-video-url', s.videoUrl);
         }

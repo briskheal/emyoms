@@ -391,45 +391,40 @@ async function loadSettings() {
         }
 
         // Multimedia Logic (Dynamic)
-        // Multimedia Logic (Dynamic)
-        if (companySettings.musicUrl) {
+        if (companySettings.musicUrl && companySettings.musicUrl.trim() !== '') {
             const audio = document.getElementById('bgMusic');
             if (audio) {
                 const targetSrc = companySettings.musicUrl.startsWith('http') ? companySettings.musicUrl : window.location.origin + companySettings.musicUrl;
-                // STICT CHECK: Only change if the absolute path is different
                 if (audio.src !== targetSrc) {
                     audio.src = targetSrc;
+                    audio.load();
                 }
-                
-                // Apply Global Volume from Admin
                 if (companySettings.musicVolume !== undefined) {
                     audio.volume = companySettings.musicVolume;
                 }
-                
-                // Persistence: Auto-resume if state was 'On'
                 if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
                     audio.play().catch(() => {});
                 }
-
             }
         }
 
-        if (companySettings.videoUrl) {
+        if (companySettings.videoUrl && companySettings.videoUrl.trim() !== '') {
             const videoContainer = document.getElementById('video-loop-container');
             if (videoContainer) {
-                const isYoutube = companySettings.videoUrl.includes('youtube.com') || companySettings.videoUrl.includes('youtu.be');
+                const url = companySettings.videoUrl;
+                const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
+                const isCloudinary = url.includes('cloudinary.com');
+                const isDirectVideo = isCloudinary || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.ogg');
                 
-                // Idempotent Check: Avoid resetting if URL matches
                 const currentIframe = videoContainer.querySelector('iframe');
-                const currentVideo = videoContainer.querySelector('video');
-                const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.querySelector('source') && currentVideo.querySelector('source').src) || '';
+                const currentVideo = videoContainer.querySelector('video source');
+                const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.src) || '';
                 
-                if (!currentSrc.includes(companySettings.videoUrl)) {
-                    console.log('📹 [VIDEO] Source mismatch, re-injecting...');
+                if (!currentSrc.includes(url.split('?')[0])) {
                     if (isYoutube) {
-                        const embedUrl = companySettings.videoUrl.includes('?') ? 
-                            `${companySettings.videoUrl}&autoplay=1&mute=1&loop=1` : 
-                            `${companySettings.videoUrl}?autoplay=1&mute=1&loop=1`;
+                        const embedUrl = url.includes('?') ? 
+                            `${url}&autoplay=1&mute=1&loop=1` : 
+                            `${url}?autoplay=1&mute=1&loop=1`;
                         videoContainer.innerHTML = `
                             <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
                                 src="${embedUrl}" allow="autoplay; encrypted-media">
@@ -439,10 +434,12 @@ async function loadSettings() {
                     } else {
                         videoContainer.innerHTML = `
                             <video autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
-                                <source src="${companySettings.videoUrl}" type="video/mp4">
+                                <source src="${url}" type="video/mp4">
                             </video>
                             <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
                         `;
+                        const vid = videoContainer.querySelector('video');
+                        if (vid) vid.play().catch(() => {});
                     }
                 }
             }
