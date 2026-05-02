@@ -166,13 +166,94 @@ window.onload = async () => {
         await loadPurchaseEntries();
         await loadFinancialNotes();
         await loadPayments();
-        await loadMasters();
         await loadSettings();
         await refreshDashboard();
     } catch (e) {
         console.error("Critical Initialization Error:", e);
     }
 };
+
+async function loadSettings() {
+    try {
+        const res = await fetch('/api/admin/company');
+        const data = await res.json();
+        if (data.success) {
+            companyProfile = data.company;
+            renderSettings();
+        }
+    } catch (e) { console.error("Load settings fail", e); }
+}
+
+function renderSettings() {
+    if (!companyProfile) return;
+    
+    // Counters
+    const c = companyProfile.documentCounters || {};
+    safeSetVal('cnt-inv-pre', c.invoice?.prefix || '');
+    safeSetVal('cnt-inv-next', c.invoice?.nextNumber || 1);
+    safeSetVal('cnt-pur-pre', c.purchase?.prefix || '');
+    safeSetVal('cnt-pur-next', c.purchase?.nextNumber || 1);
+    safeSetVal('cnt-scn-pre', c.scn?.prefix || '');
+    safeSetVal('cnt-scn-next', c.scn?.nextNumber || 1);
+    safeSetVal('cnt-pdn-pre', c.pdn?.prefix || '');
+    safeSetVal('cnt-pdn-next', c.pdn?.nextNumber || 1);
+    safeSetVal('cnt-pdcn-pre', c.pdcn?.prefix || '');
+    safeSetVal('cnt-pdcn-next', c.pdcn?.nextNumber || 1);
+    safeSetVal('cnt-pddn-pre', c.pddn?.prefix || '');
+    safeSetVal('cnt-pddn-next', c.pddn?.nextNumber || 1);
+    safeSetVal('cnt-ldn-pre', c.ldn?.prefix || '');
+    safeSetVal('cnt-ldn-next', c.ldn?.nextNumber || 1);
+    safeSetVal('cnt-lcn-pre', c.lcn?.prefix || '');
+    safeSetVal('cnt-lcn-next', c.lcn?.nextNumber || 1);
+    safeSetVal('cnt-payin-pre', c.payin?.prefix || '');
+    safeSetVal('cnt-payin-next', c.payin?.nextNumber || 1);
+    safeSetVal('cnt-payout-pre', c.payout?.prefix || '');
+    safeSetVal('cnt-payout-next', c.payout?.nextNumber || 1);
+
+    // Media
+    safeSetVal('set-music-url', companyProfile.musicUrl || '');
+    safeSetVal('set-video-url', companyProfile.videoUrl || '');
+    const volEl = document.getElementById('globalVolume');
+    if (volEl) volEl.value = companyProfile.musicVolume || 0.5;
+}
+
+async function saveSettings(e) {
+    if (e) e.preventDefault();
+    
+    const counters = {
+        invoice: { prefix: safeGetVal('cnt-inv-pre'), nextNumber: Number(safeGetVal('cnt-inv-next')) || 1 },
+        purchase: { prefix: safeGetVal('cnt-pur-pre'), nextNumber: Number(safeGetVal('cnt-pur-next')) || 1 },
+        scn: { prefix: safeGetVal('cnt-scn-pre'), nextNumber: Number(safeGetVal('cnt-scn-next')) || 1 },
+        pdn: { prefix: safeGetVal('cnt-pdn-pre'), nextNumber: Number(safeGetVal('cnt-pdn-next')) || 1 },
+        pdcn: { prefix: safeGetVal('cnt-pdcn-pre'), nextNumber: Number(safeGetVal('cnt-pdcn-next')) || 1 },
+        pddn: { prefix: safeGetVal('cnt-pddn-pre'), nextNumber: Number(safeGetVal('cnt-pddn-next')) || 1 },
+        ldn: { prefix: safeGetVal('cnt-ldn-pre'), nextNumber: Number(safeGetVal('cnt-ldn-next')) || 1 },
+        lcn: { prefix: safeGetVal('cnt-lcn-pre'), nextNumber: Number(safeGetVal('cnt-lcn-next')) || 1 },
+        payin: { prefix: safeGetVal('cnt-payin-pre'), nextNumber: Number(safeGetVal('cnt-payin-next')) || 1 },
+        payout: { prefix: safeGetVal('cnt-payout-pre'), nextNumber: Number(safeGetVal('cnt-payout-next')) || 1 }
+    };
+
+    const data = {
+        documentCounters: counters,
+        musicUrl: safeGetVal('set-music-url'),
+        videoUrl: safeGetVal('set-video-url'),
+        musicVolume: Number(document.getElementById('globalVolume')?.value || 0.5)
+    };
+
+    try {
+        const res = await fetch('/api/admin/company', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ Global Settings Saved Successfully!");
+            companyProfile = result.company;
+            renderSettings();
+        }
+    } catch (e) { alert("Failed to save settings"); }
+}
 
 // Helper functions removed from here as they are defined at the top of the file.
 
@@ -3992,10 +4073,35 @@ function renderPayments() {
             <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">₹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
             <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
             <td style="text-align:right;">
+                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:var(--primary);" onclick="editPayment('${p._id}')">✏️ EDIT</button>
                 <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">✕ DELETE</button>
             </td>
         </tr>
     `).join('');
+}
+
+async function editPayment(id) {
+    const p = allPayments.find(x => x._id == id);
+    if (!p) return;
+
+    openPaymentModal();
+    // Update Modal for Edit Mode
+    document.getElementById('payment-modal-title').innerText = "✏️ Edit Payment Voucher";
+    document.getElementById('pay-submit-btn').innerHTML = "💾 UPDATE VOUCHER";
+    
+    // Set values
+    safeSetVal('pay-id', p._id);
+    safeSetVal('pay-type', p.type);
+    safeSetVal('pay-date', p.date ? p.date.split('T')[0] : '');
+    
+    updatePaymentContext(); // Re-populate parties based on type
+    
+    safeSetVal('pay-party', p.stockistId || p.stockist?._id || p.stockist);
+    safeSetVal('pay-amount', p.amount);
+    safeSetVal('pay-method', p.method);
+    safeSetVal('pay-ref', p.refNo);
+
+    updatePartyBalanceDisplay();
 }
 
 function openPaymentModal() {
@@ -4140,20 +4246,24 @@ async function savePayment(e) {
         btn.disabled = true;
         btn.innerHTML = "⏳ POSTING VOUCHER...";
 
-        const res = await fetch(`${API_BASE}/admin/payments`, {
-            method: 'POST',
+        const payId = document.getElementById('pay-id').value;
+        const method = payId ? 'PUT' : 'POST';
+        const url = payId ? `${API_BASE}/admin/payments/${payId}` : `${API_BASE}/admin/payments`;
+
+        const res = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
         const result = await res.json();
         if (result.success) {
-            alert(`✅ Voucher ${result.payment.paymentNo} posted successfully!\nBalance adjusted across ${result.payment.linkedBills.length} bills.`);
+            alert(`✅ Voucher ${result.payment.paymentNo} ${payId ? 'updated' : 'posted'} successfully!`);
             closePaymentModal();
             await loadPayments();
             renderPayments();
-            await loadInvoices(); // Refresh bill balances
+            await loadInvoices(); 
             await loadPurchaseEntries();
-            await loadStockists(); // Refresh party balances
+            await loadStockists(); 
         } else {
             alert("Error: " + result.error);
         }

@@ -105,31 +105,37 @@ app.get('/api/admin/db-stats', async (req, res) => {
 });
 
 async function getNextDocNo(type) {
-    let settings = await db.Company.findOne();
-    if (!settings) settings = await db.Company.create({});
+    let company = await db.Company.findOne();
+    if (!company) company = await db.Company.create({});
     
-    const counters = settings.documentCounters || {};
-    const count = (counters[type] || 0) + 1;
-    counters[type] = count;
+    const counters = company.documentCounters || {};
+    const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 1 };
     
-    await settings.update({ documentCounters: counters });
+    const docNo = `${config.prefix}${config.nextNumber.toString().padStart(4, '0')}`;
     
-    const year = new Date().getFullYear();
-    const nextYear = (year + 1).toString().slice(-2);
-    const tag = `${year.toString().slice(-2)}${nextYear}`;
+    config.nextNumber = (Number(config.nextNumber) || 0) + 1;
+    counters[type] = config;
     
-    const prefixes = {
-        invoice: `INV-${tag}-`,
-        purchase: `PUR-${tag}-`,
-        lossCn: `LCN-${tag}-`,
-        lossDn: `LDN-${tag}-`,
-        expense: `EXP-${tag}-`,
-        paymentIn: `PAYIN-${tag}-`,
-        paymentOut: `PAYOUT-${tag}-`
-    };
-    
-    return (prefixes[type] || 'DOC-') + count.toString().padStart(4, '0');
+    await company.update({ documentCounters: counters });
+    return docNo;
 }
+
+app.get('/api/admin/company', async (req, res) => {
+    try {
+        let company = await db.Company.findOne();
+        if (!company) company = await db.Company.create({});
+        res.json({ success: true, company });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.put('/api/admin/company', async (req, res) => {
+    try {
+        let company = await db.Company.findOne();
+        if (!company) company = await db.Company.create({});
+        await company.update(req.body);
+        res.json({ success: true, company });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
 
 const PORT = process.env.PORT || 4000;
 
@@ -149,29 +155,6 @@ db.sequelize.authenticate()
         console.error('❌ CRITICAL: Server Failed to Start:', err);
         process.exit(1); 
     });
-
-// --- HELPER: Document Counters (SQL Atomic Version) ---
-async function getNextDocNo(type) {
-    try {
-        const company = await db.Company.findOne();
-        if (!company || !company.documentCounters || !company.documentCounters[type]) return null;
-        
-        const counter = company.documentCounters[type];
-        const nextNum = counter.nextNumber;
-        
-        // Atomic Increment
-        const updatedCounters = { ...company.documentCounters };
-        updatedCounters[type].nextNumber += 1;
-        
-        await company.update({ documentCounters: updatedCounters });
-        
-        return `${counter.prefix}${nextNum.toString().padStart(3, '0')}`;
-    } catch (e) {
-        console.error(`Counter error for ${type}:`, e);
-        return null;
-    }
-}
-
 
 // --- NEGOTIATION ENDPOINTS ---
 
@@ -1078,9 +1061,9 @@ app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
 app.post('/api/admin/payments', async (req, res) => {
     try {
         const { party, amount, method, type, date } = req.body;
-        const partyId = party; // Map from frontend
+        const partyId = party; 
         
-        const paymentNo = await getNextDocNo(type === 'RECEIPT' ? 'paymentIn' : 'paymentOut');
+        const paymentNo = await getNextDocNo(type === 'RECEIPT' ? 'payin' : 'payout');
 
         const payment = await db.Payment.create({
             paymentNo,
@@ -1094,6 +1077,43 @@ app.post('/api/admin/payments', async (req, res) => {
         const stockist = await db.Stockist.findByPk(partyId);
         const adj = type === 'RECEIPT' ? -amount : amount;
         if (stockist) await stockist.increment('outstandingBalance', { by: adj });
+
+        res.json({ success: true, payment: { ...payment.toJSON(), linkedBills: [] } });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.put('/api/admin/payments/:id', async (req, res) => {
+    try {
+        const payment = await db.Payment.findByPk(req.params.id);
+        if (!payment) return res.status(404).json({ success: false, message: "Voucher not found" });
+
+        const oldAmount = payment.amount;
+        const oldType = payment.type;
+        const oldPartyId = payment.stockistId;
+
+        // 1. REVERSE Ledger Balance for the OLD party
+        const oldParty = await db.Stockist.findByPk(oldPartyId);
+        if (oldParty) {
+            const reverseAdj = oldType === 'RECEIPT' ? oldAmount : -oldAmount;
+            await oldParty.increment('outstandingBalance', { by: reverseAdj });
+        }
+
+        // 2. UPDATE Voucher
+        const { party, amount, method, type, date } = req.body;
+        await payment.update({
+            stockistId: party,
+            amount,
+            method,
+            type,
+            date: date || new Date()
+        });
+
+        // 3. APPLY NEW Ledger Balance for the NEW party
+        const newParty = await db.Stockist.findByPk(party);
+        if (newParty) {
+            const newAdj = type === 'RECEIPT' ? -amount : amount;
+            await newParty.increment('outstandingBalance', { by: newAdj });
+        }
 
         res.json({ success: true, payment: { ...payment.toJSON(), linkedBills: [] } });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }

@@ -705,6 +705,20 @@
                                     <input type="number" id="cnt-lcn-next" placeholder="Next" style="flex: 1;">
                                 </div>
                             </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PAY-IN (RECEIPT)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-payin-pre" placeholder="Prefix (PAYIN-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-payin-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">PAY-OUT (PAYMENT)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-payout-pre" placeholder="Prefix (PAYOUT-24-)" style="flex: 2;">
+                                    <input type="number" id="cnt-payout-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -2364,6 +2378,7 @@
             </div>
 
             <form id="paymentForm" onsubmit="savePayment(event)" style="padding: 2rem;">
+                <input type="hidden" id="pay-id">
                 <!-- Step 1: Type, Party & Date -->
                 <div style="display: grid; grid-template-columns: 1.2fr 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
                     <div class="form-group">
