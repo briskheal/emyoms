@@ -3,6 +3,10 @@ const API_BASE = '/api';
 let allProducts = [];
 let currentProductBatches = [];
 let companyProfile = {};
+const safeGetVal = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+};
 
 function toggleSidebar() {
     if (window.innerWidth > 1024) return; // Desktop: sidebar always visible
@@ -1078,38 +1082,16 @@ async function loadSettings() {
         // Load Counters
         if (s.documentCounters) {
             const dc = s.documentCounters;
-            if (dc.invoice) {
-                document.getElementById('cnt-inv-pre').value = dc.invoice.prefix || '';
-                document.getElementById('cnt-inv-next').value = dc.invoice.nextNumber || 1;
-            }
-            if (dc.purchase) {
-                document.getElementById('cnt-pur-pre').value = dc.purchase.prefix || '';
-                document.getElementById('cnt-pur-next').value = dc.purchase.nextNumber || 1;
-            }
-            if (dc.saleReturn) {
-                document.getElementById('cnt-scn-pre').value = dc.saleReturn.prefix || '';
-                document.getElementById('cnt-scn-next').value = dc.saleReturn.nextNumber || 1;
-            }
-            if (dc.purchaseReturn) {
-                document.getElementById('cnt-pdn-pre').value = dc.purchaseReturn.prefix || '';
-                document.getElementById('cnt-pdn-next').value = dc.purchaseReturn.nextNumber || 1;
-            }
-            if (dc.pdcn) {
-                document.getElementById('cnt-pdcn-pre').value = dc.pdcn.prefix || '';
-                document.getElementById('cnt-pdcn-next').value = dc.pdcn.nextNumber || 1;
-            }
-            if (dc.pddn) {
-                document.getElementById('cnt-pddn-pre').value = dc.pddn.prefix || '';
-                document.getElementById('cnt-pddn-next').value = dc.pddn.nextNumber || 1;
-            }
-            if (dc.lossDn) {
-                document.getElementById('cnt-ldn-pre').value = dc.lossDn.prefix || '';
-                document.getElementById('cnt-ldn-next').value = dc.lossDn.nextNumber || 1;
-            }
-            if (dc.lossCn) {
-                document.getElementById('cnt-lcn-pre').value = dc.lossCn.prefix || '';
-                document.getElementById('cnt-lcn-next').value = dc.lossCn.nextNumber || 1;
-            }
+            const setC = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+            if (dc.invoice) { setC('cnt-inv-pre', dc.invoice.prefix); setC('cnt-inv-next', dc.invoice.nextNumber); }
+            if (dc.purchase) { setC('cnt-pur-pre', dc.purchase.prefix); setC('cnt-pur-next', dc.purchase.nextNumber); }
+            if (dc.saleReturn) { setC('cnt-scn-pre', dc.saleReturn.prefix); setC('cnt-scn-next', dc.saleReturn.nextNumber); }
+            if (dc.purchaseReturn) { setC('cnt-pdn-pre', dc.purchaseReturn.prefix); setC('cnt-pdn-next', dc.purchaseReturn.nextNumber); }
+            if (dc.pdcn) { setC('cnt-pdcn-pre', dc.pdcn.prefix); setC('cnt-pdcn-next', dc.pdcn.nextNumber); }
+            if (dc.pddn) { setC('cnt-pddn-pre', dc.pddn.prefix); setC('cnt-pddn-next', dc.pddn.nextNumber); }
+            if (dc.lossDn) { setC('cnt-ldn-pre', dc.lossDn.prefix); setC('cnt-ldn-next', dc.lossDn.nextNumber); }
+            if (dc.lossCn) { setC('cnt-lcn-pre', dc.lossCn.prefix); setC('cnt-lcn-next', dc.lossCn.nextNumber); }
+        }
         }
     } catch (e) { console.error("Load settings fail", e); }
 }
@@ -1380,14 +1362,14 @@ async function saveSettings(e) {
             musicUrl: fixDrive(safeGetVal('set-music-url')),
             videoUrl: fixDrive(safeGetVal('set-video-url')),
             documentCounters: {
-                invoice: { prefix: document.getElementById('cnt-inv-pre').value, nextNumber: Number(document.getElementById('cnt-inv-next').value) },
-                purchase: { prefix: document.getElementById('cnt-pur-pre').value, nextNumber: Number(document.getElementById('cnt-pur-next').value) },
-                saleReturn: { prefix: document.getElementById('cnt-scn-pre').value, nextNumber: Number(document.getElementById('cnt-scn-next').value) },
-                purchaseReturn: { prefix: document.getElementById('cnt-pdn-pre').value, nextNumber: Number(document.getElementById('cnt-pdn-next').value) },
-                pdcn: { prefix: document.getElementById('cnt-pdcn-pre').value, nextNumber: Number(document.getElementById('cnt-pdcn-next').value) },
-                pddn: { prefix: document.getElementById('cnt-pddn-pre').value, nextNumber: Number(document.getElementById('cnt-pddn-next').value) },
-                lossDn: { prefix: document.getElementById('cnt-ldn-pre').value, nextNumber: Number(document.getElementById('cnt-ldn-next').value) },
-                lossCn: { prefix: document.getElementById('cnt-lcn-pre').value, nextNumber: Number(document.getElementById('cnt-lcn-next').value) }
+                invoice: { prefix: document.getElementById('cnt-inv-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-inv-next')?.value || 1) },
+                purchase: { prefix: document.getElementById('cnt-pur-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pur-next')?.value || 1) },
+                saleReturn: { prefix: document.getElementById('cnt-scn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-scn-next')?.value || 1) },
+                purchaseReturn: { prefix: document.getElementById('cnt-pdn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pdn-next')?.value || 1) },
+                pdcn: { prefix: document.getElementById('cnt-pdcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pdcn-next')?.value || 1) },
+                pddn: { prefix: document.getElementById('cnt-pddn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-pddn-next')?.value || 1) },
+                lossDn: { prefix: document.getElementById('cnt-ldn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-ldn-next')?.value || 1) },
+                lossCn: { prefix: document.getElementById('cnt-lcn-pre')?.value || '', nextNumber: Number(document.getElementById('cnt-lcn-next')?.value || 1) }
             }
         };
 
@@ -3311,7 +3293,7 @@ async function viewInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id == id);
         if (!inv) return alert("Invoice not found");
-        const party = allStockists.find(s => s._id === (inv.stockist?._id || inv.stockist)) || {};
+        const party = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
             { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
@@ -3331,7 +3313,7 @@ async function downloadInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id == id);
         if (!inv) return alert("Invoice not found");
-        const party = allStockists.find(s => s._id === (inv.stockist?._id || inv.stockist)) || {};
+        const party = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
             { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }

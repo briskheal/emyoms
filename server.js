@@ -582,7 +582,10 @@ app.get('/api/orders/my-orders/:id', async (req, res) => {
 app.get('/api/admin/orders', async (req, res) => {
     try {
         const orders = await db.Order.findAll({ 
-            include: [{ model: db.Stockist }],
+            include: [
+                { model: db.Stockist },
+                { model: db.OrderItem, as: 'items' }
+            ],
             order: [['createdAt', 'DESC']]
         });
         res.json(orders);
@@ -640,7 +643,10 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
 app.get('/api/admin/invoices', async (req, res) => {
     try {
         const invoices = await db.Invoice.findAll({ 
-            include: [{ model: db.Stockist }],
+            include: [
+                { model: db.Stockist },
+                { model: db.InvoiceItem, as: 'items' }
+            ],
             order: [['createdAt', 'DESC']]
         });
         res.json(invoices);
