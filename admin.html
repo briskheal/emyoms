@@ -85,7 +85,7 @@
                 left: -300px; 
                 top: 0;
                 height: 100vh;
-                z-index: 1010;
+                z-index: 1200;
                 transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
                 box-shadow: none;
             }
@@ -109,14 +109,14 @@
             position: sticky;
             top: 65px;
             overflow-y: auto;
-            z-index: 1100;
+            z-index: 1200;
         }
         .sidebar-overlay {
             display: none;
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.6);
-            z-index: 1009;
+            z-index: 1100;
             backdrop-filter: blur(2px);
         }
         .sidebar-overlay.show { display: block; }
@@ -550,7 +550,7 @@
             <div id="tab-masters" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title" style="margin: 0;">📦 Global Master Data</h2>
-                    <button class="btn btn-primary" onclick="this.innerHTML='⏳ SYNCING...'; loadMasters().then(() => { this.innerHTML='💾 SYNC COMPLETE'; alert('✅ Masters Synchronized with Database!'); setTimeout(() => this.innerHTML='💾 SAVE & REFRESH ALL', 2000); }).catch(() => { this.innerHTML='❌ SYNC FAILED'; alert('❌ Masters Sync Failed!'); setTimeout(() => this.innerHTML='💾 SAVE & REFRESH ALL', 2000); })">💾 SAVE & REFRESH ALL</button>
+                    <button class="btn btn-primary" id="btn-sync-masters" onclick="(async()=>{ const btn=document.getElementById('btn-sync-masters'); btn.disabled=true; btn.innerHTML='⏳ SAVING...'; try{ await saveSettings(null); await loadMasters(); btn.innerHTML='✅ SAVED &amp; REFRESHED'; } catch(err){ btn.innerHTML='❌ FAILED'; console.error(err); } setTimeout(()=>{ btn.innerHTML='💾 SAVE &amp; REFRESH ALL'; btn.disabled=false; },2500); })()">💾 SAVE &amp; REFRESH ALL</button>
                 </div>
 
 

@@ -9,7 +9,7 @@ const safeGetVal = (id) => {
 };
 
 function toggleSidebar() {
-    if (window.innerWidth > 1024) return; // Desktop: sidebar always visible
+    if (!window.matchMedia('(max-width: 1024px)').matches) return; 
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const isOpen = sidebar && sidebar.classList.contains('show');
@@ -170,15 +170,7 @@ window.onload = async () => {
     }
 };
 
-function safeGetVal(id) {
-    const el = document.getElementById(id);
-    return el ? el.value : '';
-}
-
-function safeSetVal(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.value = val || '';
-}
+// Helper functions removed from here as they are defined at the top of the file.
 
 async function handleAdminLogin(e) {
 
@@ -286,7 +278,7 @@ async function refreshDashboard() {
         document.getElementById('stat-stockists').innerText = allStockists.length;
 
         // Revenue (Ex. GST) calculation from approved orders
-        const totalRevenue = approvedOrders.reduce((sum, o) => sum + (o.subTotal || 0), 0);
+        const totalRevenue = approvedOrders.reduce((sum, o) => sum + (Number(o.subTotal) || 0), 0);
         const revenueEl = document.getElementById('stat-revenue');
         if (revenueEl) {
             revenueEl.innerText = totalRevenue.toLocaleString('en-IN', {
@@ -313,8 +305,8 @@ async function refreshDashboard() {
             return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
         });
 
-        const currentTotal = currentOrders.reduce((sum, o) => sum + o.grandTotal, 0);
-        const previousTotal = previousOrders.reduce((sum, o) => sum + o.grandTotal, 0);
+        const currentTotal = currentOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
+        const previousTotal = previousOrders.reduce((sum, o) => sum + (Number(o.grandTotal) || 0), 0);
 
         const growth = previousTotal === 0 ? 100 : (((currentTotal - previousTotal) / previousTotal) * 100);
         const momBadge = document.getElementById('mom-badge');
@@ -377,14 +369,16 @@ async function loadPurchaseEntries() {
 
 function renderCharts(currentMonthOrders, totalOrders) {
     // Destroy existing charts
-    Object.values(chartInstances).forEach(chart => chart.destroy());
+    Object.values(chartInstances).forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') chart.destroy();
+    });
 
     // --- SALES TREND (Current Month) ---
     const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
     const dailyData = Array(daysInMonth).fill(0);
     currentMonthOrders.forEach(o => {
         const day = new Date(o.createdAt).getDate();
-        dailyData[day - 1] += (o.grandTotal || 0);
+        dailyData[day - 1] += (Number(o.grandTotal) || 0);
     });
 
     chartInstances.sales = new Chart(document.getElementById('salesChart'), {
@@ -417,8 +411,8 @@ function renderCharts(currentMonthOrders, totalOrders) {
     // --- TOP PRODUCTS ---
     const productCounts = {};
     totalOrders.forEach(o => {
-        o.items.forEach(item => {
-            productCounts[item.name] = (productCounts[item.name] || 0) + item.qty;
+        (o.items || []).forEach(item => {
+            productCounts[item.name] = (productCounts[item.name] || 0) + (Number(item.qty) || 0);
         });
     });
     const topProds = Object.entries(productCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
@@ -943,11 +937,6 @@ async function loadSettings() {
         const s = await res.json() || {};
         companyProfile = s;
         
-        const safeSetVal = (id, val) => {
-            const el = document.getElementById(id);
-            if (el) el.value = val || '';
-        };
-
         const safeSetCheck = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.checked = !!val;
@@ -1091,7 +1080,6 @@ async function loadSettings() {
             if (dc.pddn) { setC('cnt-pddn-pre', dc.pddn.prefix); setC('cnt-pddn-next', dc.pddn.nextNumber); }
             if (dc.lossDn) { setC('cnt-ldn-pre', dc.lossDn.prefix); setC('cnt-ldn-next', dc.lossDn.nextNumber); }
             if (dc.lossCn) { setC('cnt-lcn-pre', dc.lossCn.prefix); setC('cnt-lcn-next', dc.lossCn.nextNumber); }
-        }
         }
     } catch (e) { console.error("Load settings fail", e); }
 }
