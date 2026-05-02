@@ -568,6 +568,17 @@ app.post('/api/orders', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/orders/my-orders/:id', async (req, res) => {
+    try {
+        const orders = await db.Order.findAll({
+            where: { stockistId: req.params.id },
+            include: [{ model: db.OrderItem, as: 'items' }],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(orders);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/admin/orders', async (req, res) => {
     try {
         const orders = await db.Order.findAll({ 

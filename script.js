@@ -797,7 +797,7 @@ async function placeOrder() {
     };
 
     try {
-        const res = await fetch(`${API_BASE}/orders/create`, {
+        const res = await fetch(`${API_BASE}/orders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(orderData)
@@ -924,7 +924,7 @@ function handleLogout() {
     localStorage.removeItem('emyris_user');
     
     // Redirect to home/auth
-    window.location.href = '/auth';
+    window.location.href = '/';
     
     console.log('🚪 [LOGOUT] Session ended successfully');
 }
