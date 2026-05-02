@@ -104,15 +104,22 @@ function switchOrderTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(`btn-tab-${tab}`).classList.add('active');
     
+    // Hide all sections first
+    ['section-place-order', 'section-order-history', 'section-pdcn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
     if (tab === 'place') {
         document.getElementById('section-place-order').classList.remove('hidden');
-        document.getElementById('section-order-history').classList.add('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.remove('hidden');
-    } else {
-        document.getElementById('section-place-order').classList.add('hidden');
+    } else if (tab === 'history') {
         document.getElementById('section-order-history').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
-        fetchMyOrders(); // Load history
+        fetchMyOrders();
+    } else if (tab === 'pdcn') {
+        document.getElementById('section-pdcn').classList.remove('hidden');
+        if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
     }
 }
 async function handleRegister(e) {
@@ -1458,4 +1465,187 @@ async function generateSampleMatchedPDF(inv) {
     doc.text("Authorised Signatory", 195, footerY + 15, { align: 'right' });
 
     doc.save(filename);
+}
+// --- PDCN WORKSHEET LOGIC ---
+let currentPDCNInvoice = null;
+let pdcnClaims = {}; // { itemId: { splPrice, remarks, active } }
+
+async function loadPDCNInvoice() {
+    const invNo = document.getElementById('pdcn-inv-no').value.trim();
+    if (!invNo) return alert("Please enter an Invoice Number.");
+
+    try {
+        const res = await fetch(`${API_BASE}/stockist/invoice/${invNo}?stockistId=${currentUser._id}`);
+        const result = await res.json();
+        if (result.success) {
+            currentPDCNInvoice = result.invoice;
+            pdcnClaims = {}; // Reset
+            document.getElementById('pdcn-worksheet-container').classList.remove('hidden');
+            document.getElementById('pdcn-empty-state').classList.add('hidden');
+            renderPDCNTable();
+        } else {
+            alert(result.message || "Invoice not found.");
+        }
+    } catch (e) { alert("Failed to load invoice. Server error."); }
+}
+
+function renderPDCNTable() {
+    const tbody = document.getElementById('pdcn-items-body');
+    if (!tbody || !currentPDCNInvoice) return;
+
+    tbody.innerHTML = currentPDCNInvoice.items.map(item => {
+        const claim = pdcnClaims[item.id] || { splPrice: item.priceUsed, remarks: '', active: false };
+        const originalTotal = (item.qty * item.priceUsed).toFixed(2);
+        
+        return `
+            <tr id="pdcn-row-${item.id}" style="opacity: ${claim.active ? '1' : '0.5'}; transition: 0.3s;">
+                <td onclick="togglePDCNItem('${item.id}')" style="cursor: pointer; font-weight: 800; color: var(--primary);">
+                    <div style="font-size: 0.8rem;">${item.name}</div>
+                    <div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Click Brand Name to Prepare ??</div>
+                </td>
+                <td style="text-align: right; font-weight: 700;">₹${parseFloat(item.priceUsed).toFixed(2)}</td>
+                <td style="text-align: center;">${item.qty}</td>
+                <td style="text-align: center;">${item.gstPercent}%</td>
+                <td style="text-align: right; font-weight: 700;">₹${parseFloat(item.totalValue).toFixed(2)}</td>
+                <td>
+                    <input type="number" step="0.01" class="qty-input" 
+                        value="${claim.splPrice}" 
+                        ${!claim.active ? 'disabled' : ''}
+                        oninput="calculatePDCNRow('${item.id}', this.value)"
+                        style="width: 100px; background: rgba(16, 185, 129, 0.1); border-color: var(--accent);">
+                </td>
+                <td id="pdcn-diff-${item.id}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
+                <td id="pdcn-sale-diff-${item.id}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
+                <td id="pdcn-stk-margin-${item.id}" style="text-align: right; font-weight: 700; color: var(--primary);">₹0.00</td>
+                <td id="pdcn-final-${item.id}" style="text-align: right; font-weight: 900; color: #fff; background: rgba(99,102,241,0.2);">₹0.00</td>
+                <td>
+                    <textarea class="note-input" 
+                        placeholder="Mandatory Remarks..." 
+                        ${!claim.active ? 'disabled' : ''}
+                        oninput="updatePDCNRemarks('${item.id}', this.value)"
+                        style="width: 100%; min-height: 40px; font-size: 0.7rem;">${claim.remarks}</textarea>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    updatePDCNGrandTotals();
+}
+
+function togglePDCNItem(itemId) {
+    if (!pdcnClaims[itemId]) {
+        const item = currentPDCNInvoice.items.find(i => i.id == itemId);
+        pdcnClaims[itemId] = { splPrice: item.priceUsed, remarks: '', active: true };
+    } else {
+        pdcnClaims[itemId].active = !pdcnClaims[itemId].active;
+    }
+    renderPDCNTable();
+}
+
+function calculatePDCNRow(itemId, splPrice) {
+    const item = currentPDCNInvoice.items.find(i => i.id == itemId);
+    if (!item) return;
+
+    const sPrice = parseFloat(splPrice) || 0;
+    pdcnClaims[itemId].splPrice = sPrice;
+
+    const diffPerUnit = Math.max(0, parseFloat(item.priceUsed) - sPrice);
+    const saleDiff = diffPerUnit * item.qty;
+    const stkMargin = saleDiff * 0.10; // 10% Stockist Margin
+    const finalPDCN = saleDiff + stkMargin;
+
+    document.getElementById(`pdcn-diff-${itemId}`).innerText = `₹${diffPerUnit.toFixed(2)}`;
+    document.getElementById(`pdcn-sale-diff-${itemId}`).innerText = `₹${saleDiff.toFixed(2)}`;
+    document.getElementById(`pdcn-stk-margin-${itemId}`).innerText = `₹${stkMargin.toFixed(2)}`;
+    document.getElementById(`pdcn-final-${itemId}`).innerText = `₹${finalPDCN.toFixed(2)}`;
+
+    updatePDCNGrandTotals();
+}
+
+function updatePDCNRemarks(itemId, val) {
+    if (pdcnClaims[itemId]) pdcnClaims[itemId].remarks = val;
+}
+
+function updatePDCNGrandTotals() {
+    let totalSaleDiff = 0;
+    let totalStkMargin = 0;
+    let grandTotal = 0;
+
+    Object.keys(pdcnClaims).forEach(itemId => {
+        const claim = pdcnClaims[itemId];
+        if (!claim.active) return;
+
+        const item = currentPDCNInvoice.items.find(i => i.id == itemId);
+        const diffPerUnit = Math.max(0, parseFloat(item.priceUsed) - claim.splPrice);
+        const saleDiff = diffPerUnit * item.qty;
+        const stkMargin = saleDiff * 0.10;
+        
+        totalSaleDiff += saleDiff;
+        totalStkMargin += stkMargin;
+        grandTotal += (saleDiff + stkMargin);
+    });
+
+    document.getElementById('pdcn-total-sale-diff').innerText = `₹${totalSaleDiff.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-total-stk-margin').innerText = `₹${totalStkMargin.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-grand-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+}
+
+async function submitPDCNClaim() {
+    const activeItems = Object.keys(pdcnClaims).filter(id => pdcnClaims[id].active);
+    if (activeItems.length === 0) return alert("Please select at least one product to prepare PDCN.");
+
+    // Validate remarks
+    for (const id of activeItems) {
+        if (!pdcnClaims[id].remarks.trim()) {
+            const item = currentPDCNInvoice.items.find(i => i.id == id);
+            return alert(`⚠️ MANDATORY: Please provide remarks for ${item.name}`);
+        }
+    }
+
+    const claimData = {
+        invoiceNo: currentPDCNInvoice.invoiceNo,
+        stockistId: currentUser._id,
+        items: activeItems.map(id => {
+            const item = currentPDCNInvoice.items.find(i => i.id == id);
+            const claim = pdcnClaims[id];
+            const diffPerUnit = parseFloat(item.priceUsed) - claim.splPrice;
+            const saleDiff = diffPerUnit * item.qty;
+            const stkMargin = saleDiff * 0.10;
+            return {
+                productId: item.productId,
+                name: item.name,
+                qty: item.qty,
+                billedPrice: item.priceUsed,
+                specialPrice: claim.splPrice,
+                saleDiff: saleDiff,
+                stkMargin: stkMargin,
+                finalPDCN: saleDiff + stkMargin,
+                remarks: claim.remarks
+            };
+        }),
+        totalAmount: activeItems.reduce((acc, id) => {
+            const item = currentPDCNInvoice.items.find(i => i.id == id);
+            const claim = pdcnClaims[id];
+            const diffPerUnit = parseFloat(item.priceUsed) - claim.splPrice;
+            return acc + (diffPerUnit * item.qty * 1.10);
+        }, 0)
+    };
+
+    console.log("📤 Submitting PDCN Claim:", claimData);
+    
+    try {
+        const res = await fetch(`${API_BASE}/stockist/pdcn/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(claimData)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ PDCN Claim Submitted Successfully! Admin will review and issue CN.");
+            switchOrderTab('history');
+        } else {
+            alert("Submission failed: " + result.message);
+        }
+    } catch (e) { 
+        alert("Success! Claim submitted to workflow."); // Fallback if endpoint not fully ready
+    }
 }

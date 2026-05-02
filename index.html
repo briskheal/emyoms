@@ -478,6 +478,7 @@
         <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
             <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
             <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Billing Details</button>
+            <button class="tab-btn" id="btn-tab-pdcn" onclick="switchOrderTab('pdcn')">📝 PDCN Worksheet</button>
         </div>
 
         <div id="section-place-order">
@@ -496,6 +497,67 @@
         </div>
 
         <div id="section-order-history" class="hidden"><div id="history-container"></div></div>
+
+        <div id="section-pdcn" class="hidden">
+            <div class="glass-card" style="padding: 2rem; margin-bottom: 2rem; border-top: 4px solid var(--primary);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff;">PDCN Worksheet</h2>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Calculate Price Difference Credit Note (PDCN) for your invoices.</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <input type="text" id="pdcn-inv-no" placeholder="Enter Invoice No (e.g. INV-1001)" style="width: 240px; background: rgba(15, 23, 42, 0.6);">
+                        <button class="btn-primary" onclick="loadPDCNInvoice()" style="width: auto; padding: 0 1.5rem;">LOAD INVOICE</button>
+                    </div>
+                </div>
+
+                <div id="pdcn-worksheet-container" class="hidden">
+                    <div style="border: 1px solid var(--glass-border); border-radius: 16px; overflow-x: auto; background: rgba(0,0,0,0.1);">
+                        <table class="excel-table" style="min-width: 1400px;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 250px;">Brand Name / Product</th>
+                                    <th>Billed Price</th>
+                                    <th>Qty</th>
+                                    <th>GST %</th>
+                                    <th>Total (Billed)</th>
+                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">Spl Price (Req)</th>
+                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">Diff / Unit</th>
+                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">Sale Diff</th>
+                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">10% Stk Margin</th>
+                                    <th style="background: var(--grad-primary); color: #fff;">Final PDCN</th>
+                                    <th>Mandatory Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pdcn-items-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                        <div style="width: 400px; background: rgba(255,255,255,0.02); padding: 2rem; border-radius: 20px; border: 1px solid var(--glass-border);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="color: var(--text-muted); font-weight: 600;">Total Sale Difference:</span>
+                                <span id="pdcn-total-sale-diff" style="font-weight: 800; color: #fff;">₹0.00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                <span style="color: var(--text-muted); font-weight: 600;">Total Stockist Margin:</span>
+                                <span id="pdcn-total-stk-margin" style="font-weight: 800; color: #fff;">₹0.00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);">
+                                <span style="font-weight: 900; color: var(--primary); font-size: 1rem; text-transform: uppercase;">Total PDCN Amount</span>
+                                <span id="pdcn-grand-total" style="color: var(--accent); font-size: 2rem; font-weight: 900;">₹0.00</span>
+                            </div>
+                            <button class="btn-primary" style="margin-top: 1.5rem;" onclick="submitPDCNClaim()">SUBMIT PDCN CLAIM</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pdcn-empty-state" style="padding: 5rem; text-align: center; color: var(--text-muted);">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                    <p>Enter an Invoice Number above to load your billing data and prepare the PDCN worksheet.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="orderFooter" class="sticky-footer hidden">

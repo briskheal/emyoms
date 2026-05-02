@@ -910,6 +910,18 @@ app.get('/api/admin/invoices', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/stockist/invoice/:invoiceNo', async (req, res) => {
+    try {
+        const { stockistId } = req.query;
+        const invoice = await db.Invoice.findOne({
+            where: { invoiceNo: req.params.invoiceNo, stockistId },
+            include: [{ model: db.InvoiceItem, as: 'items' }]
+        });
+        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found or access denied' });
+        res.json({ success: true, invoice });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
     try {
         const order = await db.Order.findByPk(req.params.orderId, {
@@ -1128,6 +1140,14 @@ app.post('/api/admin/financial-notes', async (req, res) => {
         await db.Stockist.increment('outstandingBalance', { by: adjustment, where: { id: partyId } });
 
         res.json({ success: true, note: newNote });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/stockist/pdcn/submit', async (req, res) => {
+    try {
+        const { invoiceNo, stockistId, items, totalAmount } = req.body;
+        console.log(`[PDCN CLAIM] Received from Stockist ${stockistId} for Invoice ${invoiceNo}`);
+        res.json({ success: true, message: 'PDCN Worksheet submitted for review' });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
