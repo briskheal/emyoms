@@ -107,10 +107,13 @@ function switchView(view) {
 
 function switchOrderTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(`btn-tab-${tab}`).classList.add('active');
+    // Handle nav-btn selection if needed (for sidebar)
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.querySelector(`[onclick*="switchOrderTab('${tab}')"]`);
+    if (activeBtn) activeBtn.classList.add('active');
     
     // Hide all sections first
-    ['section-place-order', 'section-order-history', 'section-pdcn'].forEach(id => {
+    ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -126,8 +129,13 @@ function switchOrderTab(tab) {
         document.getElementById('section-pdcn').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
         fetchPDCNInvoices();
+    } else if (tab === 'pdcn-history') {
+        document.getElementById('section-pdcn-history').classList.remove('hidden');
+        if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
+        fetchPDCNHistory();
     }
 }
+
 async function handleRegister(e) {
     e.preventDefault();
     const btn = document.getElementById('regBtn');
@@ -1678,20 +1686,30 @@ function renderPDCNTable() {
 
 function addPDCNVariation(itemId) {
     const item = currentPDCNInvoice.items.find(i => i.id == itemId);
-    const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
+    if (!item) return;
+
+    const variations = pdcnClaims[itemId] || [];
+    const totalClaimedSoFar = variations.reduce((sum, v) => sum + (parseFloat(v.claimQty) || 0), 0);
     
-    const firstVar = pdcnClaims[itemId][0];
+    // Safety Guard: Prevent splitting if no qty remains
+    if (totalClaimedSoFar >= item.qty) {
+        alert("⚠️ NOT ALLOWED FOR FURTHER SPLIT: Total invoiced quantity is already fully allocated.");
+        return;
+    }
+
+    const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
+    const firstVar = variations[0];
     
     pdcnClaims[itemId].push({ 
         claimQty: 0, 
         splPrice: billedPrice, 
         remarks: '', 
         active: true,
-        gstPercent: firstVar ? firstVar.gstPercent : 0 // Inherit GST from primary record
+        gstPercent: firstVar ? firstVar.gstPercent : 0 
     });
-
     renderPDCNTable();
 }
+
 
 function removePDCNVariation(itemId, idx) {
     pdcnClaims[itemId].splice(idx, 1);
@@ -1872,3 +1890,78 @@ async function submitPDCNClaim() {
         alert("Success! Claim submitted to workflow."); // Fallback if endpoint not fully ready
     }
 }
+
+async function fetchPDCNHistory() {
+    const container = document.getElementById('pdcn-history-container');
+    if (!container) return;
+    
+    container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Loading claim history...</div>`;
+
+    try {
+        const res = await fetch(`${API_BASE}/stockist/pdcn/history/${currentUser._id}`);
+        const result = await res.json();
+
+        if (result.success && result.claims.length > 0) {
+            let html = '';
+            
+            // Group by Month/Year
+            const grouped = {};
+            result.claims.forEach(c => {
+                const d = new Date(c.createdAt);
+                const monthYear = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+                if (!grouped[monthYear]) grouped[monthYear] = [];
+                grouped[monthYear].push(c);
+            });
+
+            for (const month in grouped) {
+                html += `
+                    <div style="margin-bottom: 2rem;">
+                        <div style="background: rgba(255,255,255,0.03); padding: 10px 20px; border-radius: 8px; font-weight: 800; color: var(--primary); margin-bottom: 1rem; font-size: 0.9rem; border-left: 4px solid var(--primary);">${month.toUpperCase()}</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem;">
+                            ${grouped[month].map(c => `
+                                <div class="glass-card" style="padding: 1.25rem; border: 1px solid rgba(255,255,255,0.05);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                        <div>
+                                            <div style="font-size: 0.6rem; color: var(--accent); font-weight: 800;">INVOICE NO</div>
+                                            <div style="font-size: 1.1rem; font-weight: 900; color: #fff;">${c.invoiceNo}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 0.6rem; color: var(--text-muted); font-weight: 800;">SUBMITTED ON</div>
+                                            <div style="font-size: 0.75rem; color: #fff;">${new Date(c.createdAt).toLocaleDateString()}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 1rem;">
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase;">Total Claim</div>
+                                            <div style="font-size: 1rem; font-weight: 800; color: #fff;">₹${c.totalAmount.toLocaleString('en-IN')}</div>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase;">Items</div>
+                                            <div style="font-size: 1rem; font-weight: 800; color: var(--primary);">${c.items?.length || 0} Products</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); font-style: italic;">
+                                        ${c.remarks ? `"${c.remarks}"` : 'No general remarks provided.'}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 4rem; color: var(--text-muted);">
+                    <i class="fas fa-history" style="font-size: 3rem; opacity: 0.1; margin-bottom: 1rem;"></i>
+                    <p>No PDCN claims submitted yet.</p>
+                </div>
+            `;
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 2rem;">Error loading history: ${e.message}</div>`;
+    }
+}
+

@@ -1339,7 +1339,19 @@ app.delete('/api/admin/financial-notes/:id', async (req, res) => {
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.get('/api/stockist/pdcn/history/:stockistId', async (req, res) => {
+    try {
+        const claims = await db.PDCNClaim.findAll({
+            where: { stockistId: req.params.stockistId },
+            include: [{ model: db.PDCNClaimItem, as: 'items' }],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json({ success: true, claims });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // --- PDCN ELIGIBILITY ---
+
 
 app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
     try {
