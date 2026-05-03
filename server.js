@@ -1317,10 +1317,13 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
             const gst      = Number(item.gstPercent || item.gstPct) || 0;
             const marginPct = parseFloat(item.marginPct) || 10.0;
 
-            // Server-side recalculation (canonical formula, same as client)
-            const taxableValue = (diff * qty) * (1 + gst / 100);
-            const marginValue  = (diff * qty) * (marginPct / 100);
-            const serverCalcPDCN = parseFloat((taxableValue + marginValue).toFixed(2));
+            // Canonical Formula:
+            // Diff/Unit  = (Billed - Special) * (1 + GST%)
+            // Stk Margin = Special Price * 10%  (per unit)
+            // Final PDCN = (Diff/Unit + Stk Margin) * Qty
+            const unitSaleDiff  = diff * (1 + gst / 100);
+            const unitStkMargin = spl * (marginPct / 100);
+            const serverCalcPDCN = parseFloat(((unitSaleDiff + unitStkMargin) * qty).toFixed(2));
 
             // Trust client-sent finalPDCN if provided and non-zero,
             // otherwise fall back to server recalculation
@@ -1336,8 +1339,8 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
                 specialPrice: spl,
                 gstPercent:  gst,
                 marginPct,
-                stkMargin:   parseFloat(marginValue.toFixed(2)),
-                saleDiff:    parseFloat(diff.toFixed(2)),
+                stkMargin:   parseFloat((unitStkMargin * qty).toFixed(2)),
+                saleDiff:    parseFloat((unitSaleDiff  * qty).toFixed(2)),
                 finalPDCN:   finalItemPDCN,
                 remarks:     item.remarks
             });

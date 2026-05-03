@@ -4992,14 +4992,17 @@ function renderPDCNReviewItems() {
         const gstPct = parseFloat(item.gstPercent) || 0;
         const marginPct = parseFloat(item.marginPct) || 10;
         
-        // Stockist portal calculation: (Billed - Special) * (1 + GST%) + (Margin% of Difference) * Qty
-        const unitDiffBase = billed - special;
-        const unitDiffIncl = unitDiffBase * (1 + gstPct / 100);
-        const unitMargin = (unitDiffBase * marginPct) / 100; 
+        // Canonical formula:
+        // Diff/Unit  = (Billed - Special) * (1 + GST%)
+        // Stk Margin = Special Price * marginPct%  (per unit)
+        // Final PDCN = (Diff/Unit + Stk Margin) * Qty
+        const unitDiffBase  = billed - special;
+        const unitDiffIncl  = unitDiffBase * (1 + gstPct / 100);  // Diff/Unit incl. GST
+        const unitMargin    = (special * marginPct) / 100;          // 10% of Special Price
         const finalItemPDCN = (unitDiffIncl + unitMargin) * qty;
-        
-        item.finalPDCN = finalItemPDCN;
-        grandTotal += finalItemPDCN;
+
+        item.finalPDCN = parseFloat(finalItemPDCN.toFixed(2));
+        grandTotal += item.finalPDCN;
 
         return `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
