@@ -1311,7 +1311,11 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
             where: { id: claim.stockistId } 
         });
 
-        await claim.update({ status: 'approved' });
+        await claim.update({ 
+            status: 'approved',
+            creditNoteNo: noteNo 
+        });
+
         res.json({ success: true, financialNote });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

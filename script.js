@@ -1937,8 +1937,11 @@ async function fetchPDCNHistory() {
                                         return `
                                         <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
                                             <td style="padding: 12px 20px; font-weight: 700; color: #fff; font-size: 0.85rem;">${c.invoiceNo}</td>
-                                            <td style="padding: 12px 20px; color: var(--accent); font-weight: 800; font-size: 0.8rem;">PDCN-${String(c.id).padStart(4, '0')}</td>
+                                            <td style="padding: 12px 20px; color: var(--accent); font-weight: 800; font-size: 0.8rem;">
+                                                ${status === 'approved' && c.creditNoteNo ? c.creditNoteNo : `CL-ID-${String(c.id).padStart(4, '0')}`}
+                                            </td>
                                             <td style="padding: 12px 20px; text-align: center; font-weight: 700; color: #fff; font-size: 0.85rem;">${c.items?.length || 0}</td>
+
                                             <td style="padding: 12px 20px; text-align: center;">
                                                 <span style="padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}33;">${status}</span>
                                                 ${c.adminRemarks ? `<div style="font-size: 0.6rem; color: #ef4444; margin-top: 5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">Note: ${c.adminRemarks}</div>` : ''}

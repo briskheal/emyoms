@@ -8,7 +8,9 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('pending', 'approved', 'rejected'), 
             defaultValue: 'pending' 
         },
-        adminRemarks: { type: DataTypes.TEXT }
+        adminRemarks: { type: DataTypes.TEXT },
+        creditNoteNo: { type: DataTypes.STRING }
+
     });
 
     PDCNClaim.prototype.toJSON = function () {
