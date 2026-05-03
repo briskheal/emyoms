@@ -1694,19 +1694,21 @@ function calculatePDCNRow(itemId, idx, field, value) {
     const claimQty = variation.claimQty;
     const splPrice = variation.splPrice;
 
-    // Formula: (Qty * (ActualPrice + GST)) - (Qty * (SplPrice + GST))
+    // Formula: Final PDCN Amount = qtyclaimed * (Sale Difference + Stockist Margin)
     const billedIncl = billedPrice * (1 + gstPct / 100);
     const splIncl = splPrice * (1 + gstPct / 100);
     
-    const diffPerUnitIncl = billedIncl - splIncl;
-    const saleDiffTotal = diffPerUnitIncl * claimQty;
-    const stkMarginTotal = saleDiffTotal * 0.10;
-    const finalPDCN = saleDiffTotal + stkMarginTotal;
+    const unitSaleDiff = billedIncl - splIncl;
+    const unitStkMargin = unitSaleDiff * 0.10;
+    
+    const totalSaleDiff = unitSaleDiff * claimQty;
+    const totalStkMargin = unitStkMargin * claimQty;
+    const finalPDCN = claimQty * (unitSaleDiff + unitStkMargin);
 
     // Update UI
-    document.getElementById(`pdcn-diff-${itemId}-${idx}`).innerText = `₹${diffPerUnitIncl.toFixed(2)}`;
-    document.getElementById(`pdcn-sale-diff-${itemId}-${idx}`).innerText = `₹${saleDiffTotal.toFixed(2)}`;
-    document.getElementById(`pdcn-stk-margin-${itemId}-${idx}`).innerText = `₹${stkMarginTotal.toFixed(2)}`;
+    document.getElementById(`pdcn-diff-${itemId}-${idx}`).innerText = `₹${unitSaleDiff.toFixed(2)}`;
+    document.getElementById(`pdcn-sale-diff-${itemId}-${idx}`).innerText = `₹${totalSaleDiff.toFixed(2)}`;
+    document.getElementById(`pdcn-stk-margin-${itemId}-${idx}`).innerText = `₹${totalStkMargin.toFixed(2)}`;
     document.getElementById(`pdcn-final-${itemId}-${idx}`).innerText = `₹${finalPDCN.toFixed(2)}`;
 
     updatePDCNGrandTotals();
