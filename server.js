@@ -129,6 +129,31 @@ app.get('/api/admin/company', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// --- PUBLIC CONFIG (FOR LANDING PAGE) ---
+app.get('/api/public/config', async (req, res) => {
+    try {
+        const company = await db.Company.findOne();
+        if (!company) return res.json({ success: true, config: {} });
+        
+        // Return only safe fields
+        res.json({ 
+            success: true, 
+            config: {
+                name: company.name,
+                address: company.address,
+                websites: company.websites,
+                phones: company.phones,
+                tollFree: company.tollFree,
+                emails: company.emails,
+                videoUrl: company.videoUrl,
+                musicUrl: company.musicUrl,
+                scrollingMessage: company.scrollingMessage
+            }
+        });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+
 app.put('/api/admin/company', async (req, res) => {
     try {
         let company = await db.Company.findOne();

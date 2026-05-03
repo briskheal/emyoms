@@ -340,6 +340,18 @@ async function loadSettings() {
             if (el) el.innerText = text;
         };
 
+        // --- DYNAMIC PORTAL CONFIG (PUBLIC FALLBACK) ---
+        if (!companySettings || Object.keys(companySettings).length === 0) {
+            try {
+                const publicRes = await fetch(`${API_BASE}/public/config`);
+                const publicData = await publicRes.json();
+                if (publicData.success) {
+                    companySettings = publicData.config;
+                }
+            } catch(e) { console.warn("Public config failed, using defaults."); companySettings = {}; }
+        }
+
+
         // Dashboard Header
         safeSet('co-name', companySettings.name || "EMYRIS BIOLIFESCIENCES");
         safeSet('co-address', companySettings.address || "Office Address Loading...");
@@ -377,7 +389,28 @@ async function loadSettings() {
         safeSet('f-co-email', email);
         safeSet('f-co-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
+        // --- DYNAMIC BACKGROUND VIDEO (FROM GLOBAL MASTER) ---
+        const videoContainer = document.getElementById('video-loop-container');
+        if (videoContainer && companySettings.videoUrl) {
+            let vidId = '';
+            const url = companySettings.videoUrl;
+            if (url.includes('v=')) vidId = url.split('v=')[1].split('&')[0];
+            else if (url.includes('be/')) vidId = url.split('be/')[1].split('?')[0];
+            else if (url.includes('embed/')) vidId = url.split('embed/')[1].split('?')[0];
+            
+            if (vidId) {
+                videoContainer.innerHTML = `
+                    <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
+                        src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&loop=1&playlist=${vidId}&controls=0&showinfo=0&rel=0&modestbranding=1" 
+                        allow="autoplay; encrypted-media">
+                    </iframe>
+                    <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                `;
+            }
+        }
+
         // Marquee Logic
+
         if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
             const m = document.getElementById('marquee');
             const mc = document.getElementById('marquee-content');
