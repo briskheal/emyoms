@@ -1998,9 +1998,23 @@ async function fetchPDCNHistory() {
 }
 
 // PDCN View Functions
-function openPDCNViewModal(id) {
-    const claim = (window.allMyPDCNClaims || []).find(c => c.id == id);
-    if (!claim) return;
+async function openPDCNViewModal(id) {
+    let claim = (window.allMyPDCNClaims || []).find(c => c.id == id);
+    
+    // Fallback: If not in cache, fetch directly
+    if (!claim) {
+        try {
+            console.log("Claim not in cache, fetching from server...");
+            const res = await fetch(`${API_BASE}/stockist/pdcn/history/${currentUser.id || currentUser._id}`);
+            const result = await res.json();
+            if (result.success) {
+                window.allMyPDCNClaims = result.claims;
+                claim = result.claims.find(c => c.id == id);
+            }
+        } catch (e) { console.error("Fallback fetch failed", e); }
+    }
+
+    if (!claim) return alert("Could not load claim details. Please refresh.");
 
     const status = (claim.status || 'pending').toLowerCase();
     const statusColor = status === 'approved' ? '#10b981' : (status === 'rejected' ? '#ef4444' : '#f59e0b');
@@ -2011,7 +2025,7 @@ function openPDCNViewModal(id) {
     document.getElementById('pdcn-view-date').innerText = new Date(claim.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
     document.getElementById('pdcn-view-status').innerHTML = `<span style="padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}33;">${status}</span>`;
     document.getElementById('pdcn-view-remarks').innerText = claim.adminRemarks || 'No admin remarks provided.';
-    document.getElementById('pdcn-view-total').innerText = `₹${claim.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-view-total').innerText = `₹${parseFloat(claim.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const tbody = document.getElementById('pdcn-view-items-body');
     tbody.innerHTML = (claim.items || []).map(item => {
@@ -2037,5 +2051,6 @@ function openPDCNViewModal(id) {
 function closePDCNViewModal() {
     document.getElementById('pdcnDetailModal').classList.add('hidden');
 }
+
 
 

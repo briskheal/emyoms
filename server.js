@@ -1339,8 +1339,9 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
             calculatedTotal += finalItemPDCN;
         }
 
-        // Force header to match item sum
-        await claim.update({ totalAmount: Math.round(calculatedTotal) });
+        // Force header to match item sum exactly with decimal precision
+        await claim.update({ totalAmount: parseFloat(calculatedTotal.toFixed(2)) });
+
 
 
         res.json({ success: true, message: 'PDCN Worksheet submitted for review', claimId: claim.id });
