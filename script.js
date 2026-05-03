@@ -1611,31 +1611,37 @@ function renderPDCNTable() {
         const totalClaimedQty = variations.reduce((sum, v) => sum + (parseFloat(v.claimQty) || 0), 0);
         const qtyOverLimit = totalClaimedQty > item.qty;
 
+        let cumulativeClaimed = 0;
         variations.forEach((v, idx) => {
             const rowId = `pdcn-row-${item.id}-${idx}`;
             const isFirst = idx === 0;
-            const gst = v.gstPercent;
+            const gst = v.gstPercent || 0;
             
+            // Calculate available balance for this specific line
+            const availableForThisLine = Math.max(0, item.qty - cumulativeClaimed);
+            cumulativeClaimed += (parseFloat(v.claimQty) || 0);
+
             html += `
-                <tr id="${rowId}" style="opacity: ${v.active ? '1' : '0.6'}; transition: 0.3s; background: ${v.active ? 'rgba(99,102,241,0.05)' : 'transparent'};">
-                    <td style="font-weight: 800; padding: 0.75rem;">
-                        <div style="font-size: 0.8rem; color: #fff;">${item.name}</div>
-                        ${isFirst ? `<div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Invoiced Qty: ${item.qty}</div>` : `<div style="font-size: 0.6rem; color: var(--primary); margin-top: 4px;">Split Variation #${idx + 1}</div>`}
+                <tr id="${rowId}" style="opacity: ${v.active ? '1' : '0.6'}; transition: 0.3s; background: ${v.active ? 'rgba(99,102,241,0.05)' : 'transparent'}; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="font-weight: 800; padding: 0.75rem; position: sticky; left: 0; background: ${v.active ? '#1e1b4b' : '#0f172a'}; z-index: 2; border-right: 1px solid rgba(255,255,255,0.1); min-width: 140px;">
+                        <div style="font-size: 0.75rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
+                        ${isFirst ? `<div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Invoiced: ${item.qty}</div>` : `<div style="font-size: 0.6rem; color: var(--primary); margin-top: 4px;">Split #${idx + 1}</div>`}
                     </td>
-                    <td style="text-align: right; font-weight: 700; color: #fff;">₹${billedPrice.toFixed(2)}</td>
-                    <td style="text-align: center; color: var(--text-muted); font-weight: 800;">${isFirst ? item.qty : '-'}</td>
-                    <td style="text-align: center; color: #fff;">${gst}%</td>
+                    <td style="text-align: right; font-weight: 700; color: #fff; font-size: 0.8rem; width: 90px;">₹${billedPrice.toFixed(2)}</td>
+                    <td style="text-align: center; color: var(--text-muted); font-weight: 800; width: 70px;">${availableForThisLine}</td>
+                    <td style="text-align: center; color: #fff; font-size: 0.8rem; width: 60px;">${gst}%</td>
+
                     <td>
                         <input type="number" step="1" min="0" max="${item.qty}" 
                             class="qty-input" value="${v.claimQty}" 
                             oninput="calculatePDCNRow('${item.id}', ${idx}, 'qty', this.value)"
-                            style="width: 70px; background: ${qtyOverLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.1)'}; border-color: ${qtyOverLimit ? '#ef4444' : 'var(--primary)'}; color: #fff; font-weight: 800; text-align: center;">
+                            style="width: 55px; background: ${qtyOverLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.1)'}; border-color: ${qtyOverLimit ? '#ef4444' : 'var(--primary)'}; color: #fff; font-weight: 800; text-align: center; font-size: 0.8rem; padding: 4px;">
                     </td>
                     <td>
                         <input type="number" step="0.01" class="qty-input" 
                             value="${v.splPrice}" 
                             oninput="calculatePDCNRow('${item.id}', ${idx}, 'price', this.value)"
-                            style="width: 100px; background: rgba(16, 185, 129, 0.15); border-color: var(--accent); color: #fff; font-weight: 800;">
+                            style="width: 75px; background: rgba(16, 185, 129, 0.15); border-color: var(--accent); color: #fff; font-weight: 800; font-size: 0.8rem; padding: 4px;">
                     </td>
                     <td id="pdcn-diff-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
                     <td id="pdcn-stk-margin-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: var(--primary);">₹0.00</td>
@@ -1674,12 +1680,16 @@ function addPDCNVariation(itemId) {
     const item = currentPDCNInvoice.items.find(i => i.id == itemId);
     const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
     
+    const firstVar = pdcnClaims[itemId][0];
+    
     pdcnClaims[itemId].push({ 
         claimQty: 0, 
         splPrice: billedPrice, 
         remarks: '', 
-        active: true 
+        active: true,
+        gstPercent: firstVar ? firstVar.gstPercent : 0 // Inherit GST from primary record
     });
+
     renderPDCNTable();
 }
 
