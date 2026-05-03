@@ -524,38 +524,40 @@
                         <table class="excel-table" style="min-width: 1400px;">
                             <thead>
                                 <tr>
-                                    <th style="width: 250px;">Brand Name / Product</th>
-                                    <th>Billed Price</th>
-                                    <th>Qty</th>
-                                    <th>GST %</th>
-                                    <th>Total (Billed)</th>
-                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">Spl Price (Req)</th>
-                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">Diff / Unit</th>
-                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">Sale Diff</th>
-                                    <th style="background: rgba(16, 185, 129, 0.1); color: var(--accent);">10% Stk Margin</th>
-                                    <th style="background: var(--grad-primary); color: #fff;">Final PDCN</th>
-                                    <th>Mandatory Remarks</th>
+                                    <th style="width: 280px;">Brand Name / Product</th>
+                                    <th style="width: 100px;">Billed Price</th>
+                                    <th style="width: 60px;">Qty</th>
+                                    <th style="width: 60px;">GST %</th>
+                                    <th style="width: 110px;">Total (Billed)</th>
+                                    <th style="width: 120px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Spl Price (Req)</th>
+                                    <th style="width: 100px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Diff / Unit</th>
+                                    <th style="width: 110px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Sale Diff</th>
+                                    <th style="width: 80px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Stk Marg</th>
+                                    <th style="width: 120px; background: var(--grad-primary); color: #fff;">Final PDCN</th>
+                                    <th style="width: 250px;">Mandatory Remarks</th>
                                 </tr>
                             </thead>
                             <tbody id="pdcn-items-body"></tbody>
                         </table>
                     </div>
 
-                    <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
-                        <div style="width: 400px; background: rgba(255,255,255,0.02); padding: 2rem; border-radius: 20px; border: 1px solid var(--glass-border);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                                <span style="color: var(--text-muted); font-weight: 600;">Total Sale Difference:</span>
-                                <span id="pdcn-total-sale-diff" style="font-weight: 800; color: #fff;">₹0.00</span>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem; background: rgba(0,0,0,0.4); padding: 1.25rem 2.5rem; border-radius: 16px; border: 1px solid var(--glass-border); align-items: center; gap: 2.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Sale Difference</span>
+                            <span id="pdcn-total-sale-diff" style="font-size: 1.1rem; font-weight: 700; color: #fff; font-family: monospace;">₹0.00</span>
+                        </div>
+                        <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Stk Margin (10%)</span>
+                            <span id="pdcn-total-stk-margin" style="font-size: 1.1rem; font-weight: 700; color: #fff; font-family: monospace;">₹0.00</span>
+                        </div>
+                        
+                        <div style="margin-left: auto; background: var(--grad-primary); padding: 12px 25px; border-radius: 14px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px rgba(99,102,241,0.3);">
+                            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                                <span style="font-size: 0.65rem; font-weight: 900; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1.5px;">Grand Total PDCN</span>
+                                <span id="pdcn-grand-total" style="font-size: 2rem; font-weight: 900; color: #fff; letter-spacing: -1px; font-family: monospace; line-height: 1;">₹0.00</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                                <span style="color: var(--text-muted); font-weight: 600;">Total Stockist Margin:</span>
-                                <span id="pdcn-total-stk-margin" style="font-weight: 800; color: #fff;">₹0.00</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);">
-                                <span style="font-weight: 900; color: var(--primary); font-size: 1rem; text-transform: uppercase;">Total PDCN Amount</span>
-                                <span id="pdcn-grand-total" style="color: var(--accent); font-size: 2rem; font-weight: 900;">₹0.00</span>
-                            </div>
-                            <button class="btn-primary" style="margin-top: 1.5rem;" onclick="submitPDCNClaim()">SUBMIT PDCN CLAIM</button>
+                            <button class="btn-primary" style="background: #fff; color: var(--primary); padding: 10px 20px; border-radius: 10px; font-weight: 800; border: none; cursor: pointer; transition: 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="submitPDCNClaim()">SUBMIT CLAIM</button>
                         </div>
                     </div>
                 </div>

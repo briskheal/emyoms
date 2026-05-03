@@ -1564,25 +1564,25 @@ function renderPDCNTable() {
     if (!tbody || !currentPDCNInvoice) return;
 
     tbody.innerHTML = currentPDCNInvoice.items.map(item => {
-        const claim = pdcnClaims[item.id] || { splPrice: item.priceUsed, remarks: '', active: false };
-        const originalTotal = (item.qty * item.priceUsed).toFixed(2);
+        const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+        const gst = parseFloat(item.gstPercent || item.gst || 12);
+        const claim = pdcnClaims[item.id] || { splPrice: billedPrice, remarks: '', active: false };
         
         return `
-            <tr id="pdcn-row-${item.id}" style="opacity: ${claim.active ? '1' : '0.5'}; transition: 0.3s;">
+            <tr id="pdcn-row-${item.id}" style="opacity: ${claim.active ? '1' : '0.6'}; transition: 0.3s; background: ${claim.active ? 'rgba(99,102,241,0.05)' : 'transparent'};">
                 <td onclick="togglePDCNItem('${item.id}')" style="cursor: pointer; font-weight: 800; color: var(--primary);">
-                    <div style="font-size: 0.8rem;">${item.name}</div>
-                    <div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Click Brand Name to Prepare ??</div>
+                    <div style="font-size: 0.8rem; color: #fff;">${item.name}</div>
+                    <div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">${claim.active ? '✅ Active in Claim' : 'Click to Include in Claim'}</div>
                 </td>
-                <td style="text-align: right; font-weight: 700; color: #fff;">₹${parseFloat(item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align: right; font-weight: 700; color: #fff;">₹${billedPrice.toFixed(2)}</td>
                 <td style="text-align: center; color: #fff;">${item.qty}</td>
-                <td style="text-align: center; color: #fff;">${item.gstPercent}%</td>
-                <td style="text-align: right; font-weight: 700; color: #fff;">₹${parseFloat(item.totalValue || 0).toFixed(2)}</td>
+                <td style="text-align: center; color: #fff;">${gst}%</td>
+                <td style="text-align: right; font-weight: 700; color: #fff;">₹${(billedPrice * item.qty).toFixed(2)}</td>
                 <td>
                     <input type="number" step="0.01" class="qty-input" 
                         value="${claim.splPrice}" 
-                        ${!claim.active ? 'disabled' : ''}
                         oninput="calculatePDCNRow('${item.id}', this.value)"
-                        style="width: 100px; background: rgba(16, 185, 129, 0.1); border-color: var(--accent);">
+                        style="width: 100px; background: rgba(16, 185, 129, 0.15); border-color: var(--accent); color: #fff; font-weight: 800;">
                 </td>
                 <td id="pdcn-diff-${item.id}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
                 <td id="pdcn-sale-diff-${item.id}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
@@ -1591,9 +1591,8 @@ function renderPDCNTable() {
                 <td>
                     <textarea class="note-input" 
                         placeholder="Mandatory Remarks..." 
-                        ${!claim.active ? 'disabled' : ''}
                         oninput="updatePDCNRemarks('${item.id}', this.value)"
-                        style="width: 100%; min-height: 40px; font-size: 0.7rem;">${claim.remarks}</textarea>
+                        style="width: 100%; min-height: 40px; font-size: 0.7rem; color: #fff; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">${claim.remarks}</textarea>
                 </td>
             </tr>
         `;
@@ -1604,7 +1603,8 @@ function renderPDCNTable() {
 function togglePDCNItem(itemId) {
     if (!pdcnClaims[itemId]) {
         const item = currentPDCNInvoice.items.find(i => i.id == itemId);
-        pdcnClaims[itemId] = { splPrice: item.priceUsed, remarks: '', active: true };
+        const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+        pdcnClaims[itemId] = { splPrice: billedPrice, remarks: '', active: true };
     } else {
         pdcnClaims[itemId].active = !pdcnClaims[itemId].active;
     }
@@ -1616,23 +1616,24 @@ function calculatePDCNRow(itemId, splPrice) {
     if (!item) return;
 
     const sPrice = parseFloat(splPrice) || 0;
-    pdcnClaims[itemId].splPrice = sPrice;
-
-    const gstPct = parseFloat(item.gstPercent) || 0;
     
-    // User Formula:
-    // I = Invoiced PTS (Rate)
-    // J = GST on I
-    // K = Total (I+J)
-    // M = Spl Price
-    // N = GST on M
-    // O = Total (M+N)
-    // P = Diff (K-O)
-    // Q = Stk Margin (I-M)*10%
-    // R = Total Diff (P+Q)
-    // S = Qty * R
+    // Auto-activate and update claim data
+    if (!pdcnClaims[itemId]) {
+        pdcnClaims[itemId] = { splPrice: sPrice, remarks: '', active: true };
+    } else {
+        pdcnClaims[itemId].splPrice = sPrice;
+        pdcnClaims[itemId].active = true;
+    }
+    
+    // Update row opacity immediately without full re-render
+    const row = document.getElementById(`pdcn-row-${itemId}`);
+    if (row) {
+        row.style.opacity = "1";
+        row.style.background = "rgba(99,102,241,0.05)";
+    }
 
-    const I = parseFloat(item.priceUsed);
+    const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+    const I = parseFloat(item.priceUsed || item.rate || 0);
     const J = (I * gstPct) / 100;
     const K = I + J;
     
@@ -1641,7 +1642,7 @@ function calculatePDCNRow(itemId, splPrice) {
     const O = M + N;
     
     const P = K - O;
-    const Q = (I - M) * 0.10; // 10% Stockist Margin on Diff
+    const Q = (I - M) * 0.10; // 10% Stockist Margin
     const R = P + Q;
     const S = item.qty * R;
 
@@ -1703,8 +1704,9 @@ async function submitPDCNClaim() {
         items: activeItems.map(id => {
             const item = currentPDCNInvoice.items.find(i => i.id == id);
             const claim = pdcnClaims[id];
-            const diffPerUnit = parseFloat(item.priceUsed) - claim.splPrice;
-            const gstPct = parseFloat(item.gstPercent) || 0;
+            const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+            const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+            const diffPerUnit = billedPrice - claim.splPrice;
             
             // Formula matches UI: P = Diff(incl GST), Q = 10% Stk Margin(on net diff)
             const saleDiffPerUnit = diffPerUnit * (1 + gstPct / 100);
@@ -1715,7 +1717,8 @@ async function submitPDCNClaim() {
                 productId: item.productId,
                 name: item.name,
                 qty: item.qty,
-                billedPrice: item.priceUsed,
+                gstPercent: gstPct,
+                billedPrice: billedPrice,
                 specialPrice: claim.splPrice,
                 saleDiff: saleDiffPerUnit * item.qty,
                 stkMargin: stkMarginPerUnit * item.qty,
@@ -1726,8 +1729,9 @@ async function submitPDCNClaim() {
         totalAmount: activeItems.reduce((acc, id) => {
             const item = currentPDCNInvoice.items.find(i => i.id == id);
             const claim = pdcnClaims[id];
-            const diffPerUnit = parseFloat(item.priceUsed) - claim.splPrice;
-            const gstPct = parseFloat(item.gstPercent) || 0;
+            const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+            const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+            const diffPerUnit = billedPrice - claim.splPrice;
             const totalPerUnit = (diffPerUnit * (1 + gstPct / 100)) + (diffPerUnit * 0.10);
             return acc + (totalPerUnit * item.qty);
         }, 0)
