@@ -1915,41 +1915,47 @@ async function fetchPDCNHistory() {
             for (const month in grouped) {
                 html += `
                     <div style="margin-bottom: 2rem;">
-                        <div style="background: rgba(255,255,255,0.03); padding: 10px 20px; border-radius: 8px; font-weight: 800; color: var(--primary); margin-bottom: 1rem; font-size: 0.9rem; border-left: 4px solid var(--primary);">${month.toUpperCase()}</div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem;">
-                            ${grouped[month].map(c => `
-                                <div class="glass-card" style="padding: 1.25rem; border: 1px solid rgba(255,255,255,0.05);">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                                        <div>
-                                            <div style="font-size: 0.6rem; color: var(--accent); font-weight: 800;">INVOICE NO</div>
-                                            <div style="font-size: 1.1rem; font-weight: 900; color: #fff;">${c.invoiceNo}</div>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <div style="font-size: 0.6rem; color: var(--text-muted); font-weight: 800;">SUBMITTED ON</div>
-                                            <div style="font-size: 0.75rem; color: #fff;">${new Date(c.createdAt).toLocaleDateString()}</div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div style="display: flex; gap: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 1rem;">
-                                        <div style="flex: 1;">
-                                            <div style="font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase;">Total Claim</div>
-                                            <div style="font-size: 1rem; font-weight: 800; color: #fff;">₹${c.totalAmount.toLocaleString('en-IN')}</div>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <div style="font-size: 0.55rem; color: var(--text-muted); text-transform: uppercase;">Items</div>
-                                            <div style="font-size: 1rem; font-weight: 800; color: var(--primary);">${c.items?.length || 0} Products</div>
-                                        </div>
-                                    </div>
+                        <div style="background: rgba(99, 102, 241, 0.1); padding: 8px 20px; border-radius: 8px; font-weight: 800; color: var(--primary); margin-bottom: 1rem; font-size: 0.8rem; border-left: 4px solid var(--primary); letter-spacing: 1px;">${month.toUpperCase()}</div>
+                        <div class="excel-container" style="background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                            <table class="excel-table" style="width: 100%; min-width: 800px; border-collapse: collapse;">
+                                <thead style="background: rgba(255,255,255,0.02);">
+                                    <tr>
+                                        <th style="text-align: left; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Invoice No</th>
+                                        <th style="text-align: left; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Claim No</th>
+                                        <th style="text-align: center; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Products</th>
+                                        <th style="text-align: center; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Status</th>
+                                        <th style="text-align: center; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Claim Date</th>
+                                        <th style="text-align: right; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Claim Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${grouped[month].map(c => {
+                                        const status = (c.status || 'pending').toLowerCase();
+                                        const statusColor = status === 'approved' ? '#10b981' : (status === 'rejected' ? '#ef4444' : '#f59e0b');
+                                        const statusBg = status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : (status === 'rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)');
+                                        
+                                        return `
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                                            <td style="padding: 12px 20px; font-weight: 700; color: #fff; font-size: 0.85rem;">${c.invoiceNo}</td>
+                                            <td style="padding: 12px 20px; color: var(--accent); font-weight: 800; font-size: 0.8rem;">PDCN-${String(c.id).padStart(4, '0')}</td>
+                                            <td style="padding: 12px 20px; text-align: center; font-weight: 700; color: #fff; font-size: 0.85rem;">${c.items?.length || 0}</td>
+                                            <td style="padding: 12px 20px; text-align: center;">
+                                                <span style="padding: 4px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}33;">${status}</span>
+                                                ${c.adminRemarks ? `<div style="font-size: 0.6rem; color: #ef4444; margin-top: 5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">Note: ${c.adminRemarks}</div>` : ''}
+                                            </td>
+                                            <td style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">${new Date(c.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
+                                            <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${c.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                        </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
 
-                                    <div style="font-size: 0.7rem; color: var(--text-muted); font-style: italic;">
-                                        ${c.remarks ? `"${c.remarks}"` : 'No general remarks provided.'}
-                                    </div>
-                                </div>
-                            `).join('')}
+                            </table>
                         </div>
                     </div>
                 `;
             }
+
             container.innerHTML = html;
         } else {
             container.innerHTML = `
