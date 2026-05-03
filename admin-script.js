@@ -4985,8 +4985,6 @@ function renderPDCNReviewItems() {
         const gstPct = parseFloat(item.gstPercent) || 12;
         const marginPct = parseFloat(item.marginPct) || 10;
         
-        // Calculation logic:
-        // Final PDCN = [Qty * Diff * (1 + GST%)] + [Qty * Diff * Margin%]
         const taxableVal = (diff * item.qty) * (1 + gstPct / 100); 
         const marginVal = (diff * item.qty) * (marginPct / 100);
         const finalItemPDCN = taxableVal + marginVal;
@@ -4997,27 +4995,28 @@ function renderPDCNReviewItems() {
         grandTotal += finalItemPDCN;
 
         return `
-            <tr>
-                <td style="font-weight: 700; color: #fff;">${item.name}</td>
-                <td style="text-align: center; color: #fff;">${item.qty}</td>
-                <td style="text-align: center; color: #fff; font-size: 0.75rem;">${gstPct}%</td>
-                <td style="text-align: right; color: rgba(255,255,255,0.6); font-size: 0.75rem;">₹${billed.toFixed(2)}</td>
-                <td style="text-align: center;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                <td style="padding: 12px; font-weight: 700; color: #fff; width: 250px; overflow: hidden; text-overflow: ellipsis;">${item.name}</td>
+                <td style="padding: 12px; text-align: center; color: #fff; width: 60px;">${item.qty}</td>
+                <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.75rem; width: 60px;">${gstPct}%</td>
+                <td style="padding: 12px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.75rem; width: 100px;">₹${billed.toFixed(2)}</td>
+                <td style="padding: 12px; text-align: center; width: 100px;">
                     <input type="number" step="0.01" value="${special}" 
                         oninput="updateAdminPDCNItem(${idx}, 'specialPrice', this.value)"
-                        style="width: 70px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; text-align: right; font-size: 0.8rem; border-radius: 4px;">
+                        style="width: 80px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; text-align: right; font-size: 0.8rem; border-radius: 4px; padding: 4px;">
                 </td>
-                <td style="text-align: center;">
+                <td style="padding: 12px; text-align: center; width: 80px;">
                     <input type="number" step="0.1" value="${marginPct}" 
                         oninput="updateAdminPDCNItem(${idx}, 'marginPct', this.value)"
-                        style="width: 50px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); font-weight: 800; text-align: center; font-size: 0.8rem; border-radius: 4px;">
+                        style="width: 45px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); font-weight: 800; text-align: center; font-size: 0.8rem; border-radius: 4px; padding: 4px;">
                     <span style="font-size: 0.6rem; color: var(--text-muted);">%</span>
                 </td>
-                <td style="text-align: right; font-weight: 800; color: #fff; background: rgba(255,255,255,0.03);">₹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                <td style="font-size: 0.65rem; color: var(--text-muted); font-style: italic;">${item.remarks || '-'}</td>
+                <td style="padding: 12px; text-align: right; font-weight: 800; color: #fff; width: 120px; background: rgba(255,255,255,0.02);">₹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 12px; font-size: 0.65rem; color: var(--text-muted); font-style: italic;">${item.remarks || '-'}</td>
             </tr>
         `;
     }).join('');
+
 
     document.getElementById('pdcn-modal-grand-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }

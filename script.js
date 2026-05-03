@@ -1911,6 +1911,7 @@ async function fetchPDCNHistory() {
         const result = await res.json();
 
         if (result.success && result.claims.length > 0) {
+            window.allMyPDCNClaims = result.claims; // Store for viewing details
             let html = '';
             
             // Group by Month/Year
@@ -1936,6 +1937,7 @@ async function fetchPDCNHistory() {
                                         <th style="text-align: center; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Status</th>
                                         <th style="text-align: center; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Claim Date</th>
                                         <th style="text-align: right; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Claim Amount</th>
+                                        <th style="text-align: center; padding: 12px 20px; font-size: 0.65rem; text-transform: uppercase; color: var(--text-muted);">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1958,10 +1960,14 @@ async function fetchPDCNHistory() {
                                             </td>
                                             <td style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">${new Date(c.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
                                             <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${c.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                            <td style="padding: 12px 20px; text-align: center;">
+                                                <button class="btn btn-ghost" onclick="openPDCNViewModal(${c.id})" style="padding: 5px 10px; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1);"><i class="fas fa-eye"></i> View</button>
+                                            </td>
                                         </tr>
                                         `;
                                     }).join('')}
                                 </tbody>
+
 
                             </table>
                         </div>

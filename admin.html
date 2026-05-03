@@ -98,6 +98,17 @@
         .db-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; margin: 10px 0; overflow: hidden; }
         .db-bar-fill { height: 100%; background: var(--grad-primary); width: 0%; transition: 1s ease-out; }
         .nav-logo { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.5px; background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; }
+
+        /* Remove Numeric Spinners */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
         
         .main-container { display: flex; min-height: calc(100vh - 75px); }
         .sidebar { 
@@ -2417,16 +2428,16 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Product Name</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: center;">GST %</th>
-                            <th style="text-align: right;">Billed Rate</th>
-                            <th style="text-align: right;">Spl Rate</th>
-                            <th style="text-align: right;">Diff / Unit</th>
-                            <th style="text-align: right;">Margin (10%)</th>
-                            <th style="text-align: right;">Total Credit</th>
-                            <th style="width: 25%;">Remarks</th>
+                            <th style="width: 250px; text-align: left;">Product Name</th>
+                            <th style="width: 60px; text-align: center;">Qty</th>
+                            <th style="width: 60px; text-align: center;">GST %</th>
+                            <th style="width: 100px; text-align: right;">Billed Rate</th>
+                            <th style="width: 100px; text-align: center;">Spl Rate</th>
+                            <th style="width: 80px; text-align: center;">Margin %</th>
+                            <th style="width: 120px; text-align: right;">Total Credit</th>
+                            <th style="text-align: left;">Remarks</th>
                         </tr>
+
                     </thead>
                     <tbody id="pdcn-modal-items-body"></tbody>
                 </table>
