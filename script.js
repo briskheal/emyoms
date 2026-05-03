@@ -404,6 +404,28 @@ async function loadSettings() {
         safeSet('f-co-email', email);
         safeSet('f-co-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
+        // --- DYNAMIC LOGO ---
+        if (companySettings.logoImage) {
+            const logoEls = document.querySelectorAll('.logo');
+            logoEls.forEach(el => {
+                el.innerHTML = `<img src="${companySettings.logoImage}" style="height: 40px; width: auto; object-fit: contain; margin-right: 10px;"> ${el.innerText}`;
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+            });
+        }
+
+        // --- BLUEPRINT PREVIEW ---
+        if (companySettings.referenceInvoiceUrl) {
+            const footer = document.getElementById('global-footer');
+            if (footer) {
+                const blueprintLink = document.createElement('div');
+                blueprintLink.style.marginTop = '10px';
+                blueprintLink.style.textAlign = 'center';
+                blueprintLink.innerHTML = `<a href="${companySettings.referenceInvoiceUrl}" target="_blank" style="color:var(--accent); font-size: 0.65rem; text-decoration: none; opacity: 0.8; font-weight: 700;">📄 VIEW ACTIVE INVOICE BLUEPRINT</a>`;
+                footer.appendChild(blueprintLink);
+            }
+        }
+
         // --- DYNAMIC BACKGROUND VIDEO ---
         const videoContainer = document.getElementById('video-loop-container');
         if (videoContainer && companySettings.videoUrl && companySettings.videoUrl.trim() !== '') {
@@ -1447,7 +1469,7 @@ async function generateSampleMatchedPDF(inv) {
         totalTaxable += taxable; totalGST += gst;
     });
 
-    const isInter = currentUser?.gst && companySettings?.gstNo && companySettings.gstNo.substring(0,2) !== currentUser.gst.substring(0,2);
+    const isInter = (currentUser?.gstNo || currentUser?.gst) && companySettings?.gstNo && companySettings.gstNo.substring(0,2) !== (currentUser.gstNo || currentUser.gst).substring(0,2);
     let taxBody = [];
     Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
         const rate = parseFloat(r); const d = taxMap[r];

@@ -3107,11 +3107,11 @@ function addReturnRow() {
             <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
                 style="${inputBase}width:46px;text-align:center;color:#fff;font-weight:700;">
         </td>
-        <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">â‚¹0.00</td>
+        <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
         <td style="padding:4px 6px;text-align:center;">
             <button type="button" onclick="removeReturnRow('${id}')"
                 style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
-                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">âœ•</button>
+                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
         </td>
     `;
     document.getElementById('return-items-body').appendChild(row);
@@ -3633,6 +3633,30 @@ async function generateReport(type) {
     document.getElementById('report-to-date').value = today.toISOString().split('T')[0];
     document.getElementById('report-from-date').value = firstDay.toISOString().split('T')[0];
     
+    // Reset filters
+    document.getElementById('report-party-search').value = '';
+    document.getElementById('report-item-filter').value = '';
+    document.getElementById('report-pay-status').value = '';
+
+    // Show/Hide specific filters based on type
+    const partyFilter = document.getElementById('report-party-filter-container');
+    const extraFilters = document.getElementById('report-extra-filters');
+    
+    if (type === 'party-statement' || type === 'party-sales' || type === 'consolidated-ledger') {
+        partyFilter.style.display = 'flex';
+        // Populate Datalist
+        const dl = document.getElementById('report-party-list');
+        dl.innerHTML = (allStockists || []).map(s => `<option value="${s.name}">${s.companyName || ''} [${s.city || ''}]</option>`).join('');
+    } else {
+        partyFilter.style.display = 'none';
+    }
+
+    if (type === 'sales-summary' || type === 'product-sales' || type === 'bill-profit' || type === 'party-statement') {
+        extraFilters.style.display = 'flex';
+    } else {
+        extraFilters.style.display = 'none';
+    }
+
     document.getElementById('reportModal').classList.remove('hidden');
     renderReportView();
 }
@@ -3656,6 +3680,9 @@ function getReportDataByType(type, data, fromDate, toDate) {
     const filteredPayments = filterByDate(payments, 'date');
     const filteredExpenses = filterByDate(expenses, 'date');
     const filteredNotes = filterByDate(notes, 'date');
+
+    const itemFilter = document.getElementById('report-item-filter').value.toLowerCase().trim();
+    const payStatusFilter = document.getElementById('report-pay-status').value;
 
     let reportData = [];
     let fileName = `Emyris_${type}_${new Date().toISOString().split('T')[0]}`;
@@ -3698,6 +3725,7 @@ function getReportDataByType(type, data, fromDate, toDate) {
             const prodMap = {};
             filteredInvoices.forEach(inv => {
                 inv.items.forEach(item => {
+                    if (itemFilter && !item.name.toLowerCase().includes(itemFilter)) return;
                     if(!prodMap[item.name]) prodMap[item.name] = { Name: item.name, QtySold: 0, Revenue: 0 };
                     prodMap[item.name].QtySold += item.qty;
                     prodMap[item.name].Revenue += item.totalValue;
@@ -3721,11 +3749,9 @@ function getReportDataByType(type, data, fromDate, toDate) {
             break;
 
         case 'outstanding-summary':
-        case 'consolidated-ledger':
-        case 'party-statement':
         case 'ageing-report':
             fileName = "Party_Outstanding_Summary";
-            (stockists || []).map(s => {
+            (stockists || []).forEach(s => {
                 if (s.outstandingBalance !== 0 || type !== 'outstanding-summary') {
                     reportData.push({
                         "Party Name": s.name,
@@ -3737,6 +3763,64 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     });
                 }
             });
+            break;
+
+        case 'party-statement':
+        case 'consolidated-ledger':
+            const searchName = document.getElementById('report-party-search').value.trim();
+            const selectedParty = (stockists || []).find(s => s.name === searchName);
+            
+            if (!selectedParty) {
+                fileName = "Outstanding_Snapshot";
+                reportData = (stockists || []).map(s => ({
+                    "Party Name": s.name,
+                    "City": s.city || '-',
+                    "Outstanding": (s.outstandingBalance || 0).toFixed(2)
+                }));
+            } else {
+                fileName = `Statement_${selectedParty.name.replace(/\s+/g,'_')}`;
+                const pid = selectedParty._id || selectedParty.id;
+                
+                const pInvs = filteredInvoices.filter(i => (i.stockistId || i.stockist?._id || '').toString() === pid.toString());
+                const pNotes = filteredNotes.filter(n => (n.stockistId || n.stockist?._id || '').toString() === pid.toString());
+                const pPays = filteredPayments.filter(p => (p.stockistId || p.stockist?._id || '').toString() === pid.toString());
+                
+                let runningBal = 0;
+                const rows = [];
+
+                pInvs.forEach(i => {
+                    const hasItem = !itemFilter || i.items.some(it => it.name.toLowerCase().includes(itemFilter));
+                    const matchStatus = !payStatusFilter || i.paymentStatus === payStatusFilter || i.status === payStatusFilter;
+                    if (hasItem && matchStatus) {
+                        rows.push({ date: i.createdAt, ref: i.invoiceNo, type: 'INV', desc: 'Sales Invoice', dr: i.grandTotal, cr: 0 });
+                    }
+                });
+                pNotes.forEach(n => {
+                    if (!itemFilter && !payStatusFilter) {
+                        rows.push({ date: n.date, ref: n.noteNo, type: n.noteType, desc: n.reason || 'Financial Note', dr: n.noteType==='DN'?n.amount:0, cr: n.noteType==='CN'?n.amount:0 });
+                    }
+                });
+                pPays.forEach(p => {
+                    if (!itemFilter && !payStatusFilter) {
+                        rows.push({ date: p.date, ref: p.paymentNo || 'PAY', type: p.type, desc: `Payment via ${p.method}`, dr: p.type==='PAYMENT'?p.amount:0, cr: p.type==='RECEIPT'?p.amount:0 });
+                    }
+                });
+                
+                rows.sort((a,b) => new Date(a.date) - new Date(b.date));
+                
+                reportData = rows.map(r => {
+                    runningBal += (r.dr - r.cr);
+                    return {
+                        "Date": new Date(r.date).toLocaleDateString('en-GB'),
+                        "Ref No": r.ref,
+                        "Type": r.type,
+                        "Description": r.desc,
+                        "Debit (Dr)": r.dr.toFixed(2),
+                        "Credit (Cr)": r.cr.toFixed(2),
+                        "Running Balance": runningBal.toFixed(2) + (runningBal >= 0 ? ' Dr' : ' Cr')
+                    };
+                });
+            }
             break;
 
         case 'bill-profit':
@@ -5213,13 +5297,13 @@ async function downloadAdminPDCN_PDF() {
 
 async function downloadLedgerPDF() {
     if (!currentLedgerPartyId) return;
-    const s = allStockists.find(x => x._id === currentLedgerPartyId);
+    const s = allStockists.find(x => (x._id || x.id) == currentLedgerPartyId);
     if (!s) return alert("Party not found");
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
-    const co = window.currentCompany || {};
+    const co = window.companyProfile || {};
     
     doc.setFontSize(22);
     doc.setTextColor(99, 102, 241);

@@ -147,7 +147,10 @@ app.get('/api/public/config', async (req, res) => {
                 emails: company.emails,
                 videoUrl: company.videoUrl,
                 musicUrl: company.musicUrl,
-                scrollingMessage: company.scrollingMessage
+                scrollingMessage: company.scrollingMessage,
+                logoImage: company.logoImage,
+                signatureImage: company.signatureImage,
+                referenceInvoiceUrl: company.referenceInvoiceUrl
             }
         });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -178,9 +181,17 @@ app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => 
         // Clean up local file
         fs.unlinkSync(req.file.path);
 
-        const company = await db.Company.findOne();
+        let company = await db.Company.findOne();
+        if (!company) company = await db.Company.create({});
+        
         if (type === 'music') await company.update({ musicUrl: result.secure_url });
         else if (type === 'video') await company.update({ videoUrl: result.secure_url });
+
+        await db.Media.create({
+            name: req.file.originalname,
+            url: result.secure_url,
+            type: type || 'document'
+        });
 
         res.json({ success: true, url: result.secure_url });
     } catch (e) { res.status(500).json({ success: false, message: e.message }); }
@@ -197,8 +208,15 @@ app.post('/api/admin/settings/upload-design', docUpload.single('design'), async 
 
         fs.unlinkSync(req.file.path);
 
-        const company = await db.Company.findOne();
+        let company = await db.Company.findOne();
+        if (!company) company = await db.Company.create({});
         await company.update({ referenceInvoiceUrl: result.secure_url });
+
+        await db.Media.create({
+            name: req.file.originalname,
+            url: result.secure_url,
+            type: 'document'
+        });
 
         res.json({ success: true, url: result.secure_url });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -209,7 +227,8 @@ app.post('/api/admin/upload-logo', docUpload.single('logo'), async (req, res) =>
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
         const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyoms/branding' });
         fs.unlinkSync(req.file.path);
-        const company = await db.Company.findOne();
+        let company = await db.Company.findOne();
+        if (!company) company = await db.Company.create({});
         await company.update({ logoImage: result.secure_url });
         res.json({ success: true, url: result.secure_url });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -220,7 +239,8 @@ app.post('/api/admin/upload-signature', docUpload.single('signature'), async (re
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
         const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyoms/branding' });
         fs.unlinkSync(req.file.path);
-        const company = await db.Company.findOne();
+        let company = await db.Company.findOne();
+        if (!company) company = await db.Company.create({});
         await company.update({ signatureImage: result.secure_url });
         res.json({ success: true, url: result.secure_url });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -736,86 +756,6 @@ app.delete('/api/admin/stockists/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- MEDIA UPLOADS (Cloudinary) ---
-
-app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-        const { type } = req.body;
-
-        const result = await cloudinary.uploader.upload(req.file.path, {
-            resource_type: 'auto',
-            folder: 'emyris_media'
-        });
-
-        // Update company profile & Save to Media Library
-        const settings = await db.Company.findOne();
-        if (settings) {
-            if (type === 'music') await settings.update({ musicUrl: result.secure_url });
-            else if (type === 'video') await settings.update({ videoUrl: result.secure_url });
-        }
-        await db.Media.create({
-            name: req.file.originalname,
-            url: result.secure_url,
-            type: type || 'document'
-        });
-
-        // Clean up local file
-        fs.unlinkSync(req.file.path);
-
-        res.json({ success: true, url: result.secure_url });
-    } catch (e) { 
-        console.error("Upload Error:", e);
-        res.status(500).json({ success: false, message: e.message }); 
-    }
-});
-
-app.post('/api/admin/settings/upload-design', docUpload.single('design'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
-
-        const result = await cloudinary.uploader.upload(req.file.path, {
-            resource_type: 'auto',
-            folder: 'emyris_blueprints'
-        });
-
-        const settings = await db.Company.findOne();
-        if (settings) {
-            await settings.update({ referenceInvoiceUrl: result.secure_url });
-        }
-
-        await db.Media.create({
-            name: req.file.originalname,
-            url: result.secure_url,
-            type: 'document'
-        });
-
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.json({ success: true, url: result.secure_url });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-app.post('/api/admin/upload-logo', docUpload.single('logo'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, error: 'No logo file' });
-        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyris_branding' });
-        const settings = await db.Company.findOne();
-        if (settings) await settings.update({ logoImage: result.secure_url });
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.json({ success: true, url: result.secure_url });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-app.post('/api/admin/upload-signature', docUpload.single('signature'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, error: 'No signature file' });
-        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyris_branding' });
-        const settings = await db.Company.findOne();
-        if (settings) await settings.update({ signatureImage: result.secure_url });
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.json({ success: true, url: result.secure_url });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
 
 // --- MEDIA LIBRARY ENDPOINTS ---
 app.get('/api/admin/media', async (req, res) => {
