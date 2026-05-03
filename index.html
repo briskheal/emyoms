@@ -147,9 +147,10 @@
         }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         .excel-table th { 
-            position: sticky; top: 0; background: #f1f5f9; padding: 1rem; text-align: left; font-size: 0.7rem; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; border-right: 1px solid #cbd5e1; z-index: 10; font-weight: 800;
+            position: sticky; top: 0; background: rgba(15, 23, 42, 0.95); padding: 1rem; text-align: left; font-size: 0.7rem; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid var(--glass-border); border-right: 1px solid rgba(255,255,255,0.05); z-index: 10; font-weight: 800;
         }
-        .excel-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; color: #1e293b; vertical-align: middle; }
+        .excel-table td { padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); color: #e2e8f0; vertical-align: middle; }
+
         .excel-table tr:hover { background: rgba(99, 102, 241, 0.03); }
         .excel-table tr:nth-child(even) { background: rgba(0, 0, 0, 0.01); }
 
@@ -530,14 +531,14 @@
                                     <th style="width: 60px;">GST %</th>
                                     <th style="width: 90px; background: rgba(99, 102, 241, 0.1);">Claim Qty</th>
                                     <th style="width: 110px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Spl Price (Req)</th>
-                                    <th style="width: 90px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Diff / Unit</th>
-                                    <th style="width: 100px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Sale Diff</th>
-                                    <th style="width: 80px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Stk Marg</th>
+                                    <th style="width: 110px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Diff / Unit</th>
+                                    <th style="width: 100px; background: rgba(16, 185, 129, 0.1); color: var(--accent);">Stk Marg (10%)</th>
                                     <th style="width: 110px; background: var(--grad-primary); color: #fff;">Final PDCN</th>
                                     <th style="width: 220px;">Mandatory Remarks</th>
                                     <th style="width: 60px;">Actions</th>
                                 </tr>
                             </thead>
+
                             <tbody id="pdcn-items-body"></tbody>
                         </table>
                     </div>

@@ -1629,9 +1629,9 @@ function renderPDCNTable() {
                             style="width: 100px; background: rgba(16, 185, 129, 0.15); border-color: var(--accent); color: #fff; font-weight: 800;">
                     </td>
                     <td id="pdcn-diff-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
-                    <td id="pdcn-sale-diff-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
                     <td id="pdcn-stk-margin-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: var(--primary);">₹0.00</td>
                     <td id="pdcn-final-${item.id}-${idx}" style="text-align: right; font-weight: 900; color: #fff; background: rgba(99,102,241,0.2);">₹0.00</td>
+
                     <td>
                         <textarea class="note-input" 
                             placeholder="Remarks..." 
@@ -1710,22 +1710,31 @@ function calculatePDCNRow(itemId, idx, field, value) {
     const claimQty = variation.claimQty;
     const splPrice = variation.splPrice;
 
-    // Formula: Final PDCN Amount = qtyclaimed * (Sale Difference + Stockist Margin)
-    const billedIncl = billedPrice * (1 + gstPct / 100);
-    const splIncl = splPrice * (1 + gstPct / 100);
+    const bPrice = Number(billedPrice);
+    const sPrice = Number(splPrice);
+    const gPct = Number(gstPct);
     
-    const unitSaleDiff = billedIncl - splIncl;
-    const unitStkMargin = unitSaleDiff * 0.10;
+    // Per unit difference breakdown
+    const unitTaxableDiff = Number((bPrice - sPrice).toFixed(2));
+    const unitTaxDiff = Number((unitTaxableDiff * gPct / 100).toFixed(2));
+    const unitSaleDiff = Number((unitTaxableDiff + unitTaxDiff).toFixed(2));
     
-    const totalSaleDiff = unitSaleDiff * claimQty;
-    const totalStkMargin = unitStkMargin * claimQty;
-    const finalPDCN = claimQty * (unitSaleDiff + unitStkMargin);
+    // Margin is 10% of Special Price (input)
+    const unitStkMargin = Number((sPrice * 0.10).toFixed(2));
+    
+    const finalPDCN = Number(((unitSaleDiff + unitStkMargin) * Number(claimQty)).toFixed(2));
+
+
 
     // Update UI
-    document.getElementById(`pdcn-diff-${itemId}-${idx}`).innerText = `₹${unitSaleDiff.toFixed(2)}`;
-    document.getElementById(`pdcn-sale-diff-${itemId}-${idx}`).innerText = `₹${totalSaleDiff.toFixed(2)}`;
-    document.getElementById(`pdcn-stk-margin-${itemId}-${idx}`).innerText = `₹${totalStkMargin.toFixed(2)}`;
-    document.getElementById(`pdcn-final-${itemId}-${idx}`).innerText = `₹${finalPDCN.toFixed(2)}`;
+    const diffEl = document.getElementById(`pdcn-diff-${itemId}-${idx}`);
+    const marginEl = document.getElementById(`pdcn-stk-margin-${itemId}-${idx}`);
+    const finalEl = document.getElementById(`pdcn-final-${itemId}-${idx}`);
+
+    if (diffEl) diffEl.innerText = `₹${unitSaleDiff.toFixed(2)}`;
+    if (marginEl) marginEl.innerText = `₹${unitStkMargin.toFixed(2)}`;
+    if (finalEl) finalEl.innerText = `₹${finalPDCN.toFixed(2)}`;
+
 
     updatePDCNGrandTotals();
 }
@@ -1747,15 +1756,24 @@ function updatePDCNGrandTotals() {
             const splPrice = Number(v.splPrice || 0);
             const gstPct = Number(v.gstPercent || 0); 
             
-            const diffPerUnit = billedPrice - splPrice;
+            const billedPrice = Number(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
+            const claimQty = Number(v.claimQty || 0);
+            const splPrice = Number(v.splPrice || 0);
+            const gstPct = Number(v.gstPercent || 0); 
             
-            totalTaxable += Number((diffPerUnit * claimQty).toFixed(2));
-            totalTax += Number((diffPerUnit * (gstPct / 100) * claimQty).toFixed(2));
-            totalMargin += Number((diffPerUnit * 0.10 * claimQty).toFixed(2));
+            const unitTaxableDiff = billedPrice - splPrice;
+            const unitTaxDiff = unitTaxableDiff * (gstPct / 100);
+            const unitMargin = splPrice * 0.10;
+            
+            totalTaxable += Number((unitTaxableDiff * claimQty).toFixed(2));
+            totalTax += Number((unitTaxDiff * claimQty).toFixed(2));
+            totalMargin += Number((unitMargin * claimQty).toFixed(2));
         });
     });
 
     const netAmount = Number((totalTaxable + totalTax + totalMargin).toFixed(2));
+
+
 
     const finalGrandTotal = Math.round(netAmount);
     const roundOffValue = (finalGrandTotal - netAmount).toFixed(2);
@@ -1784,12 +1802,15 @@ async function submitPDCNClaim() {
                 validationError = `⚠️ Remarks Required: Please provide remarks for ${item.name} (Qty: ${v.claimQty})`;
             }
 
-            const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-            const gstPct = v.gstPercent; // Use pre-captured GST from the variation
-            const diffPerUnit = billedPrice - v.splPrice;
-            const saleDiffPerUnit = diffPerUnit * (1 + gstPct / 100);
-            const stkMarginPerUnit = diffPerUnit * 0.10;
-            const finalPDCNPerUnit = saleDiffPerUnit + stkMarginPerUnit;
+            const billedPrice = Number(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
+            const gstPct = Number(v.gstPercent || 0); 
+            const splPrice = Number(v.splPrice || 0);
+            
+            const billedIncl = billedPrice * (1 + gstPct / 100);
+            const splIncl = splPrice * (1 + gstPct / 100);
+            const unitDiff = billedIncl - splIncl;
+            const unitMargin = splPrice * 0.10;
+            const finalPerUnit = unitDiff + unitMargin;
 
             itemsToSubmit.push({
                 productId: item.productId,
@@ -1798,11 +1819,12 @@ async function submitPDCNClaim() {
                 gstPercent: gstPct,
                 billedPrice: billedPrice,
                 specialPrice: v.splPrice,
-                saleDiff: saleDiffPerUnit * v.claimQty,
-                stkMargin: stkMarginPerUnit * v.claimQty,
-                finalPDCN: finalPDCNPerUnit * v.claimQty,
+                saleDiff: unitDiff * v.claimQty,
+                stkMargin: unitMargin * v.claimQty,
+                finalPDCN: finalPerUnit * v.claimQty,
                 remarks: v.remarks
             });
+
         });
     });
 
