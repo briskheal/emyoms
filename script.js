@@ -1999,23 +1999,36 @@ async function fetchPDCNHistory() {
 
 // PDCN View Functions
 async function openPDCNViewModal(id) {
+    console.log("Attempting to open PDCN View for ID:", id);
+    const modal = document.getElementById('pdcnDetailModal');
+    if (!modal) {
+        console.error("CRITICAL: pdcnDetailModal element NOT FOUND in DOM!");
+        return alert("UI Error: Detail modal not found. Please reload the page.");
+    }
+
     let claim = (window.allMyPDCNClaims || []).find(c => c.id == id);
     
-    // Fallback: If not in cache, fetch directly
+    // Fail-safe: If not in cache, fetch directly
     if (!claim) {
         try {
-            console.log("Claim not in cache, fetching from server...");
-            const res = await fetch(`${API_BASE}/stockist/pdcn/history/${currentUser.id || currentUser._id}`);
+            const uid = (currentUser && (currentUser.id || currentUser._id)) || null;
+            if (!uid) throw new Error("User identity not found.");
+            
+            console.log("Fetching missing claim data for UID:", uid);
+            const res = await fetch(`${API_BASE}/stockist/pdcn/history/${uid}`);
             const result = await res.json();
             if (result.success) {
                 window.allMyPDCNClaims = result.claims;
                 claim = result.claims.find(c => c.id == id);
             }
-        } catch (e) { console.error("Fallback fetch failed", e); }
+        } catch (e) { console.error("Data retrieval failed:", e); }
     }
 
-    if (!claim) return alert("Could not load claim details. Please refresh.");
+    if (!claim) {
+        return alert("Could not load claim details. The record might be still synchronizing.");
+    }
 
+    // Populate Data
     const status = (claim.status || 'pending').toLowerCase();
     const statusColor = status === 'approved' ? '#10b981' : (status === 'rejected' ? '#ef4444' : '#f59e0b');
     const statusBg = status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : (status === 'rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)');
@@ -2032,7 +2045,6 @@ async function openPDCNViewModal(id) {
         const billed = parseFloat(item.billedPrice || 0);
         const special = parseFloat(item.specialPrice || 0);
         const diff = billed - special;
-        
         return `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <td style="padding: 15px 20px; font-weight: 700; color: #fff; font-size: 0.85rem;">${item.name}</td>
@@ -2045,12 +2057,19 @@ async function openPDCNViewModal(id) {
         `;
     }).join('');
 
-    document.getElementById('pdcnDetailModal').classList.remove('hidden');
+    // Force Visibility
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
 }
 
 function closePDCNViewModal() {
-    document.getElementById('pdcnDetailModal').classList.add('hidden');
+    const modal = document.getElementById('pdcnDetailModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.add('hidden');
+    }
 }
+
 
 
 
