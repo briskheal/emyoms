@@ -1044,13 +1044,18 @@ function viewOrderDetails(orderId) {
         `;
     }).join('');
 
-    const unroundedTotal = Number((o.subTotal + o.gstAmount).toFixed(2));
-    const roundOffValue = (o.grandTotal - unroundedTotal).toFixed(2);
+    const safeSubTotal = Number(o.subTotal || 0);
+    const safeGstAmount = Number(o.gstAmount || 0);
+    const safeGrandTotal = Number(o.grandTotal || 0);
 
-    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    const unroundedTotal = Number((safeSubTotal + safeGstAmount).toFixed(2));
+    const roundOffValue = (safeGrandTotal - unroundedTotal).toFixed(2);
+
+    document.getElementById('detail-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
-    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
 
     document.getElementById('orderDetailModal').style.display = 'flex';
 }
@@ -1238,16 +1243,18 @@ async function generateInvoicePDF(inv) {
     doc.setFont("helvetica", "bold"); doc.setTextColor(99, 102, 241); doc.setFontSize(9);
     doc.text("Amount in Words:", 15, finalY - 10);
     doc.setTextColor(40, 44, 52); doc.setFont("helvetica", "normal");
-    doc.text("(" + numberToWords(inv.grandTotal) + ")", 15, finalY + 5);
+    const totalVal = Number(inv.grandTotal) || 0;
+    doc.text("(" + numberToWords(totalVal) + ")", 15, finalY + 5);
 
     const unroundedNet = Number((totalTaxable + totalGST).toFixed(2));
-    const roundOffValue = (inv.grandTotal - unroundedNet).toFixed(2);
+    const roundOffValue = (totalVal - unroundedNet).toFixed(2);
     doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
     doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
     doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 5, { align: 'right' });
     doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY, { align: 'right' });
     doc.setFont("helvetica", "bold"); doc.setTextColor(99, 102, 241);
-    doc.text(`NET PAYABLE: Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 5, { align: 'right' });
+    doc.text(`NET PAYABLE: Rs. ${totalVal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 5, { align: 'right' });
+
 
     // Bank Details & QR
     if (companySettings?.invoiceBankVisible !== false && companySettings?.bankDetails) {

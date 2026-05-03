@@ -3366,8 +3366,10 @@ async function generateStandardPDF({
 
 
     const finalY = doc.lastAutoTable.finalY + 10;
-    doc.text(`Grand Total: Rs. ${grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
-    doc.text(`Words: ${numberToWords(grandTotal)}`, 15, finalY + 10);
+    const gTotal = Number(grandTotal) || 0;
+    doc.text(`Grand Total: Rs. ${gTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
+    doc.text(`Words: ${numberToWords(gTotal)}`, 15, finalY + 10);
+
     
     if (filename) doc.save(filename);
 }
@@ -3425,10 +3427,12 @@ async function generateSampleMatchedPDF({
 
 
     const finalY = doc.lastAutoTable.finalY + 10;
+    const gTotal = Number(grandTotal) || 0;
     doc.setFont("helvetica", "bold");
-    doc.text(`GRAND TOTAL: Rs. ${grandTotal.toFixed(2)}`, 198, finalY, { align: 'right' });
+    doc.text(`GRAND TOTAL: Rs. ${gTotal.toFixed(2)}`, 198, finalY, { align: 'right' });
     doc.setFont("helvetica", "italic"); doc.setFontSize(8);
-    doc.text(`Amount in Words: ${numberToWords(grandTotal)}`, 12, finalY + 10);
+    doc.text(`Amount in Words: ${numberToWords(gTotal)}`, 12, finalY + 10);
+
 
     if (filename) doc.save(filename);
 }
