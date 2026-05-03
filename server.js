@@ -1043,15 +1043,20 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         const invoiceNo = await getNextDocNo('invoice');
         const stockist = await db.Stockist.findByPk(parseInt(party));
 
+        const numSubTotal = Number(subTotal) || 0;
+        const numGstAmount = Number(gstAmount) || 0;
+        const numGrandTotal = Number(grandTotal) || 0;
+
         const newInvoice = await db.Invoice.create({
             invoiceNo,
             stockistId: parseInt(party),
-            subTotal,
-            gstAmount,
-            grandTotal,
-            outstandingAmount: grandTotal,
+            subTotal: numSubTotal,
+            gstAmount: numGstAmount,
+            grandTotal: numGrandTotal,
+            outstandingAmount: numGrandTotal,
             status: 'approved'
         });
+
 
         for (const item of items) {
             const productId = parseInt(item.productId || item.product);
@@ -1091,14 +1096,17 @@ app.get('/api/admin/purchase-entries', async (req, res) => {
 
 app.post('/api/admin/purchase-entries', async (req, res) => {
     try {
-        const { items, supplierId, grandTotal } = req.body;
+        const { supplierId, items } = req.body;
+        const subTotal = Number(req.body.subTotal) || 0;
+        const gstAmount = Number(req.body.gstAmount) || 0;
+        const grandTotal = Number(req.body.grandTotal) || 0;
         const purchaseNo = await getNextDocNo('purchase');
 
         const entry = await db.PurchaseEntry.create({
-            purchaseNo,
-            supplierId,
-            grandTotal,
-            ...req.body
+            ...req.body,
+            subTotal,
+            gstAmount,
+            grandTotal
         });
 
         for (const item of items) {
@@ -1167,14 +1175,16 @@ app.post('/api/admin/financial-notes', async (req, res) => {
 
         const noteNo = await getNextDocNo(counterKey);
 
+        const numAmount = Number(amount) || 0;
         const newNote = await db.FinancialNote.create({
             noteNo,
             noteType,
             stockistId: partyId,
-            amount,
+            amount: numAmount,
             reason,
             ...req.body
         });
+
 
         // Inventory Logic for Salable Return / Purchase Return
         const adjFactor = reason === 'Salable Return' ? 1 : (reason === 'Purchase Return' ? -1 : 0);
@@ -1211,9 +1221,10 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
         const claim = await db.PDCNClaim.create({
             invoiceNo,
             stockistId,
-            totalAmount,
+            totalAmount: Number(totalAmount) || 0,
             status: 'pending'
         });
+
 
         for (const item of items) {
             await db.PDCNClaimItem.create({
@@ -1331,14 +1342,16 @@ app.post('/api/admin/payments', async (req, res) => {
         
         const paymentNo = await getNextDocNo(type === 'RECEIPT' ? 'payin' : 'payout');
 
+        const numAmount = Number(amount) || 0;
         const payment = await db.Payment.create({
             paymentNo,
             stockistId: partyId,
-            amount,
+            amount: numAmount,
             method,
             type,
             date: date || new Date()
         });
+
 
         const stockist = await db.Stockist.findByPk(partyId);
         const adj = type === 'RECEIPT' ? -amount : amount;
