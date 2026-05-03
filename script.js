@@ -1028,7 +1028,8 @@ function viewOrderDetails(orderId) {
     body.innerHTML = o.items.map(i => {
         const requested = i.askingRate || i.masterRate || i.priceUsed;
         const approved = i.priceUsed;
-        const lineTotal = Number(approved) * Number(i.qty);
+        const gstPct = parseFloat(i.gstPercent) || 12;
+        const lineTotal = Number(approved) * Number(i.qty) * (1 + gstPct / 100);
         
         return `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
@@ -1037,6 +1038,7 @@ function viewOrderDetails(orderId) {
                 <td style="padding: 1rem 1.25rem; text-align: right; color: var(--accent); font-weight: 800; font-size: 0.9rem;">₹${approved.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td style="padding: 1rem 1.25rem; text-align: center; font-weight: 800; color: #fff; font-size: 0.9rem;">${i.qty}</td>
                 <td style="padding: 1rem 1.25rem; text-align: center; color: var(--accent); font-weight: 700; font-size: 0.9rem;">+${i.bonusQty || 0}</td>
+                <td style="padding: 1rem 1.25rem; text-align: center; color: #fff; font-weight: 700; font-size: 0.9rem;">${gstPct}%</td>
                 <td style="padding: 1rem 1.25rem; text-align: right; font-weight: 900; color: #fff; font-size: 0.95rem;">₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `;

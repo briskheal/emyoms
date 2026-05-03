@@ -934,6 +934,20 @@ app.get('/api/stockist/invoices', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+app.get('/api/stockist/orders/:orderId/invoice', async (req, res) => {
+    try {
+        const invoice = await db.Invoice.findOne({
+            where: { orderId: req.params.orderId },
+            include: [
+                { model: db.InvoiceItem, as: 'items' },
+                { model: db.Stockist }
+            ]
+        });
+        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        res.json({ success: true, invoice });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
     try {
         const order = await db.Order.findByPk(req.params.orderId, {
