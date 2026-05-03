@@ -1907,7 +1907,8 @@ async function fetchPDCNHistory() {
     container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Loading claim history...</div>`;
 
     try {
-        const res = await fetch(`${API_BASE}/stockist/pdcn/history/${currentUser._id}`);
+        const res = await fetch(`${API_BASE}/stockist/pdcn/history/${currentUser.id || currentUser._id}`);
+
         const result = await res.json();
 
         if (result.success && result.claims.length > 0) {
@@ -1961,9 +1962,13 @@ async function fetchPDCNHistory() {
                                             <td style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">${new Date(c.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
                                             <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${c.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                                             <td style="padding: 12px 20px; text-align: center;">
-                                                <button class="btn btn-ghost" onclick="openPDCNViewModal(${c.id})" style="padding: 5px 10px; font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1);"><i class="fas fa-eye"></i> View</button>
+                                                <button class="btn" onclick="openPDCNViewModal(${c.id})" 
+                                                    style="padding: 6px 14px; font-size: 0.65rem; font-weight: 800; background: rgba(99, 102, 241, 0.15); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px;">
+                                                    <i class="fas fa-eye" style="font-size: 0.7rem;"></i> VIEW
+                                                </button>
                                             </td>
                                         </tr>
+
                                         `;
                                     }).join('')}
                                 </tbody>
@@ -1988,4 +1993,46 @@ async function fetchPDCNHistory() {
         container.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 2rem;">Error loading history: ${e.message}</div>`;
     }
 }
+
+// PDCN View Functions
+function openPDCNViewModal(id) {
+    const claim = (window.allMyPDCNClaims || []).find(c => c.id == id);
+    if (!claim) return;
+
+    const status = (claim.status || 'pending').toLowerCase();
+    const statusColor = status === 'approved' ? '#10b981' : (status === 'rejected' ? '#ef4444' : '#f59e0b');
+    const statusBg = status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : (status === 'rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)');
+
+    document.getElementById('pdcn-view-id').innerText = status === 'approved' && claim.creditNoteNo ? claim.creditNoteNo : `CL-ID-${String(claim.id).padStart(4, '0')}`;
+    document.getElementById('pdcn-view-invoice').innerText = claim.invoiceNo;
+    document.getElementById('pdcn-view-date').innerText = new Date(claim.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+    document.getElementById('pdcn-view-status').innerHTML = `<span style="padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}33;">${status}</span>`;
+    document.getElementById('pdcn-view-remarks').innerText = claim.adminRemarks || 'No admin remarks provided.';
+    document.getElementById('pdcn-view-total').innerText = `₹${claim.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+    const tbody = document.getElementById('pdcn-view-items-body');
+    tbody.innerHTML = (claim.items || []).map(item => {
+        const billed = parseFloat(item.billedPrice || 0);
+        const special = parseFloat(item.specialPrice || 0);
+        const diff = billed - special;
+        
+        return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                <td style="padding: 15px 20px; font-weight: 700; color: #fff; font-size: 0.85rem;">${item.name}</td>
+                <td style="padding: 15px 20px; text-align: center; color: #fff; font-weight: 700;">${item.qty}</td>
+                <td style="padding: 15px 20px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.8rem;">₹${billed.toFixed(2)}</td>
+                <td style="padding: 15px 20px; text-align: right; color: var(--accent); font-weight: 700;">₹${special.toFixed(2)}</td>
+                <td style="padding: 15px 20px; text-align: right; color: #f59e0b; font-weight: 700;">₹${diff.toFixed(2)}</td>
+                <td style="padding: 15px 20px; text-align: right; font-weight: 800; color: #fff; background: rgba(255,255,255,0.02);">₹${parseFloat(item.finalPDCN || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('pdcnDetailModal').classList.remove('hidden');
+}
+
+function closePDCNViewModal() {
+    document.getElementById('pdcnDetailModal').classList.add('hidden');
+}
+
 

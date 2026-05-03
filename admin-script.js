@@ -4905,8 +4905,9 @@ function renderPDCNClaims() {
     tbody.innerHTML = filtered.map(c => `
         <tr>
             <td>${new Date(c.createdAt).toLocaleDateString('en-GB')}</td>
+            <td style="font-weight: 800; color: var(--accent); font-size: 0.75rem;">CL-ID-${String(c.id).padStart(4, '0')}</td>
             <td style="font-weight: 700; color: #fff;">${c.Stockist ? c.Stockist.name : 'Unknown'}</td>
-            <td style="font-family: monospace; color: var(--accent); font-weight: 700;">${c.invoiceNo}</td>
+            <td style="font-family: monospace; color: #fff; font-weight: 700;">${c.invoiceNo}</td>
             <td style="text-align: center;">${c.items.length}</td>
             <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(c.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td style="text-align: center;">
@@ -4920,6 +4921,7 @@ function renderPDCNClaims() {
             </td>
         </tr>
     `).join('');
+
 }
 
 function updatePDCNBadge() {

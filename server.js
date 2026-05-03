@@ -1304,24 +1304,47 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
         const claim = await db.PDCNClaim.create({
             invoiceNo,
             stockistId,
-            totalAmount: Number(totalAmount) || 0,
+            totalAmount: 0, // Will be updated after items are added
             status: 'pending'
         });
 
+        let calculatedTotal = 0;
         for (const item of items) {
+            const qty = Number(item.claimQty) || 0;
+            const billed = Number(item.billedPrice) || 0;
+            const spl = Number(item.splPrice) || 0;
+            const diff = billed - spl;
+            const gst = Number(item.gstPercent || item.gstPct) || 0;
+            const marginPct = 10.0; 
+
+            // Formula: (Diff * Qty * (1 + GST/100)) + (Diff * Qty * Margin/100)
+            const taxableValue = (diff * qty) * (1 + gst / 100);
+            const marginValue = (diff * qty) * (marginPct / 100);
+            const finalItemPDCN = taxableValue + marginValue;
+
             await db.PDCNClaimItem.create({
                 pdcnClaimId: claim.id,
                 productId: item.productId,
                 name: item.name,
-                qty: Number(item.claimQty),
-                billedPrice: Number(item.billedPrice),
-                specialPrice: Number(item.splPrice),
-                gstPercent: Number(item.gstPct),
-                finalPDCN: Number(item.finalPDCN),
+                qty: qty,
+                billedPrice: billed,
+                specialPrice: spl,
+                gstPercent: gst,
+                marginPct: marginPct,
+                stkMargin: marginValue,
+                saleDiff: diff,
+                finalPDCN: finalItemPDCN,
                 remarks: item.remarks
             });
+            calculatedTotal += finalItemPDCN;
         }
+
+        // Force header to match item sum
+        await claim.update({ totalAmount: Math.round(calculatedTotal) });
+
+
         res.json({ success: true, message: 'PDCN Worksheet submitted for review', claimId: claim.id });
+
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
