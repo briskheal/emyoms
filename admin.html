@@ -356,6 +356,7 @@
             <div class="nav-item" onclick="switchTab('stockists', this); closeSidebar()"><span>🤝</span> Party Master</div>
             <div class="nav-item" onclick="switchTab('masters', this); closeSidebar()"><span>📋</span> Global Masters</div>
             <div class="nav-item" onclick="switchTab('orders', this); closeSidebar()"><span>🛒</span> Order History</div>
+            <div class="nav-item" onclick="switchTab('pdcn-approvals', this); closeSidebar()"><span>📝</span> PDCN Approvals <span id="pdcn-pending-count" class="badge-pending" style="font-size: 0.6rem; padding: 2px 6px; margin-left: auto; display: none;">0</span></div>
             <div style="margin-bottom: 0.5rem;">
                 <div class="nav-item" onclick="toggleSubmenu('sub-finance', this)">
                     <span>💰</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
@@ -826,6 +827,44 @@
                             </thead>
                             <tbody id="orderHistoryBody">
                                 <!-- Order history rows will be rendered here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- PDCN APPROVALS TAB -->
+            <div id="tab-pdcn-approvals" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" style="margin: 0;">📝 PDCN Worksheet Approvals</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <select id="pdcn-status-filter" onchange="renderPDCNClaims()" style="width: 150px; padding: 0.5rem;">
+                            <option value="pending">Pending Only</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="all">All Claims</option>
+                        </select>
+                        <button class="btn btn-ghost" onclick="fetchPDCNClaims()">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Claim Date</th>
+                                    <th>Stockist / Firm Name</th>
+                                    <th>Invoice No</th>
+                                    <th style="text-align: center;">Total Items</th>
+                                    <th style="text-align: right;">Total Claim Amt</th>
+                                    <th style="text-align: center;">Status</th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pdcn-claims-body">
+                                <!-- Claims will be rendered here -->
+                                <tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">Loading claims...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -2381,6 +2420,68 @@
         </div>
     </div>
 
+
+    <!-- MODAL (PDCN Claim Details) -->
+    <div id="pdcnClaimModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 5000;">
+        <div class="glass-card" style="width: 1100px; max-height: 90vh; overflow-y: auto; padding: 2rem; border-top: 4px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div style="font-size: 0.6rem; font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px;">Review Price Difference Credit Note</div>
+                    <h2 id="pdcn-modal-title" style="margin: 0; font-size: 1.5rem; color: #fff;">PDCN Claim Review</h2>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closePDCNClaimModal()">✕ Close</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Stockist / Party</label>
+                    <div id="pdcn-modal-party" style="font-size: 1.1rem; font-weight: 800; color: #fff;">-</div>
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Invoice Reference</label>
+                    <div id="pdcn-modal-invoice" style="font-size: 1.1rem; font-weight: 800; color: var(--accent);">-</div>
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Claim Status</label>
+                    <div id="pdcn-modal-status" style="margin-top: 4px;">-</div>
+                </div>
+            </div>
+
+            <div class="table-container" style="margin-bottom: 2rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th style="text-align: center;">Qty</th>
+                            <th style="text-align: right;">Billed Rate</th>
+                            <th style="text-align: right;">Spl Rate</th>
+                            <th style="text-align: right;">Diff / Unit</th>
+                            <th style="text-align: right;">Margin (10%)</th>
+                            <th style="text-align: right;">Total Credit</th>
+                            <th style="width: 25%;">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdcn-modal-items-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1; max-width: 500px;">
+                    <label style="font-size: 0.7rem; font-weight: 800; color: #fff; margin-bottom: 8px; display: block;">Admin Feedback / Rejection Reason</label>
+                    <textarea id="pdcn-admin-remarks" placeholder="Enter remarks for the stockist..." style="min-height: 80px;"></textarea>
+                </div>
+                <div style="text-align: right; background: rgba(99, 102, 241, 0.1); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px;">GRAND TOTAL PDCN CREDIT</div>
+                    <div id="pdcn-modal-grand-total" style="font-size: 2.2rem; font-weight: 900; color: var(--primary);">₹0.00</div>
+                </div>
+            </div>
+
+            <div id="pdcn-action-buttons" style="display: flex; justify-content: flex-end; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--glass-border); padding-top: 2rem;">
+                <button type="button" class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="processPDCNClaim('reject')">❌ REJECT CLAIM</button>
+                <button type="button" class="btn btn-primary" style="padding: 12px 60px; background: var(--grad-primary);" onclick="processPDCNClaim('approve')">✅ APPROVE & ISSUE CREDIT NOTE</button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL (Payment Entry) -->
     <div id="paymentModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 5000;">

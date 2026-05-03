@@ -922,6 +922,18 @@ app.get('/api/stockist/invoice/:invoiceNo', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+app.get('/api/stockist/invoices', async (req, res) => {
+    try {
+        const { stockistId } = req.query;
+        const invoices = await db.Invoice.findAll({
+            where: { stockistId },
+            attributes: ['id', 'invoiceNo', 'grandTotal', 'createdAt'],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json({ success: true, invoices });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
     try {
         const order = await db.Order.findByPk(req.params.orderId, {
@@ -1146,9 +1158,87 @@ app.post('/api/admin/financial-notes', async (req, res) => {
 app.post('/api/stockist/pdcn/submit', async (req, res) => {
     try {
         const { invoiceNo, stockistId, items, totalAmount } = req.body;
-        console.log(`[PDCN CLAIM] Received from Stockist ${stockistId} for Invoice ${invoiceNo}`);
-        res.json({ success: true, message: 'PDCN Worksheet submitted for review' });
+        
+        const claim = await db.PDCNClaim.create({
+            invoiceNo,
+            stockistId,
+            totalAmount,
+            status: 'pending'
+        });
+
+        for (const item of items) {
+            await db.PDCNClaimItem.create({
+                ...item,
+                pdcnClaimId: claim.id
+            });
+        }
+
+        res.json({ success: true, message: 'PDCN Worksheet submitted for review', claimId: claim.id });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/admin/pdcn/claims', async (req, res) => {
+    try {
+        const claims = await db.PDCNClaim.findAll({
+            include: [
+                { model: db.Stockist },
+                { model: db.PDCNClaimItem, as: 'items' }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(claims);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
+    try {
+        const claim = await db.PDCNClaim.findByPk(req.params.id, {
+            include: [{ model: db.PDCNClaimItem, as: 'items' }]
+        });
+        if (!claim) return res.status(404).json({ success: false, message: "Claim not found" });
+        if (claim.status !== 'pending') return res.status(400).json({ success: false, message: "Claim already processed" });
+
+        const noteNo = await getNextDocNo('pdcn');
+        const financialNote = await db.FinancialNote.create({
+            noteNo,
+            noteType: 'CN',
+            stockistId: claim.stockistId,
+            amount: claim.totalAmount,
+            reason: 'Price Diff CN',
+            description: `PDCN for Invoice ${claim.invoiceNo}`
+        });
+
+        for (const item of claim.items) {
+            await db.NoteItem.create({
+                financialNoteId: financialNote.id,
+                productId: item.productId,
+                name: item.name,
+                qty: item.qty,
+                price: item.specialPrice, // The price it was adjusted to
+                totalValue: item.finalPDCN, // The credit amount
+                remarks: item.remarks
+            });
+        }
+
+        // Update Stockist Balance
+        await db.Stockist.decrement('outstandingBalance', { 
+            by: claim.totalAmount, 
+            where: { id: claim.stockistId } 
+        });
+
+        await claim.update({ status: 'approved' });
+        res.json({ success: true, financialNote });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.put('/api/admin/pdcn/claims/:id/reject', async (req, res) => {
+    try {
+        const claim = await db.PDCNClaim.findByPk(req.params.id);
+        if (!claim) return res.status(404).json({ success: false, message: "Claim not found" });
+        
+        await claim.update({ status: 'rejected', adminRemarks: req.body.remarks });
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.delete('/api/admin/financial-notes/:id', async (req, res) => {

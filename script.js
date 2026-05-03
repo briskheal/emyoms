@@ -120,6 +120,7 @@ function switchOrderTab(tab) {
     } else if (tab === 'pdcn') {
         document.getElementById('section-pdcn').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
+        fetchPDCNInvoices();
     }
 }
 async function handleRegister(e) {
@@ -1467,21 +1468,88 @@ async function generateSampleMatchedPDF(inv) {
     doc.save(filename);
 }
 // --- PDCN WORKSHEET LOGIC ---
-let currentPDCNInvoice = null;
-let pdcnClaims = {}; // { itemId: { splPrice, remarks, active } }
+async function fetchPDCNInvoices() {
+    const container = document.getElementById('pdcn-invoice-selector');
+    if (!container) return;
 
-async function loadPDCNInvoice() {
-    const invNo = document.getElementById('pdcn-inv-no').value.trim();
-    if (!invNo) return alert("Please enter an Invoice Number.");
+    try {
+        const res = await fetch(`${API_BASE}/stockist/invoices?stockistId=${currentUser._id}`);
+        const result = await res.json();
+        if (result.success) {
+            renderPDCNInvoiceList(result.invoices);
+        } else {
+            container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #ef4444;">${result.message || 'Failed to load invoices.'}</div>`;
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #ef4444;">Error loading invoices. Please try again.</div>`;
+    }
+}
 
+function renderPDCNInvoiceList(invoices) {
+    const container = document.getElementById('pdcn-invoice-selector');
+    if (!container) return;
+
+    if (!invoices || invoices.length === 0) {
+        container.innerHTML = `<div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+            <p>No invoices found to process PDCN.</p>
+        </div>`;
+        return;
+    }
+
+    // Group by month
+    const groups = {};
+    invoices.forEach(inv => {
+        const date = new Date(inv.createdAt);
+        const month = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        if (!groups[month]) groups[month] = [];
+        groups[month].push(inv);
+    });
+
+    let html = '';
+    Object.keys(groups).forEach(month => {
+        html += `
+            <div style="margin-bottom: 2rem;">
+                <h3 style="font-size: 0.9rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem; border-left: 4px solid var(--accent); padding-left: 15px; font-weight: 800;">${month}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    ${groups[month].map(inv => `
+                        <div class="glass-card" onclick="loadPDCNInvoice('${inv.invoiceNo}')" style="cursor: pointer; padding: 1.25rem; transition: 0.3s; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);" onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.05)'; this.style.transform='none';">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-family: monospace; font-weight: 800; color: var(--primary); font-size: 1.1rem;">${inv.invoiceNo}</span>
+                                <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">${new Date(inv.createdAt).toLocaleDateString('en-GB')}</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+                                <span>Bill Value:</span>
+                                <span style="font-weight: 800; color: #fff;">₹${parseFloat(inv.grandTotal).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 0.65rem; color: var(--accent); font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Click to prepare PDCN →</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function resetPDCNWorksheet() {
+    document.getElementById('pdcn-worksheet-container').classList.add('hidden');
+    document.getElementById('pdcn-invoice-selector').classList.remove('hidden');
+    currentPDCNInvoice = null;
+    pdcnClaims = {};
+}
+
+async function loadPDCNInvoice(invNo) {
     try {
         const res = await fetch(`${API_BASE}/stockist/invoice/${invNo}?stockistId=${currentUser._id}`);
         const result = await res.json();
         if (result.success) {
             currentPDCNInvoice = result.invoice;
             pdcnClaims = {}; // Reset
+            document.getElementById('pdcn-active-inv-no').innerText = invNo;
             document.getElementById('pdcn-worksheet-container').classList.remove('hidden');
-            document.getElementById('pdcn-empty-state').classList.add('hidden');
+            document.getElementById('pdcn-invoice-selector').classList.add('hidden');
             renderPDCNTable();
         } else {
             alert(result.message || "Invoice not found.");
@@ -1548,15 +1616,37 @@ function calculatePDCNRow(itemId, splPrice) {
     const sPrice = parseFloat(splPrice) || 0;
     pdcnClaims[itemId].splPrice = sPrice;
 
-    const diffPerUnit = Math.max(0, parseFloat(item.priceUsed) - sPrice);
-    const saleDiff = diffPerUnit * item.qty;
-    const stkMargin = saleDiff * 0.10; // 10% Stockist Margin
-    const finalPDCN = saleDiff + stkMargin;
+    const gstPct = parseFloat(item.gstPercent) || 0;
+    
+    // User Formula:
+    // I = Invoiced PTS (Rate)
+    // J = GST on I
+    // K = Total (I+J)
+    // M = Spl Price
+    // N = GST on M
+    // O = Total (M+N)
+    // P = Diff (K-O)
+    // Q = Stk Margin (I-M)*10%
+    // R = Total Diff (P+Q)
+    // S = Qty * R
 
-    document.getElementById(`pdcn-diff-${itemId}`).innerText = `₹${diffPerUnit.toFixed(2)}`;
-    document.getElementById(`pdcn-sale-diff-${itemId}`).innerText = `₹${saleDiff.toFixed(2)}`;
-    document.getElementById(`pdcn-stk-margin-${itemId}`).innerText = `₹${stkMargin.toFixed(2)}`;
-    document.getElementById(`pdcn-final-${itemId}`).innerText = `₹${finalPDCN.toFixed(2)}`;
+    const I = parseFloat(item.priceUsed);
+    const J = (I * gstPct) / 100;
+    const K = I + J;
+    
+    const M = sPrice;
+    const N = (M * gstPct) / 100;
+    const O = M + N;
+    
+    const P = K - O;
+    const Q = (I - M) * 0.10; // 10% Stockist Margin on Diff
+    const R = P + Q;
+    const S = item.qty * R;
+
+    document.getElementById(`pdcn-diff-${itemId}`).innerText = `₹${P.toFixed(2)}`;
+    document.getElementById(`pdcn-sale-diff-${itemId}`).innerText = `₹${(P * item.qty).toFixed(2)}`;
+    document.getElementById(`pdcn-stk-margin-${itemId}`).innerText = `₹${(Q * item.qty).toFixed(2)}`;
+    document.getElementById(`pdcn-final-${itemId}`).innerText = `₹${S.toFixed(2)}`;
 
     updatePDCNGrandTotals();
 }
@@ -1575,13 +1665,17 @@ function updatePDCNGrandTotals() {
         if (!claim.active) return;
 
         const item = currentPDCNInvoice.items.find(i => i.id == itemId);
-        const diffPerUnit = Math.max(0, parseFloat(item.priceUsed) - claim.splPrice);
-        const saleDiff = diffPerUnit * item.qty;
-        const stkMargin = saleDiff * 0.10;
+        const gstPct = parseFloat(item.gstPercent) || 0;
         
-        totalSaleDiff += saleDiff;
-        totalStkMargin += stkMargin;
-        grandTotal += (saleDiff + stkMargin);
+        const I = parseFloat(item.priceUsed);
+        const M = claim.splPrice;
+        
+        const P = (I - M) * (1 + gstPct / 100); // Price Diff with Tax
+        const Q = (I - M) * 0.10; // Margin Diff
+        
+        totalSaleDiff += (P * item.qty);
+        totalStkMargin += (Q * item.qty);
+        grandTotal += ((P + Q) * item.qty);
     });
 
     document.getElementById('pdcn-total-sale-diff').innerText = `₹${totalSaleDiff.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;

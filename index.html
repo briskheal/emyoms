@@ -503,15 +503,23 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                     <div>
                         <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff;">PDCN Worksheet</h2>
-                        <p style="font-size: 0.8rem; color: var(--text-muted);">Calculate Price Difference Credit Note (PDCN) for your invoices.</p>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 12px; border: 1px solid var(--glass-border);">
-                        <input type="text" id="pdcn-inv-no" placeholder="Enter Invoice No (e.g. INV-1001)" style="width: 240px; background: rgba(15, 23, 42, 0.6);">
-                        <button class="btn-primary" onclick="loadPDCNInvoice()" style="width: auto; padding: 0 1.5rem;">LOAD INVOICE</button>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Select an invoice below to prepare Price Difference Credit Note (PDCN) worksheet.</p>
                     </div>
                 </div>
 
+                <div id="pdcn-invoice-selector" style="margin-bottom: 2rem;">
+                    <!-- Month-wise invoices will be rendered here -->
+                    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading your invoices...</div>
+                </div>
+
                 <div id="pdcn-worksheet-container" class="hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; background: rgba(99, 102, 241, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <div>
+                            <span style="font-size: 0.7rem; color: var(--accent); font-weight: 800; text-transform: uppercase;">Working on Invoice:</span>
+                            <span id="pdcn-active-inv-no" style="font-size: 1.2rem; font-weight: 900; color: #fff; margin-left: 10px;">-</span>
+                        </div>
+                        <button class="btn-ghost" onclick="resetPDCNWorksheet()" style="font-size: 0.7rem; color: #ef4444;">✕ CHANGE INVOICE</button>
+                    </div>
                     <div style="border: 1px solid var(--glass-border); border-radius: 16px; overflow-x: auto; background: rgba(0,0,0,0.1);">
                         <table class="excel-table" style="min-width: 1400px;">
                             <thead>
@@ -552,10 +560,6 @@
                     </div>
                 </div>
 
-                <div id="pdcn-empty-state" style="padding: 5rem; text-align: center; color: var(--text-muted);">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
-                    <p>Enter an Invoice Number above to load your billing data and prepare the PDCN worksheet.</p>
-                </div>
             </div>
         </div>
     </div>

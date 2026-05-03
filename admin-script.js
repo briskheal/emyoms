@@ -441,6 +441,7 @@ function switchTab(tabId, el, subType = null) {
     if (tabId === 'masters') renderMasterLists();
     if (tabId === 'orders') renderOrderHistory();
     if (tabId === 'invoices') renderInvoices();
+    if (tabId === 'pdcn-approvals') fetchPDCNClaims();
     if (tabId === 'notes') {
         currentNoteReason = subType || 'ALL';
         renderFinancialNotes();
@@ -4828,3 +4829,148 @@ document.addEventListener('click', (e) => {
         document.querySelectorAll('.search-results').forEach(el => el.style.display = 'none');
     }
 });
+
+// --- PDCN APPROVALS LOGIC ---
+let allPDCNClaims = [];
+
+async function fetchPDCNClaims() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/pdcn/claims`);
+        allPDCNClaims = await res.json();
+        renderPDCNClaims();
+        updatePDCNBadge();
+    } catch (e) { console.error("Fetch PDCN Claims failed", e); }
+}
+
+function renderPDCNClaims() {
+    const tbody = document.getElementById('pdcn-claims-body');
+    if (!tbody) return;
+
+    const filter = document.getElementById('pdcn-status-filter').value;
+    let filtered = allPDCNClaims;
+    if (filter !== 'all') {
+        filtered = allPDCNClaims.filter(c => c.status === filter);
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">No ${filter} claims found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(c => `
+        <tr>
+            <td>${new Date(c.createdAt).toLocaleDateString('en-GB')}</td>
+            <td style="font-weight: 700; color: #fff;">${c.Stockist ? c.Stockist.name : 'Unknown'}</td>
+            <td style="font-family: monospace; color: var(--accent); font-weight: 700;">${c.invoiceNo}</td>
+            <td style="text-align: center;">${c.items.length}</td>
+            <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(c.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td style="text-align: center;">
+                <span class="badge ${c.status === 'approved' ? 'badge-approved' : (c.status === 'rejected' ? 'badge-pending' : 'badge-pending')}" 
+                      style="${c.status === 'rejected' ? 'background: #ef4444; color: #fff;' : ''}">
+                    ${c.status.toUpperCase()}
+                </span>
+            </td>
+            <td style="text-align: right;">
+                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.65rem;" onclick="openPDCNClaimModal('${c.id}')">REVIEW CLAIM</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updatePDCNBadge() {
+    const pendingCount = allPDCNClaims.filter(c => c.status === 'pending').length;
+    const badge = document.getElementById('pdcn-pending-count');
+    if (badge) {
+        if (pendingCount > 0) {
+            badge.innerText = pendingCount;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+async function openPDCNClaimModal(id) {
+    const claim = allPDCNClaims.find(c => c.id == id);
+    if (!claim) return;
+
+    document.getElementById('pdcn-modal-party').innerText = claim.Stockist ? claim.Stockist.name : 'Unknown';
+    document.getElementById('pdcn-modal-invoice').innerText = claim.invoiceNo;
+    
+    const statusEl = document.getElementById('pdcn-modal-status');
+    statusEl.innerHTML = `<span class="badge ${claim.status === 'approved' ? 'badge-approved' : (claim.status === 'rejected' ? 'badge-pending' : 'badge-pending')}" 
+                                style="${claim.status === 'rejected' ? 'background: #ef4444; color: #fff;' : ''}">
+                            ${claim.status.toUpperCase()}
+                          </span>`;
+
+    const tbody = document.getElementById('pdcn-modal-items-body');
+    tbody.innerHTML = claim.items.map(item => {
+        const billed = parseFloat(item.billedPrice);
+        const special = parseFloat(item.specialPrice);
+        const diff = billed - special;
+        // Calculation breakdown for admin transparency
+        const gstPct = 12; // Assuming 12% if not stored, but ideally should be from item
+        const p = diff * 1.12; 
+        const q = diff * 0.10;
+        const r = p + q;
+
+        return `
+            <tr>
+                <td style="font-weight: 700; color: #fff;">${item.name}</td>
+                <td style="text-align: center;">${item.qty}</td>
+                <td style="text-align: right;">₹${billed.toFixed(2)}</td>
+                <td style="text-align: right; color: var(--accent); font-weight: 700;">₹${special.toFixed(2)}</td>
+                <td style="text-align: right; color: #f59e0b;">₹${diff.toFixed(2)}</td>
+                <td style="text-align: right;">₹${parseFloat(item.stkMargin / item.qty).toFixed(2)}</td>
+                <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(item.finalPDCN).toFixed(2)}</td>
+                <td style="font-size: 0.7rem; color: var(--text-muted);">${item.remarks}</td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('pdcn-modal-grand-total').innerText = `₹${parseFloat(claim.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-admin-remarks').value = claim.adminRemarks || '';
+
+    // Action buttons visibility
+    const actionBtns = document.getElementById('pdcn-action-buttons');
+    if (claim.status === 'pending') {
+        actionBtns.classList.remove('hidden');
+    } else {
+        actionBtns.classList.add('hidden');
+    }
+
+    window.currentPDCNReviewId = id;
+    document.getElementById('pdcnClaimModal').classList.remove('hidden');
+}
+
+function closePDCNClaimModal() {
+    document.getElementById('pdcnClaimModal').classList.add('hidden');
+}
+
+async function processPDCNClaim(action) {
+    const id = window.currentPDCNReviewId;
+    if (!id) return;
+
+    const remarks = document.getElementById('pdcn-admin-remarks').value;
+    if (action === 'reject' && !remarks.trim()) {
+        return alert("Please provide a reason for rejection in Admin Remarks.");
+    }
+
+    if (!confirm(`Are you sure you want to ${action.toUpperCase()} this claim?`)) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/pdcn/claims/${id}/${action}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ remarks })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(`✅ Claim ${action === 'approve' ? 'Approved' : 'Rejected'} Successfully!`);
+            closePDCNClaimModal();
+            fetchPDCNClaims();
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (e) { alert("Action failed."); }
+}

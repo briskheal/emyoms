@@ -40,6 +40,8 @@ db.Expense = require('./expense')(sequelize, DataTypes);
 db.Media = require('./media')(sequelize, DataTypes);
 db.PurchaseItem = require('./purchaseItem')(sequelize, DataTypes);
 db.NoteItem = require('./noteItem')(sequelize, DataTypes);
+db.PDCNClaim = require('./pdcnClaim')(sequelize, DataTypes);
+db.PDCNClaimItem = require('./pdcnClaimItem')(sequelize, DataTypes);
 
 // Define Relationships
 db.Product.hasMany(db.Batch, { as: 'batches', foreignKey: 'productId' });
@@ -62,6 +64,12 @@ db.Invoice.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
 
 db.Stockist.hasMany(db.FinancialNote, { foreignKey: 'stockistId' });
 db.FinancialNote.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
+
+db.Stockist.hasMany(db.PDCNClaim, { foreignKey: 'stockistId' });
+db.PDCNClaim.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
+
+db.PDCNClaim.hasMany(db.PDCNClaimItem, { as: 'items', foreignKey: 'pdcnClaimId' });
+db.PDCNClaimItem.belongsTo(db.PDCNClaim, { foreignKey: 'pdcnClaimId' });
 
 db.Stockist.hasMany(db.PurchaseEntry, { as: 'purchases', foreignKey: 'supplierId' });
 db.PurchaseEntry.belongsTo(db.Stockist, { as: 'Supplier', foreignKey: 'supplierId' });
