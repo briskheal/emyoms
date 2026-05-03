@@ -1907,9 +1907,12 @@ async function fetchPDCNHistory() {
     container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Loading claim history...</div>`;
 
     try {
-        const res = await fetch(`${API_BASE}/stockist/pdcn/history/${currentUser.id || currentUser._id}`);
-
+        const uid = currentUser.id || currentUser._id;
+        console.log("Fetching PDCN History for UID:", uid);
+        const res = await fetch(`${API_BASE}/stockist/pdcn/history/${uid}`);
         const result = await res.json();
+        console.log("PDCN History Data:", result);
+
 
         if (result.success && result.claims.length > 0) {
             window.allMyPDCNClaims = result.claims; // Store for viewing details
