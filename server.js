@@ -109,16 +109,17 @@ async function getNextDocNo(type) {
     if (!company) company = await db.Company.create({});
     
     const counters = company.documentCounters || {};
-    const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 1 };
+    const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 0 };
     
+    // Increment first so that if nextNumber was 0, the first doc is 0001
+    config.nextNumber = (Number(config.nextNumber) || 0) + 1;
     const docNo = `${config.prefix}${config.nextNumber.toString().padStart(4, '0')}`;
     
-    config.nextNumber = (Number(config.nextNumber) || 0) + 1;
     counters[type] = config;
-    
     await company.update({ documentCounters: counters });
     return docNo;
 }
+
 
 app.get('/api/admin/company', async (req, res) => {
     try {
@@ -266,16 +267,18 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
         let newGstAmount = 0;
 
         for (const i of allItems) {
-            const rate = i.gstPercent || 12;
-            newSubTotal += i.totalValue;
-            newGstAmount += Number(((i.totalValue * rate) / 100).toFixed(2));
+            const rate = Number(i.gstPercent || 0);
+            const val = Number(i.totalValue || 0);
+            newSubTotal += val;
+            newGstAmount += Number(((val * rate) / 100).toFixed(2));
         }
 
         await order.update({
-            subTotal: newSubTotal,
-            gstAmount: newGstAmount,
+            subTotal: Number(newSubTotal.toFixed(2)),
+            gstAmount: Number(newGstAmount.toFixed(2)),
             grandTotal: Math.round(newSubTotal + newGstAmount)
         });
+
 
         res.json({ success: true, order });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -1010,14 +1013,17 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
                 invoiceId: newInvoice.id,
                 productId: item.productId,
                 name: item.name,
+                manufacturer: item.manufacturer,
                 batch: item.batch,
                 qty: item.qty,
                 priceUsed: item.priceUsed,
                 mrp: item.mrp,
                 gstPercent: item.gstPercent,
                 totalValue: item.totalValue,
+                hsn: item.hsn,
                 bonusQty: item.bonusQty || 0
             });
+
         }
 
         await order.update({ status: 'invoiced' });

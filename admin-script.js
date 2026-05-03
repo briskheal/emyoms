@@ -3350,11 +3350,20 @@ async function generateStandardPDF({
     doc.autoTable({
         startY: 65,
         head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Price', 'GST%', 'Total']],
-        body: items.map((it, idx) => [
-            idx + 1, it.name, it.hsn || '-', it.batch || '-', it.exp || '-', (it.mrp || 0).toFixed(2), it.qty, it.price.toFixed(2), (it.gstPercent || 0) + '%', (it.qty * it.price * (1 + it.gstPercent/100)).toFixed(2)
-        ]),
+        body: items.map((it, idx) => {
+            const price = Number(it.price) || 0;
+            const rate = Number(it.gstPercent) || 0;
+            const taxable = Number(it.qty) * price;
+            const total = taxable + (taxable * rate / 100);
+            return [
+                idx + 1, it.name, it.hsn || '-', it.batch || '-', it.exp || '-', 
+                (Number(it.mrp) || 0).toFixed(2), it.qty, price.toFixed(2), 
+                rate + '%', total.toFixed(2)
+            ];
+        }),
         theme: 'grid', headStyles: { fillColor: [99, 102, 241] }, styles: { fontSize: 7 }
     });
+
 
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.text(`Grand Total: Rs. ${grandTotal.toFixed(2)}`, 195, finalY, { align: 'right' });
@@ -3400,11 +3409,20 @@ async function generateSampleMatchedPDF({
     doc.autoTable({
         startY: 82,
         head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Rate', 'GST%', 'Total']],
-        body: items.map((it, idx) => [
-            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', (it.mrp || 0).toFixed(2), it.qty, it.price.toFixed(2), (it.gstPercent || 0) + '%', (it.qty * it.price * (1 + it.gstPercent/100)).toFixed(2)
-        ]),
+        body: items.map((it, idx) => {
+            const price = Number(it.price) || 0;
+            const rate = Number(it.gstPercent) || 0;
+            const taxable = Number(it.qty) * price;
+            const total = taxable + (taxable * rate / 100);
+            return [
+                idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
+                (Number(it.mrp) || 0).toFixed(2), it.qty, price.toFixed(2), 
+                rate + '%', total.toFixed(2)
+            ];
+        }),
         theme: 'grid', headStyles: { fillColor: [245, 245, 245], textColor: 0 }, styles: { fontSize: 7 }
     });
+
 
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFont("helvetica", "bold");

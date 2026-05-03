@@ -791,14 +791,14 @@ async function placeOrder() {
         };
     });
 
-    const subTotal = orderItems.reduce((a, b) => a + (b.totalValue || 0), 0);
+    const subTotal = orderItems.reduce((a, b) => a + (Number(b.totalValue) || 0), 0);
     let gstAmt = 0;
     orderItems.forEach(item => {
         const p = allProducts.find(x => (x._id || x.id) == item.productId);
-        if (p) {
-            gstAmt += Number(((item.totalValue || 0) * (p.gstPercent || 12) / 100).toFixed(2));
-        }
+        const rate = Number(item.gstPercent || (p ? p.gstPercent : 0) || 0);
+        gstAmt += Number(((Number(item.totalValue) || 0) * rate / 100).toFixed(2));
     });
+
     
     const orderData = {
         stockistId: currentUser._id,
@@ -1175,11 +1175,18 @@ async function generateInvoicePDF(inv) {
     doc.autoTable({
         startY: 70,
         head: [['S.No', 'Product', 'Batch', 'MRP', 'Qty', 'Price', 'Taxable', 'GST%', 'Total']],
-        body: inv.items.map((item, idx) => [
-            idx + 1, item.name, item.batch || '-', (item.mrp || 0).toFixed(2), item.qty, 
-            item.priceUsed.toFixed(2), item.totalValue.toFixed(2), item.gstPercent + '%', 
-            (item.totalValue * (1 + item.gstPercent/100)).toFixed(2)
-        ]),
+        body: inv.items.map((item, idx) => {
+            const price = Number(item.priceUsed) || 0;
+            const taxable = Number(item.totalValue) || 0;
+            const rate = Number(item.gstPercent) || 0;
+            const total = taxable + (taxable * rate / 100);
+            return [
+                idx + 1, item.name, item.batch || '-', (Number(item.mrp) || 0).toFixed(2), item.qty, 
+                price.toFixed(2), taxable.toFixed(2), rate + '%', 
+                total.toFixed(2)
+            ];
+        }),
+
         theme: 'grid',
         headStyles: { fillColor: [99, 102, 241], fontSize: 7, halign: 'center' },
         styles: { fontSize: 7, cellPadding: 2 },
