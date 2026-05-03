@@ -774,7 +774,7 @@ function renderCharts(currentMonthOrders, totalOrders) {
             if (groupSales.hasOwnProperty(rawGroup)) {
                 groupSales[rawGroup] += (item.totalValue || 0);
                 
-                const gstRate = prod ? (prod.gstPercent || 12) : 12;
+                const gstRate = prod ? (prod.gstPercent || 0) : 0;
                 const itemGst = ((item.totalValue || 0) * gstRate) / 100;
                 totalGSTAll += itemGst;
                 totalTaxableBusiness += (item.totalValue || 0);
@@ -1827,18 +1827,18 @@ function viewOrderDetails(id) {
             <tr style="transition: all 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <td style="position: sticky; left: 0; z-index: 5; background: #0f172a; font-weight: 700; color: #f1f5f9; border-right: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem;">${item.name}</td>
                 <td style="text-align:center;">${batchCellHtml}</td>
-                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">₹${(item.masterRate || item.priceUsed || 0).toFixed(2)}</td>
-                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">₹${(item.askingRate || item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">₹${Number(item.masterRate || item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">₹${Number(item.askingRate || item.priceUsed || 0).toFixed(2)}</td>
                 <td style="text-align:center; font-style:italic; font-size:0.7rem; color: #94a3b8; line-height: 1.2;">${item.negotiationNote || '-'}</td>
                 <td style="text-align:center;">
                     <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
-                        value="${(item.priceUsed || 0).toFixed(2)}" 
+                        value="${Number(item.priceUsed || 0).toFixed(2)}" 
                         oninput="updateModalTotals('${o._id}', '${item._id}')"
                         style="width: 70px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 3px; font-size: 0.75rem;">
                 </td>
                 <td style="text-align:center; font-weight:800; color: #fff;">${item.qty || 0}</td>
                 <td style="text-align:center; color:var(--accent); font-weight:800; font-size: 0.75rem;">+${item.bonusQty || 0}</td>
-                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${(item.totalValue || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${Number(item.totalValue || 0).toFixed(2)}</td>
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
                         <div style="display:flex; gap:4px; justify-content:center;">
@@ -1853,20 +1853,24 @@ function viewOrderDetails(id) {
         `;
     }).join('');
 
-    const unroundedTotal = Number((o.subTotal + o.gstAmount).toFixed(2));
-    const roundOffValue = (o.grandTotal - unroundedTotal).toFixed(2);
+    const safeSubTotal = Number(o.subTotal || 0);
+    const safeGstAmount = Number(o.gstAmount || 0);
+    const safeGrandTotal = Number(o.grandTotal || 0);
 
-    document.getElementById('detail-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    document.getElementById('detail-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    const unroundedTotal = Number((safeSubTotal + safeGstAmount).toFixed(2));
+    const roundOffValue = (safeGrandTotal - unroundedTotal).toFixed(2);
+
+    document.getElementById('detail-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
-    document.getElementById('detail-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById('detail-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     // Update Strip
     if (document.getElementById('strip-order-count')) document.getElementById('strip-order-count').innerText = o.items.length;
-    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${o.subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${o.gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `₹${roundOffValue}`;
-    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const rejectBtn = document.getElementById('detail-reject-btn');
     const approveBtn = document.getElementById('detail-approve-btn');
@@ -1963,7 +1967,7 @@ function updateModalTotals(orderId, triggerItemId) {
         const lineTotalEl = document.getElementById(`linetotal-${orderId}-${item._id}`);
         if (lineTotalEl) lineTotalEl.innerText = `₹${lineTotal.toFixed(2)}`;
         
-        const itemGst = (lineTotal * (item.gstPercent || 12)) / 100;
+        const itemGst = (lineTotal * (item.gstPercent || 0)) / 100;
         subTotal += lineTotal;
         gstAmount += itemGst;
     });
@@ -2269,7 +2273,7 @@ function addPurchaseItem() {
         batchNo: batch || 'N/A', // Forward compatibility
         mfgDate: mfg || 'N/A',
         expDate: exp || 'N/A',
-        gstPercent: gstPct || 12,
+        gstPercent: gstPct || 0,
         hsn: prod.hsn || '',
         totalValue: qty * rate
     });
@@ -2492,7 +2496,7 @@ function updateSaleProductMeta(prodId) {
             }).join('');
     }
 
-    document.getElementById('sale-gst-pct').value = prod.gstPercent || 12;
+    document.getElementById('sale-gst-pct').value = prod.gstPercent || 0;
     
     // Check for negotiated price
     const partyId = document.getElementById('sale-party').value;
@@ -2515,7 +2519,7 @@ function updateSaleBatchMeta(batchNo) {
 function calculateSaleLineTotal() {
     const qty = Number(document.getElementById('sale-qty').value || 0);
     const rate = Number(document.getElementById('sale-rate').value || 0);
-    const gstPct = Number(document.getElementById('sale-gst-pct').value || 12);
+    const gstPct = Number(document.getElementById('sale-gst-pct').value || 0);
     
     const taxable = qty * rate;
     const gst = (taxable * gstPct) / 100;
@@ -3107,7 +3111,7 @@ function updateReturnRowData(rowId, productId) {
     if (p) {
         document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
         document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
-        document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 12;
+        document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 0;
         if (p.batches && p.batches.length > 0) {
             const b = p.batches[0];
             document.getElementById(`return-batch-${rowId}`).value = b.batchNo || '';

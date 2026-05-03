@@ -1550,16 +1550,17 @@ async function loadPDCNInvoice(invNo) {
             currentPDCNInvoice = result.invoice;
             pdcnClaims = {}; // Reset
             
-            // Initialize claims with fallback GST and Price
+            // Initialize claims with GST from Invoice
             currentPDCNInvoice.items.forEach(item => {
                 const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-                const gst = parseFloat(item.gstPercent || (item.Product ? item.Product.gstPercent : null) || item.gst || 12);
+                // Capture GST strictly from Invoice first
+                const gst = parseFloat(item.gstPercent || (item.Product ? item.Product.gstPercent : 0) || 0);
                 pdcnClaims[item.id] = [{ 
                     claimQty: item.qty, 
                     splPrice: billedPrice, 
                     remarks: '', 
                     active: false,
-                    gstPercent: gst // Store it in the claim for consistency
+                    gstPercent: gst
                 }];
             });
 
@@ -1727,7 +1728,7 @@ function updatePDCNGrandTotals() {
         variations.forEach(v => {
             if (!v.active) return;
             const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-            const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+            const gstPct = v.gstPercent; // Use pre-captured GST from the variation
             const diffPerUnit = billedPrice - v.splPrice;
             
             totalTaxable += (diffPerUnit * v.claimQty);
@@ -1765,7 +1766,7 @@ async function submitPDCNClaim() {
             }
 
             const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-            const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+            const gstPct = v.gstPercent; // Use pre-captured GST from the variation
             const diffPerUnit = billedPrice - v.splPrice;
             const saleDiffPerUnit = diffPerUnit * (1 + gstPct / 100);
             const stkMarginPerUnit = diffPerUnit * 0.10;

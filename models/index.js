@@ -3,6 +3,14 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const pg = require('pg');
+
+// Force DECIMAL/NUMERIC fields to be returned as numbers instead of strings
+// OID 1700 is the Postgres type ID for NUMERIC/DECIMAL
+pg.types.setTypeParser(1700, function(val) {
+    return val === null ? null : parseFloat(val);
+});
+
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     logging: false,

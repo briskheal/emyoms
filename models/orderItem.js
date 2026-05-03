@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         masterRate: DataTypes.FLOAT,
         negotiationNote: DataTypes.TEXT,
         totalValue: { type: DataTypes.DECIMAL(15, 2) },
-        gstPercent: { type: DataTypes.DECIMAL(5, 2), defaultValue: 12 },
+        gstPercent: { type: DataTypes.DECIMAL(5, 2) },
         hsn: { type: DataTypes.STRING },
         orderId: {
             type: DataTypes.INTEGER,
