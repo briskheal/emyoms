@@ -4908,20 +4908,22 @@ async function openPDCNClaimModal(id) {
         const billed = parseFloat(item.billedPrice);
         const special = parseFloat(item.specialPrice);
         const diff = billed - special;
+        const gstPct = parseFloat(item.gstPercent) || 12; // Use stored GST or fallback to 12
+        
         // Calculation breakdown for admin transparency
-        const gstPct = 12; // Assuming 12% if not stored, but ideally should be from item
-        const p = diff * 1.12; 
+        const p = diff * (1 + gstPct / 100); 
         const q = diff * 0.10;
         const r = p + q;
 
         return `
             <tr>
                 <td style="font-weight: 700; color: #fff;">${item.name}</td>
-                <td style="text-align: center;">${item.qty}</td>
-                <td style="text-align: right;">₹${billed.toFixed(2)}</td>
+                <td style="text-align: center; color: #fff;">${item.qty}</td>
+                <td style="text-align: center; color: #fff;">${gstPct}%</td>
+                <td style="text-align: right; color: #fff;">₹${billed.toFixed(2)}</td>
                 <td style="text-align: right; color: var(--accent); font-weight: 700;">₹${special.toFixed(2)}</td>
                 <td style="text-align: right; color: #f59e0b;">₹${diff.toFixed(2)}</td>
-                <td style="text-align: right;">₹${parseFloat(item.stkMargin / item.qty).toFixed(2)}</td>
+                <td style="text-align: right; color: #fff;">₹${parseFloat(item.stkMargin / item.qty).toFixed(2)}</td>
                 <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(item.finalPDCN).toFixed(2)}</td>
                 <td style="font-size: 0.7rem; color: var(--text-muted);">${item.remarks}</td>
             </tr>

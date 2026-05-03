@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
         saleDiff: { type: DataTypes.DECIMAL(15, 2) },
         stkMargin: { type: DataTypes.DECIMAL(15, 2) },
         finalPDCN: { type: DataTypes.DECIMAL(15, 2) },
+        gstPercent: { type: DataTypes.DECIMAL(5, 2) },
         remarks: { type: DataTypes.TEXT }
     });
 

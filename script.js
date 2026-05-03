@@ -1571,10 +1571,10 @@ function renderPDCNTable() {
                     <div style="font-size: 0.8rem;">${item.name}</div>
                     <div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Click Brand Name to Prepare ??</div>
                 </td>
-                <td style="text-align: right; font-weight: 700;">₹${parseFloat(item.priceUsed).toFixed(2)}</td>
-                <td style="text-align: center;">${item.qty}</td>
-                <td style="text-align: center;">${item.gstPercent}%</td>
-                <td style="text-align: right; font-weight: 700;">₹${parseFloat(item.totalValue).toFixed(2)}</td>
+                <td style="text-align: right; font-weight: 700; color: #fff;">₹${parseFloat(item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align: center; color: #fff;">${item.qty}</td>
+                <td style="text-align: center; color: #fff;">${item.gstPercent}%</td>
+                <td style="text-align: right; font-weight: 700; color: #fff;">₹${parseFloat(item.totalValue || 0).toFixed(2)}</td>
                 <td>
                     <input type="number" step="0.01" class="qty-input" 
                         value="${claim.splPrice}" 
@@ -1702,17 +1702,22 @@ async function submitPDCNClaim() {
             const item = currentPDCNInvoice.items.find(i => i.id == id);
             const claim = pdcnClaims[id];
             const diffPerUnit = parseFloat(item.priceUsed) - claim.splPrice;
-            const saleDiff = diffPerUnit * item.qty;
-            const stkMargin = saleDiff * 0.10;
+            const gstPct = parseFloat(item.gstPercent) || 0;
+            
+            // Formula matches UI: P = Diff(incl GST), Q = 10% Stk Margin(on net diff)
+            const saleDiffPerUnit = diffPerUnit * (1 + gstPct / 100);
+            const stkMarginPerUnit = diffPerUnit * 0.10;
+            const finalPDCNPerUnit = saleDiffPerUnit + stkMarginPerUnit;
+
             return {
                 productId: item.productId,
                 name: item.name,
                 qty: item.qty,
                 billedPrice: item.priceUsed,
                 specialPrice: claim.splPrice,
-                saleDiff: saleDiff,
-                stkMargin: stkMargin,
-                finalPDCN: saleDiff + stkMargin,
+                saleDiff: saleDiffPerUnit * item.qty,
+                stkMargin: stkMarginPerUnit * item.qty,
+                finalPDCN: finalPDCNPerUnit * item.qty,
                 remarks: claim.remarks
             };
         }),
@@ -1720,7 +1725,9 @@ async function submitPDCNClaim() {
             const item = currentPDCNInvoice.items.find(i => i.id == id);
             const claim = pdcnClaims[id];
             const diffPerUnit = parseFloat(item.priceUsed) - claim.splPrice;
-            return acc + (diffPerUnit * item.qty * 1.10);
+            const gstPct = parseFloat(item.gstPercent) || 0;
+            const totalPerUnit = (diffPerUnit * (1 + gstPct / 100)) + (diffPerUnit * 0.10);
+            return acc + (totalPerUnit * item.qty);
         }, 0)
     };
 
