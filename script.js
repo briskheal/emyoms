@@ -327,32 +327,37 @@ async function initOrderSystem() {
     await fetchProducts(); // Fetch products first so loadMasters can harvest categories
     await loadMasters();
     renderExcelProducts();
-    fetchMyOrders(); // Load history
+    fetchMyOrders();
 }
 
+
 async function loadSettings() {
+
     try {
-        const res = await fetch(`${API_BASE}/admin/settings`);
-        companySettings = await res.json();
-        
+        // 1. Fetch Public Config (Always accessible for landing page)
+        const pubRes = await fetch(`${API_BASE}/public/config`);
+        if (pubRes.ok) {
+            const pubData = await pubRes.json();
+            if (pubData.success) companySettings = pubData.config;
+        }
+
+        // 2. Try Admin Settings (If logged in, gives more info)
+        try {
+            const adminRes = await fetch(`${API_BASE}/admin/settings`);
+            if (adminRes.ok) {
+                const adminData = await adminRes.json();
+                companySettings = { ...companySettings, ...adminData };
+            }
+        } catch(e) { /* Fallback to public config */ }
+
+        if (!companySettings) return;
+
         const safeSet = (id, text) => {
             const el = document.getElementById(id);
             if (el) el.innerText = text;
         };
 
-        // --- DYNAMIC PORTAL CONFIG (PUBLIC FALLBACK) ---
-        if (!companySettings || Object.keys(companySettings).length === 0) {
-            try {
-                const publicRes = await fetch(`${API_BASE}/public/config`);
-                const publicData = await publicRes.json();
-                if (publicData.success) {
-                    companySettings = publicData.config;
-                }
-            } catch(e) { console.warn("Public config failed, using defaults."); companySettings = {}; }
-        }
-
-
-        // Dashboard Header
+        // UI Population
         safeSet('co-name', companySettings.name || "EMYRIS BIOLIFESCIENCES");
         safeSet('co-address', companySettings.address || "Office Address Loading...");
         safeSet('co-tollfree', companySettings.tollFree || "7993163300");
@@ -360,19 +365,14 @@ async function loadSettings() {
         const mainPhone = (companySettings.phones && companySettings.phones[0]) ? companySettings.phones[0] : '+91-XXXXXXXXXX';
         safeSet('co-phone', `WhatsApp: ${mainPhone}`);
         
-        // Digital Channels
         if (companySettings.websites) {
             safeSet('co-web1', `🌐 ${companySettings.websites[0] || ''}`);
-            safeSet('co-web2', companySettings.websites[1] ? `🌐 ${companySettings.websites[1]}` : '');
         }
-        
         if (companySettings.emails) {
             safeSet('co-email1', `✉️ ${companySettings.emails[0] || ''}`);
-            safeSet('co-email2', companySettings.emails[1] ? `✉️ ${companySettings.emails[1]}` : '');
-            safeSet('co-email3', companySettings.emails[2] ? `✉️ ${companySettings.emails[2]}` : '');
         }
 
-        // Landing Footer population (Synchronized)
+        // Footers
         const web = (companySettings.websites && companySettings.websites[0]) ? companySettings.websites[0] : 'www.emyrisbio.com';
         const toll = companySettings.tollFree || '7993163300';
         const email = (companySettings.emails && companySettings.emails[0]) ? companySettings.emails[0] : 'contact@emyrisbio.com';
@@ -383,34 +383,43 @@ async function loadSettings() {
         safeSet('land-email', `✉️ ${email}`);
         safeSet('land-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
-        // Global Footer population (New)
         safeSet('f-co-web', web);
         safeSet('f-co-phone', mainPhone);
         safeSet('f-co-email', email);
         safeSet('f-co-address', companySettings.address || "Corporate Office: EMYRIS BIOLIFESCIENCES");
 
-        // --- DYNAMIC BACKGROUND VIDEO (FROM GLOBAL MASTER) ---
+        // --- DYNAMIC BACKGROUND VIDEO ---
         const videoContainer = document.getElementById('video-loop-container');
-        if (videoContainer && companySettings.videoUrl) {
-            let vidId = '';
+        if (videoContainer && companySettings.videoUrl && companySettings.videoUrl.trim() !== '') {
             const url = companySettings.videoUrl;
-            if (url.includes('v=')) vidId = url.split('v=')[1].split('&')[0];
-            else if (url.includes('be/')) vidId = url.split('be/')[1].split('?')[0];
-            else if (url.includes('embed/')) vidId = url.split('embed/')[1].split('?')[0];
-            
-            if (vidId) {
+            const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
+            const isDirect = url.includes('cloudinary.com') || url.endsWith('.mp4') || url.endsWith('.webm');
+
+            if (isYoutube) {
+                let vidId = '';
+                if (url.includes('v=')) vidId = url.split('v=')[1].split('&')[0];
+                else if (url.includes('be/')) vidId = url.split('be/')[1].split('?')[0];
+                else if (url.includes('embed/')) vidId = url.split('embed/')[1].split('?')[0];
+                
+                if (vidId) {
+                    videoContainer.innerHTML = `
+                        <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
+                            src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&loop=1&playlist=${vidId}&controls=0&showinfo=0&rel=0&modestbranding=1" 
+                            allow="autoplay; encrypted-media"></iframe>
+                        <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
+                    `;
+                }
+            } else if (isDirect) {
                 videoContainer.innerHTML = `
-                    <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
-                        src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1&loop=1&playlist=${vidId}&controls=0&showinfo=0&rel=0&modestbranding=1" 
-                        allow="autoplay; encrypted-media">
-                    </iframe>
+                    <video autoplay muted loop playsinline style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
+                        <source src="${url}" type="video/mp4">
+                    </video>
                     <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
                 `;
             }
         }
 
-        // Marquee Logic
-
+        // --- MARQUEE LOGIC ---
         if (companySettings.scrollingMessage && companySettings.scrollingMessage.text) {
             const m = document.getElementById('marquee');
             const mc = document.getElementById('marquee-content');
@@ -420,8 +429,6 @@ async function loadSettings() {
                 mc.innerText = companySettings.scrollingMessage.text;
                 mc.style.animationDuration = `${companySettings.scrollingMessage.speed || 30}s`;
             }
-
-            // Also for Landing Marquee
             const lm = document.getElementById('land-marquee');
             const lmc = document.getElementById('land-marquee-content');
             if (lm && lmc) {
@@ -431,7 +438,7 @@ async function loadSettings() {
             }
         }
 
-        // Multimedia Logic (Dynamic)
+        // --- MUSIC LOGIC ---
         if (companySettings.musicUrl && companySettings.musicUrl.trim() !== '') {
             const audio = document.getElementById('bgMusic');
             if (audio) {
@@ -440,59 +447,15 @@ async function loadSettings() {
                     audio.src = targetSrc;
                     audio.load();
                 }
-                if (companySettings.musicVolume !== undefined) {
-                    audio.volume = companySettings.musicVolume;
-                }
+                if (companySettings.musicVolume !== undefined) audio.volume = companySettings.musicVolume;
                 if (localStorage.getItem('emyris_music_on') === 'true' && audio.paused) {
                     audio.play().catch(() => {});
                 }
             }
         }
-
-        if (companySettings.videoUrl && companySettings.videoUrl.trim() !== '') {
-            const videoContainer = document.getElementById('video-loop-container');
-            if (videoContainer) {
-                const url = companySettings.videoUrl;
-                const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
-                const isCloudinary = url.includes('cloudinary.com');
-                const isDirectVideo = isCloudinary || url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.ogg');
-                
-                const currentIframe = videoContainer.querySelector('iframe');
-                const currentVideo = videoContainer.querySelector('video source');
-                const currentSrc = (currentIframe && currentIframe.src) || (currentVideo && currentVideo.src) || '';
-                
-                if (!currentSrc.includes(url.split('?')[0])) {
-                    if (isYoutube) {
-                        const embedUrl = url.includes('?') ? 
-                            `${url}&autoplay=1&mute=1&loop=1` : 
-                            `${url}?autoplay=1&mute=1&loop=1`;
-                        videoContainer.innerHTML = `
-                            <iframe style="width: 100%; height: 100%; border: none; opacity: 0.8; pointer-events: none;" 
-                                src="${embedUrl}" allow="autoplay; encrypted-media">
-                            </iframe>
-                            <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
-                        `;
-                    } else {
-                        videoContainer.innerHTML = `
-                            <video autoplay muted loop playsinline preload="auto" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
-                                <source src="${url}" type="video/mp4">
-                            </video>
-                            <div style="position: absolute; bottom: 5px; left: 8px; font-size: 0.55rem; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 3px; letter-spacing: 1px; font-weight: 700;">EMYRIS LIVE SERIES</div>
-                        `;
-                        const vid = videoContainer.querySelector('video');
-                        if (vid) vid.play().catch(() => {});
-                    }
-                }
-            }
-        }
-
-
-
-
-
-
-    } catch (e) { console.error("Load settings failed", e); }
+    } catch (e) { console.error("❌ [SETTINGS] Load failed:", e); }
 }
+
 
 async function loadMasters() {
     try {
