@@ -1765,13 +1765,9 @@ function updatePDCNGrandTotals() {
             const splPrice = Number(v.splPrice || 0);
             const gstPct = Number(v.gstPercent || 0); 
             
-            const billedPrice = Number(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-            const claimQty = Number(v.claimQty || 0);
-            const splPrice = Number(v.splPrice || 0);
-            const gstPct = Number(v.gstPercent || 0); 
-            
             const unitTaxableDiff = billedPrice - splPrice;
             const unitTaxDiff = unitTaxableDiff * (gstPct / 100);
+
             const unitMargin = splPrice * 0.10;
             
             totalTaxable += Number((unitTaxableDiff * claimQty).toFixed(2));
