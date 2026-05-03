@@ -559,6 +559,29 @@ app.put('/api/admin/products/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.delete('/api/products/:id', async (req, res) => {
+    try {
+        const product = await db.Product.findByPk(req.params.id);
+        if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+        
+        // Deleting the product will automatically clean up batches if cascading is enabled, 
+        // but we'll do it explicitly here for safety since we're starting fresh.
+        await db.Batch.destroy({ where: { productId: req.params.id } });
+        await product.destroy();
+        
+        res.json({ success: true, message: 'Product deleted successfully' });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+app.delete('/api/admin/products/:id', async (req, res) => {
+    try {
+        await db.Batch.destroy({ where: { productId: req.params.id } });
+        await db.Product.destroy({ where: { id: req.params.id } });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+
 app.post('/api/admin/products/bulk', async (req, res) => {
     try {
         const { products } = req.body;
