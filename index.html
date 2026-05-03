@@ -473,25 +473,20 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 5px;">
             <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
             <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Billing Details</button>
             <button class="tab-btn" id="btn-tab-pdcn" onclick="switchOrderTab('pdcn')">📝 PDCN Worksheet</button>
+            <button class="tab-btn" id="btn-tab-pdcn-history" onclick="switchOrderTab('pdcn-history')">📊 PDCN Claims</button>
         </div>
+
 
         <div id="section-place-order">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div class="category-scroll" id="categoryChips"></div>
                 <input type="text" id="productSearch" placeholder="Search product..." onkeyup="searchProducts(this.value)" style="width: 300px;">
             </div>
-            <button class="nav-btn" onclick="switchOrderTab('pdcn')">
-                <i class="fas fa-file-invoice-dollar"></i>
-                <span>PDCN Worksheet</span>
-            </button>
-            <button class="nav-btn" onclick="switchOrderTab('pdcn-history')">
-                <i class="fas fa-history"></i>
-                <span>PDCN Claims</span>
-            </button>
+
             <div class="excel-container">
                 <table class="excel-table">
                     <thead>

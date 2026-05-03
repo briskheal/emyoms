@@ -107,13 +107,12 @@ function switchView(view) {
 
 function switchOrderTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    // Handle nav-btn selection if needed (for sidebar)
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector(`[onclick*="switchOrderTab('${tab}')"]`);
-    if (activeBtn) activeBtn.classList.add('active');
+    const targetBtn = document.getElementById(`btn-tab-${tab}`);
+    if (targetBtn) targetBtn.classList.add('active');
     
     // Hide all sections first
     ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history'].forEach(id => {
+
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
