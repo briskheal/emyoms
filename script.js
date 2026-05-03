@@ -1584,10 +1584,10 @@ async function loadPDCNInvoice(invNo) {
             // Initialize claims with GST from Invoice
             currentPDCNInvoice.items.forEach(item => {
                 const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-                // Capture GST strictly from Invoice first
-                const gst = parseFloat(item.gstPercent || (item.Product ? item.Product.gstPercent : 0) || 0);
+                // Prioritize Product Master GST over Invoice Snapshot
+                const gst = parseFloat((item.Product ? item.Product.gstPercent : item.gstPercent) || 0);
                 pdcnClaims[item.id] = [{ 
-                    claimQty: item.qty, 
+                    claimQty: item.availableQty || 0, 
                     splPrice: billedPrice, 
                     remarks: '', 
                     active: false,
@@ -1765,8 +1765,8 @@ function calculatePDCNRow(itemId, idx, field, value) {
     const unitTaxDiff = Number((unitTaxableDiff * gPct / 100).toFixed(2));
     const unitSaleDiff = Number((unitTaxableDiff + unitTaxDiff).toFixed(2));
     
-    // Margin is 10% of Special Price (input)
-    const unitStkMargin = Number((sPrice * 0.10).toFixed(2));
+    // Standardized Formula: Margin is 10% of the Base Price Difference
+    const unitStkMargin = Number((unitTaxableDiff * 0.10).toFixed(2));
     
     const finalPDCN = Number(((unitSaleDiff + unitStkMargin) * Number(claimQty)).toFixed(2));
 
@@ -1805,7 +1805,8 @@ function updatePDCNGrandTotals() {
             const unitTaxableDiff = billedPrice - splPrice;
             const unitTaxDiff = unitTaxableDiff * (gstPct / 100);
 
-            const unitMargin = splPrice * 0.10;
+            // Standardized: Margin on difference
+            const unitMargin = unitTaxableDiff * 0.10;
             
             totalTaxable += Number((unitTaxableDiff * claimQty).toFixed(2));
             totalTax += Number((unitTaxDiff * claimQty).toFixed(2));
@@ -1815,10 +1816,8 @@ function updatePDCNGrandTotals() {
 
     const netAmount = Number((totalTaxable + totalTax + totalMargin).toFixed(2));
 
-
-
-    const finalGrandTotal = Math.round(netAmount);
-    const roundOffValue = (finalGrandTotal - netAmount).toFixed(2);
+    const finalGrandTotal = netAmount;
+    const roundOffValue = "0.00";
 
     document.getElementById('pdcn-total-taxable').innerText = `₹${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     document.getElementById('pdcn-total-tax').innerText = `₹${totalTax.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
@@ -1835,8 +1834,10 @@ async function submitPDCNClaim() {
         const activeVariations = variations.filter(v => v.active && v.claimQty > 0);
         
         const totalQty = activeVariations.reduce((sum, v) => sum + v.claimQty, 0);
-        if (totalQty > item.qty) {
-            validationError = `⚠️ Qty Error: Total claimed qty for ${item.name} (${totalQty}) exceeds invoiced qty (${item.qty}).`;
+        const maxEligible = item.availableQty || item.qty;
+        
+        if (totalQty > maxEligible) {
+            validationError = `⚠️ Qty Error: Total claimed qty for ${item.name} (${totalQty}) exceeds eligible qty (${maxEligible}).`;
         }
 
         activeVariations.forEach(v => {
@@ -1851,7 +1852,10 @@ async function submitPDCNClaim() {
             const billedIncl = billedPrice * (1 + gstPct / 100);
             const splIncl = splPrice * (1 + gstPct / 100);
             const unitDiff = billedIncl - splIncl;
-            const unitMargin = splPrice * 0.10;
+            
+            // Standardized: Margin on base difference
+            const baseDiff = billedPrice - splPrice;
+            const unitMargin = baseDiff * 0.10;
             const finalPerUnit = unitDiff + unitMargin;
 
             itemsToSubmit.push({
@@ -2057,9 +2061,102 @@ async function openPDCNViewModal(id) {
         `;
     }).join('');
 
+    // Store for printing
+    window.currentViewingPDCNClaim = claim;
+
     // Force Visibility
     modal.style.display = 'flex';
     modal.classList.remove('hidden');
+}
+
+async function downloadPDCN_PDF() {
+    const claim = window.currentViewingPDCNClaim;
+    if (!claim) return alert("No claim data found to print.");
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Header - Use Company Data from script.js global
+    const co = window.companyProfile || {};
+    
+    doc.setFontSize(22);
+    doc.setTextColor(99, 102, 241); // var(--primary)
+    doc.text(co.name || 'EMYRIS BIOLIFESCIENCES', 20, 25);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(co.address || '', 20, 32);
+    doc.text(`GST: ${co.gstNo || ''} | DL: ${co.dlNo || ''}`, 20, 37);
+
+    doc.setDrawColor(99, 102, 241);
+    doc.line(20, 42, 190, 42);
+
+    // Claim Title
+    doc.setFontSize(16);
+    doc.setTextColor(0);
+    doc.text('PDCN CLAIM BREAKDOWN', 20, 55);
+    
+    // Metadata
+    doc.setFontSize(10);
+    doc.text(`Claim ID: CL-ID-${String(claim.id).padStart(4, '0')}`, 20, 65);
+    doc.text(`Ref Invoice: ${claim.invoiceNo}`, 20, 70);
+    doc.text(`Date: ${new Date(claim.createdAt).toLocaleDateString('en-GB')}`, 140, 65);
+    doc.text(`Status: ${(claim.status || 'pending').toUpperCase()}`, 140, 70);
+
+    // Party Info
+    doc.setFontSize(11);
+    doc.text('Party Details:', 20, 85);
+    doc.setFontSize(10);
+    doc.text(currentUser.name || 'Stockist', 20, 92);
+    doc.text(currentUser.address || '', 20, 97);
+
+    // Table
+    const tableData = (claim.items || []).map(i => [
+        i.name,
+        i.qty,
+        parseFloat(i.billedPrice || 0).toFixed(2),
+        parseFloat(i.specialPrice || 0).toFixed(2),
+        (parseFloat(i.billedPrice || 0) - parseFloat(i.specialPrice || 0)).toFixed(2),
+        parseFloat(i.finalPDCN || 0).toFixed(2)
+    ]);
+
+    doc.autoTable({
+        startY: 110,
+        head: [['Product Name', 'Qty', 'Billed Rate', 'Spl Rate', 'Diff', 'Final PDCN']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [99, 102, 241], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+            0: { cellWidth: 70 },
+            1: { halign: 'center' },
+            2: { halign: 'right' },
+            3: { halign: 'right' },
+            4: { halign: 'right' },
+            5: { halign: 'right', fontStyle: 'bold' }
+        }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 15;
+    
+    // Totals
+    doc.setFontSize(12);
+    doc.text(`TOTAL CLAIM VALUE: Rs. ${parseFloat(claim.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 190, finalY, { align: 'right' });
+
+    // Remarks
+    if (claim.adminRemarks) {
+        doc.setFontSize(10);
+        doc.text('Admin Remarks:', 20, finalY + 10);
+        doc.setFontSize(9);
+        doc.setTextColor(80);
+        doc.text(doc.splitTextToSize(claim.adminRemarks, 170), 20, finalY + 17);
+    }
+
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Generated on ${new Date().toLocaleString()} via Emyris OMS Portal`, 105, 285, { align: 'center' });
+
+    doc.save(`PDCN_${claim.invoiceNo}_${String(claim.id).padStart(4, '0')}.pdf`);
 }
 
 function closePDCNViewModal() {

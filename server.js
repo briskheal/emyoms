@@ -1390,6 +1390,7 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
             await claim.update({ totalAmount: newTotal });
         }
 
+        await claim.reload(); // Ensure we have the latest totalAmount after edits
         const noteNo = await getNextDocNo('pdcn');
         const financialNote = await db.FinancialNote.create({
             noteNo,
@@ -1602,28 +1603,53 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
     try {
         const partyId = req.params.id;
         
-        const [invoices, notes] = await Promise.all([
+        const [invoices, notes, payments, purchases] = await Promise.all([
             db.Invoice.findAll({ where: { stockistId: partyId } }),
-            db.FinancialNote.findAll({ where: { stockistId: partyId } })
+            db.FinancialNote.findAll({ where: { stockistId: partyId } }),
+            db.Payment.findAll({ where: { stockistId: partyId } }),
+            db.PurchaseEntry.findAll({ where: { supplierId: partyId } })
         ]);
 
         const ledger = [];
+        
+        // 1. Invoices (Debit for Customers)
         invoices.forEach(i => ledger.push({
             date: i.createdAt,
             refNo: i.invoiceNo,
             type: 'INVOICE',
             description: 'Sales Invoice',
-            debit: i.grandTotal,
+            debit: parseFloat(i.grandTotal),
             credit: 0
         }));
 
+        // 2. Financial Notes (CN = Credit, DN = Debit)
         notes.forEach(n => ledger.push({
             date: n.createdAt,
             refNo: n.noteNo,
             type: n.noteType === 'CN' ? 'CREDIT NOTE' : 'DEBIT NOTE',
-            description: n.reason,
-            debit: n.noteType === 'DN' ? n.amount : 0,
-            credit: n.noteType === 'CN' ? n.amount : 0
+            description: n.reason || 'Financial Adjustment',
+            debit: n.noteType === 'DN' ? parseFloat(n.amount) : 0,
+            credit: n.noteType === 'CN' ? parseFloat(n.amount) : 0
+        }));
+
+        // 3. Payments (RECEIPT = Credit, PAYMENT = Debit)
+        payments.forEach(p => ledger.push({
+            date: p.date || p.createdAt,
+            refNo: p.paymentNo || `VOU-${p.id}`,
+            type: p.type, // RECEIPT or PAYMENT
+            description: `Via ${p.method}`,
+            debit: p.type === 'PAYMENT' ? parseFloat(p.amount) : 0,
+            credit: p.type === 'RECEIPT' ? parseFloat(p.amount) : 0
+        }));
+
+        // 4. Purchases (Credit for Suppliers)
+        purchases.forEach(p => ledger.push({
+            date: p.invoiceDate || p.createdAt,
+            refNo: p.supplierInvoiceNo || p.purchaseNo,
+            type: 'PURCHASE',
+            description: 'Stock-In Entry',
+            debit: 0,
+            credit: parseFloat(p.grandTotal)
         }));
 
         ledger.sort((a, b) => new Date(a.date) - new Date(b.date));

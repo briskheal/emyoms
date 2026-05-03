@@ -714,7 +714,12 @@
                     <div style="font-size: 0.65rem; color: var(--accent); font-weight: 800; letter-spacing: 1px;">CLAIM BREAKDOWN</div>
                     <h2 id="pdcn-view-id" style="font-size: 1.5rem; font-weight: 900; color: #fff; margin-top: 5px;">PDCN-0000</h2>
                 </div>
-                <button class="btn btn-ghost" onclick="closePDCNViewModal()" style="padding: 10px; border-radius: 50%; color: #fff;"><i class="fas fa-times"></i></button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="downloadPDCN_PDF()" style="background: var(--primary); color: #fff; padding: 10px 20px; border-radius: 12px; font-weight: 800; font-size: 0.75rem; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-file-pdf"></i> DOWNLOAD PDF
+                    </button>
+                    <button class="btn btn-ghost" onclick="closePDCNViewModal()" style="padding: 10px; border-radius: 50%; color: #fff;"><i class="fas fa-times"></i></button>
+                </div>
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
@@ -770,3 +775,4 @@
 
 
 </html>
+

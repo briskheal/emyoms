@@ -1224,7 +1224,7 @@ async function uploadInvoiceDesign() {
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Reference Invoice Uploaded! We will use this to match your design.");
+            alert("📁 Reference Invoice Uploaded! We will use this to match your design.");
             loadSettings();
         } else {
             alert("Upload failed: " + result.error);
@@ -1241,7 +1241,7 @@ async function uploadLogo() {
         const res = await fetch(`${API_BASE}/admin/upload-logo`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Logo uploaded successfully!");
+            alert("🖼️ Logo uploaded successfully!");
             loadSettings();
         } else alert("Upload failed: " + result.error);
     } catch (e) { alert("Upload error."); }
@@ -1256,7 +1256,7 @@ async function uploadSignature() {
         const res = await fetch(`${API_BASE}/admin/upload-signature`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Signature uploaded successfully!");
+            alert("✍️ Signature uploaded successfully!");
             loadSettings();
         } else alert("Upload failed: " + result.error);
     } catch (e) { alert("Upload error."); }
@@ -2106,20 +2106,21 @@ async function viewLedger(id) {
 function renderLedger(ledger) {
     const tbody = document.getElementById('ledgerTableBody');
     if(!tbody) return;
-    let runningBalance = 0;
+    let balance = 0;
 
     tbody.innerHTML = ledger.map(entry => {
-        runningBalance += (Number(entry.debit || 0) - Number(entry.credit || 0));
-
-        return '<tr>' +
-                '<td>' + new Date(entry.date).toLocaleDateString('en-GB') + '</td>' +
-                '<td style="font-family:monospace; font-weight:700;">' + entry.refNo + '</td>' +
-                '<td><span class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">' + entry.type + '</span></td>' +
-                '<td style="font-size:0.85rem;">' + entry.description + '</td>' +
-                '<td style="text-align:right; color:#ef4444; font-weight:700;">' + (Number(entry.debit || 0) > 0 ? '₹' + Number(entry.debit).toLocaleString('en-IN') : '-') + '</td>' +
-                '<td style="text-align:right; color:#10b981; font-weight:700;">' + (Number(entry.credit || 0) > 0 ? '₹' + Number(entry.credit).toLocaleString('en-IN') : '-') + '</td>' +
-                '<td style="text-align:right; font-weight:800; color:' + (runningBalance >= 0 ? 'var(--accent)' : '#10b981') + '">₹' + Math.abs(runningBalance).toLocaleString('en-IN') + ' ' + (runningBalance >= 0 ? 'Dr' : 'Cr') + '</td>' +
-            '</tr>';
+        balance += (Number(entry.debit || 0) - Number(entry.credit || 0));
+        return `
+            <tr>
+                <td style="font-size:0.75rem;">${new Date(entry.date).toLocaleDateString('en-GB')}</td>
+                <td style="font-weight:700; color:var(--primary);">${entry.refNo}</td>
+                <td style="font-size:0.65rem; color:var(--text-muted);">${entry.type}</td>
+                <td style="font-size:0.7rem; font-style:italic;">${entry.description}</td>
+                <td style="text-align:right; font-family:monospace; color:${entry.debit > 0 ? '#fff' : 'rgba(255,255,255,0.2)'};">${entry.debit > 0 ? '₹' + Number(entry.debit).toFixed(2) : '-'}</td>
+                <td style="text-align:right; font-family:monospace; color:${entry.credit > 0 ? '#10b981' : 'rgba(255,255,255,0.2)'};">${entry.credit > 0 ? '₹' + Number(entry.credit).toFixed(2) : '-'}</td>
+                <td style="text-align:right; font-family:monospace; font-weight:800; color:${balance >= 0 ? 'var(--accent)' : '#ef4444'};">₹${Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+            </tr>
+        `;
     }).join('');
 }
 
@@ -2317,7 +2318,7 @@ function renderPurchaseItems() {
             <td style="text-align:right;">₹${Number(item.purchaseRate || 0).toFixed(2)}</td>
             <td style="text-align:center;">${pct}%</td>
             <td style="text-align:right; font-weight:700;">₹${(val + gst).toFixed(2)}</td>
-            <td><button type="button" onclick="purchaseItems.splice(${index},1); renderPurchaseItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+            <td><button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
         </tr>`;
     }).join('');
 
@@ -2585,7 +2586,7 @@ function renderSaleItems() {
             <td style="text-align:right;">₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align:center;">${pct}%</td>
             <td style="text-align:right; font-weight:700;">₹${(val + gst).toFixed(2)}</td>
-            <td><button type="button" onclick="directSaleItems.splice(${index},1); renderSaleItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+            <td><button type="button" onclick="directSaleItems.splice(${index}?); renderSaleItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
         </tr>`;
     }).join('');
 
@@ -2998,7 +2999,7 @@ function openReturnModal(reason, editData = null) {
             style="padding:5px 13px;border-radius:6px;font-size:0.63rem;font-weight:700;
                    letter-spacing:0.05em;border:1px solid ${active ? accentColor : 'transparent'};
                    cursor:pointer;transition:all 0.2s;
-                   background:${active ? 'rgba(' + (cfg.noteType==='CN'?'99,102,241':'239,68,68') + ',0.22)' : 'transparent'};
+                   background:${active ? 'rgba(' + (cfg.noteType==='CN'?'99?02,241':'239,68,68') + ',0.22)' : 'transparent'};
                    color:${active ? '#fff' : '#64748b'};"
         >${cfg.tabLabels[i]}</button>`;
     }).join('');
@@ -3572,10 +3573,10 @@ function setInvoiceStyle(style) {
     if (styleEl) styleEl.value = style;
     const styles = ['classic', 'modern', 'compact', 'sample'];
     const colors = {
-        classic: { border: '2px solid var(--primary)', shadow: '0 0 20px rgba(99,102,241,0.3)', bg: 'rgba(99,102,241,0.05)' },
-        modern:  { border: '2px solid #10b981', shadow: '0 0 20px rgba(16,185,129,0.3)', bg: 'rgba(16,185,129,0.05)' },
-        compact: { border: '2px solid #f59e0b', shadow: '0 0 20px rgba(245,158,11,0.3)', bg: 'rgba(245,158,11,0.05)' },
-        sample:  { border: '2px solid var(--accent)', shadow: '0 0 20px rgba(16,185,129,0.3)', bg: 'rgba(16,185,129,0.05)' }
+        classic: { border: '2px solid var(--primary)', shadow: '0 0 20px rgba(99?02,241,0.3)', bg: 'rgba(99?02,241,0.05)' },
+        modern:  { border: '2px solid #10b981', shadow: '0 0 20px rgba(16?85?29,0.3)', bg: 'rgba(16?85?29,0.05)' },
+        compact: { border: '2px solid #f59e0b', shadow: '0 0 20px rgba(245?58?1,0.3)', bg: 'rgba(245?58?1,0.05)' },
+        sample:  { border: '2px solid var(--accent)', shadow: '0 0 20px rgba(16?85?29,0.3)', bg: 'rgba(16?85?29,0.05)' }
     };
     styles.forEach(s => {
         const card = document.getElementById(`specimen-${s}`);
@@ -4191,7 +4192,7 @@ function previewBillAdjustment() {
     });
 
     if (remaining > 0) {
-        html += `<tr style="background:rgba(16,185,129,0.05);">
+        html += `<tr style="background:rgba(16?85?29,0.05);">
             <td style="padding:8px; font-weight:700;">🏦 UNADJUSTED / ADVANCE</td>
             <td></td>
             <td style="text-align:right; padding:8px; font-weight:900; color:#10b981;">₹${remaining.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
@@ -4959,6 +4960,9 @@ async function openPDCNClaimModal(id) {
                             ${claim.status.toUpperCase()}
                           </span>`;
 
+    // Store for printing
+    window.currentAdminViewingPDCN = claim;
+
     renderPDCNReviewItems();
 
     document.getElementById('pdcn-admin-remarks').value = claim.adminRemarks || '';
@@ -5065,3 +5069,165 @@ async function processPDCNClaim(action) {
     } catch (e) { alert("Action failed."); }
 }
 
+
+
+async function downloadAdminPDCN_PDF() {
+    const claim = window.currentAdminViewingPDCN;
+    if (!claim) return alert("No claim data found to print.");
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Header - Admin panel can use cached company settings
+    const co = window.currentCompany || {};
+    
+    doc.setFontSize(22);
+    doc.setTextColor(99, 102, 241);
+    doc.text(co.name || 'EMYRIS BIOLIFESCIENCES', 20, 25);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(co.address || '', 20, 32);
+    doc.text(`GST: ${co.gstNo || ''} | DL: ${co.dlNo || ''}`, 20, 37);
+
+    doc.setDrawColor(99, 102, 241);
+    doc.line(20, 42, 190, 42);
+
+    doc.setFontSize(16);
+    doc.setTextColor(0);
+    doc.text('PDCN CLAIM REVIEW REPORT', 20, 55);
+    
+    doc.setFontSize(10);
+    doc.text(`Claim ID: CL-ID-${String(claim.id).padStart(4, '0')}`, 20, 65);
+    doc.text(`Ref Invoice: ${claim.invoiceNo}`, 20, 70);
+    doc.text(`Date: ${new Date(claim.createdAt).toLocaleDateString('en-GB')}`, 140, 65);
+    doc.text(`Status: ${(claim.status || 'pending').toUpperCase()}`, 140, 70);
+
+    doc.setFontSize(11);
+    doc.text('Stockist Details:', 20, 85);
+    doc.setFontSize(10);
+    doc.text(claim.Stockist ? claim.Stockist.name : 'Unknown Stockist', 20, 92);
+    doc.text(claim.Stockist ? (claim.Stockist.address || '') : '', 20, 97);
+
+    const tableData = (claim.items || []).map(i => [
+        i.name,
+        i.qty,
+        parseFloat(i.billedPrice || 0).toFixed(2),
+        parseFloat(i.specialPrice || 0).toFixed(2),
+        (parseFloat(i.billedPrice || 0) - parseFloat(i.specialPrice || 0)).toFixed(2),
+        parseFloat(i.finalPDCN || 0).toFixed(2)
+    ]);
+
+    doc.autoTable({
+        startY: 110,
+        head: [['Product Name', 'Qty', 'Billed Rate', 'Spl Rate', 'Diff', 'Final PDCN']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        columnStyles: {
+            0: { cellWidth: 70 },
+            1: { halign: 'center' },
+            2: { halign: 'right' },
+            3: { halign: 'right' },
+            4: { halign: 'right' },
+            5: { halign: 'right', fontStyle: 'bold' }
+        }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 15;
+    doc.setFontSize(12);
+    doc.text(`TOTAL PDCN VALUE: Rs. ${parseFloat(claim.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}`, 190, finalY, { align: 'right' });
+
+    if (claim.adminRemarks) {
+        doc.setFontSize(10);
+        doc.text('Admin Remarks:', 20, finalY + 10);
+        doc.setFontSize(9);
+        doc.setTextColor(80);
+        doc.text(doc.splitTextToSize(claim.adminRemarks, 170), 20, finalY + 17);
+    }
+
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Generated on ${new Date().toLocaleString()} | Emyris OMS Admin Hub`, 105, 285, { align: 'center' });
+
+    doc.save(`ADMIN_PDCN_${claim.invoiceNo}_${claim.id}.pdf`);
+}
+
+async function downloadLedgerPDF() {
+    if (!currentLedgerPartyId) return;
+    const s = allStockists.find(x => x._id === currentLedgerPartyId);
+    if (!s) return alert("Party not found");
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const co = window.currentCompany || {};
+    
+    doc.setFontSize(22);
+    doc.setTextColor(99, 102, 241);
+    doc.text(co.name || 'EMYRIS BIOLIFESCIENCES', 20, 25);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(co.address || '', 20, 32);
+    doc.text(`GST: ${co.gstNo || ''} | DL: ${co.dlNo || ''}`, 20, 37);
+
+    doc.setDrawColor(99, 102, 241);
+    doc.line(20, 42, 190, 42);
+
+    doc.setFontSize(16);
+    doc.setTextColor(0);
+    doc.text('STATEMENT OF ACCOUNT', 20, 55);
+    
+    doc.setFontSize(10);
+    doc.text(`Party: ${s.name}`, 20, 65);
+    doc.text(`Address: ${s.address || ''}`, 20, 70);
+    doc.text(`GSTIN: ${s.gstNo || ''}`, 20, 75);
+    doc.text(`Period: Up to ${new Date().toLocaleDateString('en-GB')}`, 140, 65);
+
+    // Fetch latest ledger data to be sure
+    const res = await fetch('/api/admin/parties/' + currentLedgerPartyId + '/ledger');
+    const ledger = await res.json();
+
+    let balance = 0;
+    const tableData = ledger.map(entry => {
+        balance += (parseFloat(entry.debit) - parseFloat(entry.credit));
+        return [
+            new Date(entry.date).toLocaleDateString('en-GB'),
+            entry.refNo,
+            entry.type,
+            entry.description,
+            entry.debit > 0 ? entry.debit.toFixed(2) : '',
+            entry.credit > 0 ? entry.credit.toFixed(2) : '',
+            `${Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}`
+        ];
+    });
+
+    doc.autoTable({
+        startY: 85,
+        head: [['Date', 'Ref No', 'Type', 'Description', 'Debit', 'Credit', 'Balance']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241], fontSize: 9 },
+        bodyStyles: { fontSize: 7 },
+        columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 25 },
+            4: { halign: 'right' },
+            5: { halign: 'right' },
+            6: { halign: 'right', fontStyle: 'bold' }
+        }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 15;
+    doc.setFontSize(12);
+    doc.text(`CLOSING BALANCE: Rs. ${Math.abs(balance).toLocaleString('en-IN', {minimumFractionDigits: 2})} ${balance >= 0 ? 'Dr' : 'Cr'}`, 190, finalY, { align: 'right' });
+
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Generated on ${new Date().toLocaleString()} | Emyris OMS`, 105, 285, { align: 'center' });
+
+    doc.save(`LEDGER_${s.name.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
+}
