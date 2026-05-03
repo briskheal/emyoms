@@ -1564,7 +1564,7 @@ function renderPDCNTable() {
     if (!tbody || !currentPDCNInvoice) return;
 
     tbody.innerHTML = currentPDCNInvoice.items.map(item => {
-        const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+        const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
         const gst = parseFloat(item.gstPercent || item.gst || 12);
         const claim = pdcnClaims[item.id] || { splPrice: billedPrice, remarks: '', active: false };
         
@@ -1633,7 +1633,7 @@ function calculatePDCNRow(itemId, splPrice) {
     }
 
     const gstPct = parseFloat(item.gstPercent || item.gst || 12);
-    const I = parseFloat(item.priceUsed || item.rate || 0);
+    const I = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
     const J = (I * gstPct) / 100;
     const K = I + J;
     
@@ -1705,7 +1705,7 @@ async function submitPDCNClaim() {
         items: activeItems.map(id => {
             const item = currentPDCNInvoice.items.find(i => i.id == id);
             const claim = pdcnClaims[id];
-            const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+            const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
             const gstPct = parseFloat(item.gstPercent || item.gst || 12);
             const diffPerUnit = billedPrice - claim.splPrice;
             
@@ -1734,7 +1734,7 @@ async function submitPDCNClaim() {
             activeItems.forEach(id => {
                 const item = currentPDCNInvoice.items.find(i => i.id == id);
                 const claim = pdcnClaims[id];
-                const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+                const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
                 const gstPct = parseFloat(item.gstPercent || item.gst || 12);
                 const diffPerUnit = billedPrice - claim.splPrice;
                 taxable += (diffPerUnit * item.qty);
