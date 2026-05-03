@@ -1310,40 +1310,41 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
 
         let calculatedTotal = 0;
         for (const item of items) {
-            // Fix: client sends 'qty' and 'specialPrice' (not 'claimQty'/'splPrice')
-            const qty = Number(item.qty || item.claimQty) || 0;
-            const billed = Number(item.billedPrice) || 0;
-            const spl = Number(item.specialPrice || item.splPrice) || 0;
-            const diff = billed - spl;
-            const gst = Number(item.gstPercent || item.gstPct) || 0;
-            const marginPct = 10.0;
+            const qty      = Number(item.qty || item.claimQty) || 0;
+            const billed   = Number(item.billedPrice) || 0;
+            const spl      = Number(item.specialPrice || item.splPrice) || 0;
+            const diff     = billed - spl;
+            const gst      = Number(item.gstPercent || item.gstPct) || 0;
+            const marginPct = parseFloat(item.marginPct) || 10.0;
 
-            // Canonical Formula (matches client display):
-            // taxableValue = diff * qty * (1 + GST/100)
-            // marginValue  = diff * qty * (10/100)
-            // finalPDCN    = taxableValue + marginValue
+            // Server-side recalculation (canonical formula, same as client)
             const taxableValue = (diff * qty) * (1 + gst / 100);
             const marginValue  = (diff * qty) * (marginPct / 100);
-            const finalItemPDCN = parseFloat((taxableValue + marginValue).toFixed(2));
+            const serverCalcPDCN = parseFloat((taxableValue + marginValue).toFixed(2));
+
+            // Trust client-sent finalPDCN if provided and non-zero,
+            // otherwise fall back to server recalculation
+            const clientFinalPDCN = parseFloat(item.finalPDCN) || 0;
+            const finalItemPDCN = (clientFinalPDCN > 0) ? clientFinalPDCN : serverCalcPDCN;
 
             await db.PDCNClaimItem.create({
                 pdcnClaimId: claim.id,
-                productId: item.productId,
-                name: item.name,
-                qty: qty,
+                productId:   item.productId,
+                name:        item.name,
+                qty,
                 billedPrice: billed,
                 specialPrice: spl,
-                gstPercent: gst,
-                marginPct: marginPct,
-                stkMargin: parseFloat(marginValue.toFixed(2)),
-                saleDiff: parseFloat(diff.toFixed(2)),
-                finalPDCN: finalItemPDCN,
-                remarks: item.remarks
+                gstPercent:  gst,
+                marginPct,
+                stkMargin:   parseFloat(marginValue.toFixed(2)),
+                saleDiff:    parseFloat(diff.toFixed(2)),
+                finalPDCN:   finalItemPDCN,
+                remarks:     item.remarks
             });
             calculatedTotal += finalItemPDCN;
         }
 
-        // Force header to match item sum exactly with decimal precision
+        // Header totalAmount = exact sum of saved item finalPDCN values
         await claim.update({ totalAmount: parseFloat(calculatedTotal.toFixed(2)) });
 
 
