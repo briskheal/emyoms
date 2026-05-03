@@ -1549,6 +1549,20 @@ async function loadPDCNInvoice(invNo) {
         if (result.success) {
             currentPDCNInvoice = result.invoice;
             pdcnClaims = {}; // Reset
+            
+            // Initialize claims with fallback GST and Price
+            currentPDCNInvoice.items.forEach(item => {
+                const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
+                const gst = parseFloat(item.gstPercent || (item.Product ? item.Product.gstPercent : null) || item.gst || 12);
+                pdcnClaims[item.id] = [{ 
+                    claimQty: item.qty, 
+                    splPrice: billedPrice, 
+                    remarks: '', 
+                    active: false,
+                    gstPercent: gst // Store it in the claim for consistency
+                }];
+            });
+
             document.getElementById('pdcn-active-inv-no').innerText = invNo;
             document.getElementById('pdcn-worksheet-container').classList.remove('hidden');
             document.getElementById('pdcn-invoice-selector').classList.add('hidden');
@@ -1565,21 +1579,17 @@ function renderPDCNTable() {
 
     let html = '';
     currentPDCNInvoice.items.forEach(item => {
-        const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-        const gst = parseFloat(item.gstPercent || item.gst || 12);
-        
-        // Initialize if not exists or if old format
-        if (!pdcnClaims[item.id] || !Array.isArray(pdcnClaims[item.id])) {
-            pdcnClaims[item.id] = [{ claimQty: item.qty, splPrice: billedPrice, remarks: '', active: false }];
-        }
-
         const variations = pdcnClaims[item.id];
+        if (!variations) return;
+
+        const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
         const totalClaimedQty = variations.reduce((sum, v) => sum + (parseFloat(v.claimQty) || 0), 0);
         const qtyOverLimit = totalClaimedQty > item.qty;
 
         variations.forEach((v, idx) => {
             const rowId = `pdcn-row-${item.id}-${idx}`;
             const isFirst = idx === 0;
+            const gst = v.gstPercent;
             
             html += `
                 <tr id="${rowId}" style="opacity: ${v.active ? '1' : '0.6'}; transition: 0.3s; background: ${v.active ? 'rgba(99,102,241,0.05)' : 'transparent'};">
@@ -1679,41 +1689,25 @@ function calculatePDCNRow(itemId, idx, field, value) {
         variation.remarks = value;
     }
 
-    // UI Feedback for row state
-    const row = document.getElementById(`pdcn-row-${itemId}-${idx}`);
-    if (row) {
-        row.style.opacity = variation.active ? "1" : "0.6";
-        row.style.background = variation.active ? "rgba(99,102,241,0.05)" : "transparent";
-    }
-
-    // Calculations
+    const gstPct = variation.gstPercent;
     const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-    const gstPct = parseFloat(item.gstPercent || item.gst || 12);
     const claimQty = variation.claimQty;
-    const sPrice = variation.splPrice;
+    const splPrice = variation.splPrice;
 
-    const I = billedPrice;
-    const J = (I * gstPct) / 100;
-    const K = I + J;
+    // Formula: (Qty * (ActualPrice + GST)) - (Qty * (SplPrice + GST))
+    const billedIncl = billedPrice * (1 + gstPct / 100);
+    const splIncl = splPrice * (1 + gstPct / 100);
     
-    const M = sPrice;
-    const N = (M * gstPct) / 100;
-    const O = M + N;
-    
-    const P = K - O; // Diff per unit incl Tax
-    const Q = (I - M) * 0.10; // 10% Stk Margin per unit
-    const R = P + Q;
-    const S = claimQty * R;
+    const diffPerUnitIncl = billedIncl - splIncl;
+    const saleDiffTotal = diffPerUnitIncl * claimQty;
+    const stkMarginTotal = saleDiffTotal * 0.10;
+    const finalPDCN = saleDiffTotal + stkMarginTotal;
 
-    // Update Billed Total Column
-    const billedTotalEl = document.getElementById(`pdcn-billed-total-${itemId}-${idx}`);
-    if (billedTotalEl) billedTotalEl.innerText = `₹${(billedPrice * claimQty).toFixed(2)}`;
-
-    // Update diff columns
-    document.getElementById(`pdcn-diff-${itemId}-${idx}`).innerText = `₹${P.toFixed(2)}`;
-    document.getElementById(`pdcn-sale-diff-${itemId}-${idx}`).innerText = `₹${(P * claimQty).toFixed(2)}`;
-    document.getElementById(`pdcn-stk-margin-${itemId}-${idx}`).innerText = `₹${(Q * claimQty).toFixed(2)}`;
-    document.getElementById(`pdcn-final-${itemId}-${idx}`).innerText = `₹${S.toFixed(2)}`;
+    // Update UI
+    document.getElementById(`pdcn-diff-${itemId}-${idx}`).innerText = `₹${diffPerUnitIncl.toFixed(2)}`;
+    document.getElementById(`pdcn-sale-diff-${itemId}-${idx}`).innerText = `₹${saleDiffTotal.toFixed(2)}`;
+    document.getElementById(`pdcn-stk-margin-${itemId}-${idx}`).innerText = `₹${stkMarginTotal.toFixed(2)}`;
+    document.getElementById(`pdcn-final-${itemId}-${idx}`).innerText = `₹${finalPDCN.toFixed(2)}`;
 
     updatePDCNGrandTotals();
 }

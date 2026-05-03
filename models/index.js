@@ -58,6 +58,7 @@ db.Invoice.belongsTo(db.Order, { foreignKey: 'orderId' });
 
 db.Invoice.hasMany(db.InvoiceItem, { as: 'items', foreignKey: 'invoiceId' });
 db.InvoiceItem.belongsTo(db.Invoice, { foreignKey: 'invoiceId' });
+db.InvoiceItem.belongsTo(db.Product, { foreignKey: 'productId' });
 
 db.Stockist.hasMany(db.Invoice, { foreignKey: 'stockistId' });
 db.Invoice.belongsTo(db.Stockist, { foreignKey: 'stockistId' });

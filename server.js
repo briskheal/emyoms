@@ -915,7 +915,13 @@ app.get('/api/stockist/invoice/:invoiceNo', async (req, res) => {
         const { stockistId } = req.query;
         const invoice = await db.Invoice.findOne({
             where: { invoiceNo: req.params.invoiceNo, stockistId },
-            include: [{ model: db.InvoiceItem, as: 'items' }]
+            include: [
+                { 
+                    model: db.InvoiceItem, 
+                    as: 'items',
+                    include: [{ model: db.Product }] // Added product inclusion
+                }
+            ]
         });
         if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found or access denied' });
         res.json({ success: true, invoice });
