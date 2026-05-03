@@ -1967,7 +1967,7 @@ async function fetchPDCNHistory() {
                                                 ${c.adminRemarks ? `<div style="font-size: 0.6rem; color: #ef4444; margin-top: 5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">Note: ${c.adminRemarks}</div>` : ''}
                                             </td>
                                             <td style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">${new Date(c.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
-                                            <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${c.totalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                            <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${parseFloat(c.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                                             <td style="padding: 12px 20px; text-align: center;">
                                                 <button class="btn" onclick="openPDCNViewModal(${c.id})" 
                                                     style="padding: 6px 14px; font-size: 0.65rem; font-weight: 800; background: rgba(99, 102, 241, 0.15); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px;">
@@ -2042,7 +2042,7 @@ async function openPDCNViewModal(id) {
     document.getElementById('pdcn-view-date').innerText = new Date(claim.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
     document.getElementById('pdcn-view-status').innerHTML = `<span style="padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}33;">${status}</span>`;
     document.getElementById('pdcn-view-remarks').innerText = claim.adminRemarks || 'No admin remarks provided.';
-    document.getElementById('pdcn-view-total').innerText = `₹${parseFloat(claim.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-view-total').innerText = `₹${parseFloat(claim.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const tbody = document.getElementById('pdcn-view-items-body');
     tbody.innerHTML = (claim.items || []).map(item => {
