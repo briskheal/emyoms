@@ -1659,31 +1659,32 @@ function updatePDCNRemarks(itemId, val) {
 }
 
 function updatePDCNGrandTotals() {
-    let totalSaleDiff = 0;
-    let totalStkMargin = 0;
-    let grandTotal = 0;
+    let totalTaxable = 0;
+    let totalTax = 0;
+    let totalMargin = 0;
 
     Object.keys(pdcnClaims).forEach(itemId => {
         const claim = pdcnClaims[itemId];
         if (!claim.active) return;
 
         const item = currentPDCNInvoice.items.find(i => i.id == itemId);
-        const gstPct = parseFloat(item.gstPercent) || 0;
+        const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+        const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+        const diffPerUnit = billedPrice - claim.splPrice;
         
-        const I = parseFloat(item.priceUsed);
-        const M = claim.splPrice;
-        
-        const P = (I - M) * (1 + gstPct / 100); // Price Diff with Tax
-        const Q = (I - M) * 0.10; // Margin Diff
-        
-        totalSaleDiff += (P * item.qty);
-        totalStkMargin += (Q * item.qty);
-        grandTotal += ((P + Q) * item.qty);
+        totalTaxable += (diffPerUnit * item.qty);
+        totalTax += (diffPerUnit * (gstPct / 100) * item.qty);
+        totalMargin += (diffPerUnit * 0.10 * item.qty);
     });
 
-    document.getElementById('pdcn-total-sale-diff').innerText = `₹${totalSaleDiff.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('pdcn-total-stk-margin').innerText = `₹${totalStkMargin.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('pdcn-grand-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    const netAmount = totalTaxable + totalTax + totalMargin;
+    const finalGrandTotal = Math.round(netAmount);
+    const roundOffValue = (finalGrandTotal - netAmount).toFixed(2);
+
+    document.getElementById('pdcn-total-taxable').innerText = `₹${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-total-tax').innerText = `₹${totalTax.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-total-roundoff').innerText = `₹${roundOffValue}`;
+    document.getElementById('pdcn-grand-total').innerText = `₹${finalGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 async function submitPDCNClaim() {
@@ -1726,15 +1727,22 @@ async function submitPDCNClaim() {
                 remarks: claim.remarks
             };
         }),
-        totalAmount: activeItems.reduce((acc, id) => {
-            const item = currentPDCNInvoice.items.find(i => i.id == id);
-            const claim = pdcnClaims[id];
-            const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
-            const gstPct = parseFloat(item.gstPercent || item.gst || 12);
-            const diffPerUnit = billedPrice - claim.splPrice;
-            const totalPerUnit = (diffPerUnit * (1 + gstPct / 100)) + (diffPerUnit * 0.10);
-            return acc + (totalPerUnit * item.qty);
-        }, 0)
+        totalAmount: (() => {
+            let taxable = 0;
+            let tax = 0;
+            let margin = 0;
+            activeItems.forEach(id => {
+                const item = currentPDCNInvoice.items.find(i => i.id == id);
+                const claim = pdcnClaims[id];
+                const billedPrice = parseFloat(item.priceUsed || item.rate || 0);
+                const gstPct = parseFloat(item.gstPercent || item.gst || 12);
+                const diffPerUnit = billedPrice - claim.splPrice;
+                taxable += (diffPerUnit * item.qty);
+                tax += (diffPerUnit * (gstPct / 100) * item.qty);
+                margin += (diffPerUnit * 0.10 * item.qty);
+            });
+            return Math.round(taxable + tax + margin);
+        })()
     };
 
     console.log("📤 Submitting PDCN Claim:", claimData);
