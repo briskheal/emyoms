@@ -1310,17 +1310,21 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
 
         let calculatedTotal = 0;
         for (const item of items) {
-            const qty = Number(item.claimQty) || 0;
+            // Fix: client sends 'qty' and 'specialPrice' (not 'claimQty'/'splPrice')
+            const qty = Number(item.qty || item.claimQty) || 0;
             const billed = Number(item.billedPrice) || 0;
-            const spl = Number(item.splPrice) || 0;
+            const spl = Number(item.specialPrice || item.splPrice) || 0;
             const diff = billed - spl;
             const gst = Number(item.gstPercent || item.gstPct) || 0;
-            const marginPct = 10.0; 
+            const marginPct = 10.0;
 
-            // Formula: (Diff * Qty * (1 + GST/100)) + (Diff * Qty * Margin/100)
+            // Canonical Formula (matches client display):
+            // taxableValue = diff * qty * (1 + GST/100)
+            // marginValue  = diff * qty * (10/100)
+            // finalPDCN    = taxableValue + marginValue
             const taxableValue = (diff * qty) * (1 + gst / 100);
-            const marginValue = (diff * qty) * (marginPct / 100);
-            const finalItemPDCN = taxableValue + marginValue;
+            const marginValue  = (diff * qty) * (marginPct / 100);
+            const finalItemPDCN = parseFloat((taxableValue + marginValue).toFixed(2));
 
             await db.PDCNClaimItem.create({
                 pdcnClaimId: claim.id,
@@ -1331,8 +1335,8 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
                 specialPrice: spl,
                 gstPercent: gst,
                 marginPct: marginPct,
-                stkMargin: marginValue,
-                saleDiff: diff,
+                stkMargin: parseFloat(marginValue.toFixed(2)),
+                saleDiff: parseFloat(diff.toFixed(2)),
                 finalPDCN: finalItemPDCN,
                 remarks: item.remarks
             });

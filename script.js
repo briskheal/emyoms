@@ -1846,28 +1846,27 @@ async function submitPDCNClaim() {
             }
 
             const billedPrice = Number(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-            const gstPct = Number(v.gstPercent || 0); 
+            const gstPct = Number(v.gstPercent || 0);
             const splPrice = Number(v.splPrice || 0);
-            
-            const billedIncl = billedPrice * (1 + gstPct / 100);
-            const splIncl = splPrice * (1 + gstPct / 100);
-            const unitDiff = billedIncl - splIncl;
-            
-            // Standardized: Margin on base difference
+            const claimQty = Number(v.claimQty || 0);
+
+            // Canonical formula — MUST match calculatePDCNRow display & server formula:
+            // finalPDCN = (diff * qty * (1 + GST%)) + (diff * qty * 10%)
             const baseDiff = billedPrice - splPrice;
-            const unitMargin = baseDiff * 0.10;
-            const finalPerUnit = unitDiff + unitMargin;
+            const taxableValue = baseDiff * claimQty * (1 + gstPct / 100);
+            const marginValue  = baseDiff * claimQty * 0.10;
+            const finalPDCN    = parseFloat((taxableValue + marginValue).toFixed(2));
 
             itemsToSubmit.push({
                 productId: item.productId,
                 name: item.name,
-                qty: v.claimQty,
+                qty: claimQty,
                 gstPercent: gstPct,
                 billedPrice: billedPrice,
-                specialPrice: v.splPrice,
-                saleDiff: unitDiff * v.claimQty,
-                stkMargin: unitMargin * v.claimQty,
-                finalPDCN: finalPerUnit * v.claimQty,
+                specialPrice: splPrice,
+                saleDiff: parseFloat((baseDiff * claimQty * (1 + gstPct / 100)).toFixed(2)),
+                stkMargin: parseFloat((marginValue).toFixed(2)),
+                finalPDCN: finalPDCN,
                 remarks: v.remarks
             });
 
