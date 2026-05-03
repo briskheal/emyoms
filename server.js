@@ -975,7 +975,29 @@ app.get('/api/stockist/invoice/:invoiceNo', async (req, res) => {
             ]
         });
         if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found or access denied' });
-        res.json({ success: true, invoice });
+
+        // Fetch previously claimed quantities for this invoice (Pending or Approved)
+        const existingClaims = await db.PDCNClaim.findAll({
+            where: { invoiceNo: invoice.invoiceNo, stockistId, status: { [db.Sequelize.Op.ne]: 'rejected' } },
+            include: [{ model: db.PDCNClaimItem, as: 'items' }]
+        });
+
+        const claimedSummary = {}; // { productId: totalQty }
+        existingClaims.forEach(c => {
+            c.items.forEach(i => {
+                claimedSummary[i.productId] = (claimedSummary[i.productId] || 0) + Number(i.qty || 0);
+            });
+        });
+
+        // Attach claimed quantity to each invoice item
+        const invoiceData = invoice.toJSON();
+        invoiceData.items.forEach(item => {
+            item.alreadyClaimedQty = claimedSummary[item.productId] || 0;
+            item.availableQty = Math.max(0, Number(item.qty || 0) - item.alreadyClaimedQty);
+        });
+
+        res.json({ success: true, invoice: invoiceData });
+
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -1242,7 +1264,43 @@ app.post('/api/admin/financial-notes', async (req, res) => {
 app.post('/api/stockist/pdcn/submit', async (req, res) => {
     try {
         const { invoiceNo, stockistId, items, totalAmount } = req.body;
-        
+
+        // 1. Fetch all existing non-rejected claims for this invoice/stockist
+        const existingClaims = await db.PDCNClaim.findAll({
+            where: { 
+                invoiceNo, 
+                stockistId, 
+                status: { [db.Sequelize.Op.ne]: 'rejected' } 
+            },
+            include: [{ model: db.PDCNClaimItem, as: 'items' }]
+        });
+
+        // 2. Validate quantities across all items
+        for (const newItem of items) {
+            let previouslyClaimed = 0;
+            existingClaims.forEach(claim => {
+                const match = claim.items.find(i => i.productId === newItem.productId);
+                if (match) previouslyClaimed += Number(match.qty || 0);
+            });
+
+            // We need to know the original invoice qty for this product
+            const inv = await db.Invoice.findOne({
+                where: { invoiceNo, stockistId },
+                include: [{ model: db.InvoiceItem, as: 'items', where: { productId: newItem.productId } }]
+            });
+
+            if (!inv || !inv.items[0]) continue; // Should not happen if UI is correct
+            
+            const originalQty = Number(inv.items[0].qty || 0);
+            if ((previouslyClaimed + Number(newItem.claimQty)) > originalQty) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `⚠️ OVER-CLAIM ERROR: Product '${newItem.name}' already has ${previouslyClaimed} units claimed. Only ${originalQty - previouslyClaimed} units remaining.` 
+                });
+            }
+        }
+
+        // 3. Create the new claim
         const claim = await db.PDCNClaim.create({
             invoiceNo,
             stockistId,
@@ -1250,14 +1308,19 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
             status: 'pending'
         });
 
-
         for (const item of items) {
             await db.PDCNClaimItem.create({
-                ...item,
-                pdcnClaimId: claim.id
+                pdcnClaimId: claim.id,
+                productId: item.productId,
+                name: item.name,
+                qty: Number(item.claimQty),
+                billedPrice: Number(item.billedPrice),
+                specialPrice: Number(item.splPrice),
+                gstPercent: Number(item.gstPct),
+                finalPDCN: Number(item.finalPDCN),
+                remarks: item.remarks
             });
         }
-
         res.json({ success: true, message: 'PDCN Worksheet submitted for review', claimId: claim.id });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -1277,11 +1340,31 @@ app.get('/api/admin/pdcn/claims', async (req, res) => {
 
 app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
     try {
+        const { editedItems, remarks } = req.body;
         const claim = await db.PDCNClaim.findByPk(req.params.id, {
             include: [{ model: db.PDCNClaimItem, as: 'items' }]
         });
         if (!claim) return res.status(404).json({ success: false, message: "Claim not found" });
         if (claim.status !== 'pending') return res.status(400).json({ success: false, message: "Claim already processed" });
+
+        // Apply edits if provided by admin
+        if (editedItems && editedItems.length > 0) {
+            let newTotal = 0;
+            for (const editedItem of editedItems) {
+                const dbItem = claim.items.find(i => i.id === editedItem.id);
+                if (dbItem) {
+                    await dbItem.update({
+                        specialPrice: editedItem.specialPrice,
+                        marginPct: editedItem.marginPct,
+                        finalPDCN: editedItem.finalPDCN,
+                        stkMargin: editedItem.stkMargin,
+                        saleDiff: editedItem.saleDiff
+                    });
+                    newTotal += Number(editedItem.finalPDCN);
+                }
+            }
+            await claim.update({ totalAmount: newTotal });
+        }
 
         const noteNo = await getNextDocNo('pdcn');
         const financialNote = await db.FinancialNote.create({
@@ -1290,17 +1373,20 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
             stockistId: claim.stockistId,
             amount: claim.totalAmount,
             reason: 'Price Diff CN',
-            description: `PDCN for Invoice ${claim.invoiceNo}`
+            description: `PDCN for Invoice ${claim.invoiceNo}. ${remarks || ''}`
         });
 
-        for (const item of claim.items) {
+        // Refresh items after updates
+        const updatedItems = await db.PDCNClaimItem.findAll({ where: { pdcnClaimId: claim.id } });
+
+        for (const item of updatedItems) {
             await db.NoteItem.create({
                 financialNoteId: financialNote.id,
                 productId: item.productId,
                 name: item.name,
                 qty: item.qty,
-                price: item.specialPrice, // The price it was adjusted to
-                totalValue: item.finalPDCN, // The credit amount
+                price: item.specialPrice,
+                totalValue: item.finalPDCN,
                 remarks: item.remarks
             });
         }
@@ -1313,12 +1399,14 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
 
         await claim.update({ 
             status: 'approved',
-            creditNoteNo: noteNo 
+            creditNoteNo: noteNo,
+            adminRemarks: remarks
         });
 
         res.json({ success: true, financialNote });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
+
 
 app.put('/api/admin/pdcn/claims/:id/reject', async (req, res) => {
     try {

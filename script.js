@@ -1615,35 +1615,45 @@ function renderPDCNTable() {
         if (!variations) return;
 
         const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-        const totalClaimedQty = variations.reduce((sum, v) => sum + (parseFloat(v.claimQty) || 0), 0);
-        const qtyOverLimit = totalClaimedQty > item.qty;
+        const availableFromInvoice = Number(item.availableQty !== undefined ? item.availableQty : item.qty);
+        const totalClaimedInWorksheet = variations.reduce((sum, v) => sum + (parseFloat(v.claimQty) || 0), 0);
+        const qtyOverLimit = totalClaimedInWorksheet > availableFromInvoice;
 
         let cumulativeClaimed = 0;
+
         variations.forEach((v, idx) => {
             const rowId = `pdcn-row-${item.id}-${idx}`;
             const isFirst = idx === 0;
             const gst = v.gstPercent || 0;
+            const diffPerUnit = (billedPrice - (v.splPrice || 0));
+            const finalPDCN = (diffPerUnit * (v.claimQty || 0)) * (1 + (gst/100));
+            v.finalPDCN = finalPDCN;
             
             // Calculate available balance for this specific line
-            const availableForThisLine = Math.max(0, item.qty - cumulativeClaimed);
+            const balanceLeft = Math.max(0, availableFromInvoice - cumulativeClaimed);
             cumulativeClaimed += (parseFloat(v.claimQty) || 0);
 
             html += `
-                <tr id="${rowId}" style="opacity: ${v.active ? '1' : '0.6'}; transition: 0.3s; background: ${v.active ? 'rgba(99,102,241,0.05)' : 'transparent'}; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                    <td style="font-weight: 800; padding: 0.75rem; position: sticky; left: 0; background: ${v.active ? '#1e1b4b' : '#0f172a'}; z-index: 2; border-right: 1px solid rgba(255,255,255,0.1); min-width: 140px;">
-                        <div style="font-size: 0.75rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
-                        ${isFirst ? `<div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Invoiced: ${item.qty}</div>` : `<div style="font-size: 0.6rem; color: var(--primary); margin-top: 4px;">Split #${idx + 1}</div>`}
+                <tr id="${rowId}" style="border-bottom: 1px solid rgba(255,255,255,0.03); ${qtyOverLimit ? 'background: rgba(239, 68, 68, 0.05);' : ''}">
+                    ${isFirst ? `
+                        <td rowspan="${variations.length}" class="sticky-col" style="min-width: 150px; font-weight: 700; color: #fff; font-size: 0.8rem; background: var(--card-bg);">
+                            ${item.Product?.name || item.name}
+                            ${item.alreadyClaimedQty > 0 ? `<div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Already Claimed: ${item.alreadyClaimedQty}</div>` : ''}
+                            ${availableFromInvoice === 0 ? `<div style="font-size: 0.6rem; color: #ef4444; font-weight: 900;">⚠️ FULLY CLAIMED</div>` : ''}
+                        </td>
+                    ` : ''}
+                    <td style="padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+                        <span style="color: ${balanceLeft <= 0 ? '#ef4444' : 'var(--primary)'}; font-weight: 800;">${balanceLeft}</span>
                     </td>
-                    <td style="text-align: right; font-weight: 700; color: #fff; font-size: 0.8rem; width: 90px;">₹${billedPrice.toFixed(2)}</td>
-                    <td style="text-align: center; color: var(--text-muted); font-weight: 800; width: 70px;">${availableForThisLine}</td>
-                    <td style="text-align: center; color: #fff; font-size: 0.8rem; width: 60px;">${gst}%</td>
-
-                    <td>
-                        <input type="number" step="1" min="0" max="${item.qty}" 
-                            class="qty-input" value="${v.claimQty}" 
+                    <td style="padding: 12px; text-align: right; color: #fff; font-size: 0.8rem;">₹${billedPrice.toFixed(2)}</td>
+                    <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.8rem;">${gst}%</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <input type="number" step="1" min="0" max="${balanceLeft}" 
+                            value="${v.claimQty}" 
                             oninput="calculatePDCNRow('${item.id}', ${idx}, 'qty', this.value)"
-                            style="width: 55px; background: ${qtyOverLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.1)'}; border-color: ${qtyOverLimit ? '#ef4444' : 'var(--primary)'}; color: #fff; font-weight: 800; text-align: center; font-size: 0.8rem; padding: 4px;">
+                            style="width: 60px; background: ${qtyOverLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${qtyOverLimit ? '#ef4444' : 'rgba(255,255,255,0.1)'}; color: #fff; font-weight: 800; text-align: center; border-radius: 4px;">
                     </td>
+
                     <td>
                         <input type="number" step="0.01" class="qty-input" 
                             value="${v.splPrice}" 

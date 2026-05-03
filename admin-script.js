@@ -4935,9 +4935,18 @@ function updatePDCNBadge() {
     }
 }
 
+let currentPDCNReviewItems = [];
+
 async function openPDCNClaimModal(id) {
     const claim = allPDCNClaims.find(c => c.id == id);
     if (!claim) return;
+
+    window.currentPDCNReviewId = id;
+    // Deep clone items for editing
+    currentPDCNReviewItems = claim.items.map(i => ({
+        ...i,
+        marginPct: i.marginPct || 10 // Default to 10 if not set
+    }));
 
     document.getElementById('pdcn-modal-party').innerText = claim.Stockist ? claim.Stockist.name : 'Unknown';
     document.getElementById('pdcn-modal-invoice').innerText = claim.invoiceNo;
@@ -4948,34 +4957,8 @@ async function openPDCNClaimModal(id) {
                             ${claim.status.toUpperCase()}
                           </span>`;
 
-    const tbody = document.getElementById('pdcn-modal-items-body');
-    tbody.innerHTML = claim.items.map(item => {
-        const billed = parseFloat(item.billedPrice);
-        const special = parseFloat(item.specialPrice);
-        const diff = billed - special;
-        const gstPct = parseFloat(item.gstPercent) || 12; // Use stored GST or fallback to 12
-        
-        // Calculation breakdown for admin transparency
-        const p = diff * (1 + gstPct / 100); 
-        const q = diff * 0.10;
-        const r = p + q;
+    renderPDCNReviewItems();
 
-        return `
-            <tr>
-                <td style="font-weight: 700; color: #fff;">${item.name}</td>
-                <td style="text-align: center; color: #fff;">${item.qty}</td>
-                <td style="text-align: center; color: #fff;">${gstPct}%</td>
-                <td style="text-align: right; color: #fff;">₹${billed.toFixed(2)}</td>
-                <td style="text-align: right; color: var(--accent); font-weight: 700;">₹${special.toFixed(2)}</td>
-                <td style="text-align: right; color: #f59e0b;">₹${diff.toFixed(2)}</td>
-                <td style="text-align: right; color: #fff;">₹${parseFloat(item.stkMargin / item.qty).toFixed(2)}</td>
-                <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(item.finalPDCN).toFixed(2)}</td>
-                <td style="font-size: 0.7rem; color: var(--text-muted);">${item.remarks}</td>
-            </tr>
-        `;
-    }).join('');
-
-    document.getElementById('pdcn-modal-grand-total').innerText = `₹${parseFloat(claim.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     document.getElementById('pdcn-admin-remarks').value = claim.adminRemarks || '';
 
     // Action buttons visibility
@@ -4986,8 +4969,62 @@ async function openPDCNClaimModal(id) {
         actionBtns.classList.add('hidden');
     }
 
-    window.currentPDCNReviewId = id;
     document.getElementById('pdcnClaimModal').classList.remove('hidden');
+}
+
+function renderPDCNReviewItems() {
+    const tbody = document.getElementById('pdcn-modal-items-body');
+    if (!tbody) return;
+
+    let grandTotal = 0;
+
+    tbody.innerHTML = currentPDCNReviewItems.map((item, idx) => {
+        const billed = parseFloat(item.billedPrice);
+        const special = parseFloat(item.specialPrice);
+        const diff = billed - special;
+        const gstPct = parseFloat(item.gstPercent) || 12;
+        const marginPct = parseFloat(item.marginPct) || 10;
+        
+        // Calculation logic:
+        // Final PDCN = [Qty * Diff * (1 + GST%)] + [Qty * Diff * Margin%]
+        const taxableVal = (diff * item.qty) * (1 + gstPct / 100); 
+        const marginVal = (diff * item.qty) * (marginPct / 100);
+        const finalItemPDCN = taxableVal + marginVal;
+        
+        item.finalPDCN = finalItemPDCN;
+        item.stkMargin = marginVal;
+        item.saleDiff = diff;
+        grandTotal += finalItemPDCN;
+
+        return `
+            <tr>
+                <td style="font-weight: 700; color: #fff;">${item.name}</td>
+                <td style="text-align: center; color: #fff;">${item.qty}</td>
+                <td style="text-align: center; color: #fff; font-size: 0.75rem;">${gstPct}%</td>
+                <td style="text-align: right; color: rgba(255,255,255,0.6); font-size: 0.75rem;">₹${billed.toFixed(2)}</td>
+                <td style="text-align: center;">
+                    <input type="number" step="0.01" value="${special}" 
+                        oninput="updateAdminPDCNItem(${idx}, 'specialPrice', this.value)"
+                        style="width: 70px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent); color: var(--accent); font-weight: 800; text-align: right; font-size: 0.8rem; border-radius: 4px;">
+                </td>
+                <td style="text-align: center;">
+                    <input type="number" step="0.1" value="${marginPct}" 
+                        oninput="updateAdminPDCNItem(${idx}, 'marginPct', this.value)"
+                        style="width: 50px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); font-weight: 800; text-align: center; font-size: 0.8rem; border-radius: 4px;">
+                    <span style="font-size: 0.6rem; color: var(--text-muted);">%</span>
+                </td>
+                <td style="text-align: right; font-weight: 800; color: #fff; background: rgba(255,255,255,0.03);">₹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="font-size: 0.65rem; color: var(--text-muted); font-style: italic;">${item.remarks || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('pdcn-modal-grand-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+}
+
+function updateAdminPDCNItem(idx, field, val) {
+    currentPDCNReviewItems[idx][field] = parseFloat(val) || 0;
+    renderPDCNReviewItems();
 }
 
 function closePDCNClaimModal() {
@@ -5003,17 +5040,22 @@ async function processPDCNClaim(action) {
         return alert("Please provide a reason for rejection in Admin Remarks.");
     }
 
-    if (!confirm(`Are you sure you want to ${action.toUpperCase()} this claim?`)) return;
+    if (!confirm(`Are you sure you want to ${action.toUpperCase()} this claim with the current adjustments?`)) return;
 
     try {
+        const body = { remarks };
+        if (action === 'approve') {
+            body.editedItems = currentPDCNReviewItems;
+        }
+
         const res = await fetch(`${API_BASE}/admin/pdcn/claims/${id}/${action}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ remarks })
+            body: JSON.stringify(body)
         });
         const result = await res.json();
         if (result.success) {
-            alert(`✅ Claim ${action === 'approve' ? 'Approved' : 'Rejected'} Successfully!`);
+            alert(`✅ Claim ${action === 'approve' ? 'Approved & CN Generated' : 'Rejected'} Successfully!`);
             closePDCNClaimModal();
             fetchPDCNClaims();
         } else {
@@ -5021,3 +5063,4 @@ async function processPDCNClaim(action) {
         }
     } catch (e) { alert("Action failed."); }
 }
+
