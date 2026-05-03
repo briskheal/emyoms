@@ -27,10 +27,15 @@ async function syncProfile() {
 }
 
 // --- INITIALIZATION ---
-window.onload = async () => {
-    // We already call loadSettings in DOMContentLoaded for faster UI population
-    // but we can sync profile here if user is saved
+window.onload = () => {
+    // 1. Immediately attach login listener safety (in case DOMContentLoaded hasn't finished)
+    const loginForm = document.querySelector('form');
+    if (loginForm) {
+        loginForm.onsubmit = (e) => handleLogin(e);
+    }
 
+    // 2. Load settings in background (non-blocking)
+    loadSettings();
 
     const savedUser = localStorage.getItem('emyris_user');
     if (savedUser) {
@@ -38,10 +43,10 @@ window.onload = async () => {
         switchView('order');
         initOrderSystem();
     } else {
-        // Explicitly ensure we are on login view if no session found
         switchView('login');
     }
 };
+
 
 function switchView(view) {
     const views = ['section-auth', 'view-order'];
@@ -332,10 +337,14 @@ async function initOrderSystem() {
 
 
 async function loadSettings() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
     try {
         // 1. Fetch Public Config (Always accessible for landing page)
-        const pubRes = await fetch(`${API_BASE}/public/config`);
+        const pubRes = await fetch(`${API_BASE}/public/config`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (pubRes.ok) {
             const pubData = await pubRes.json();
             if (pubData.success) companySettings = pubData.config;
@@ -1286,10 +1295,14 @@ async function generateInvoicePDF(inv) {
     doc.save(`Invoice_${inv.invoiceNo}.pdf`);
 }
 
-// --- INITIALIZATION ---
+// --- INITIALIZATION TRIGGER ---
 document.addEventListener('DOMContentLoaded', () => {
-    loadSettings(); // Populate landing info & marquee on startup
+    // Initial UI check
+    if (!localStorage.getItem('emyris_user')) {
+        switchView('login');
+    }
 });
+
 
 // Resilient Media Handling: Ensure music/video doesn't stop on layout shifts
 let resizeTimeout;
