@@ -4993,14 +4993,13 @@ function renderPDCNReviewItems() {
         const marginPct = parseFloat(item.marginPct) || 10;
         
         // Canonical formula:
-        // Diff/Unit  = (Billed - Special) * (1 + GST%)
-        // Stk Margin = Special Price * marginPct%  (per unit)
-        // Final PDCN = (Diff/Unit + Stk Margin) * Qty
         const unitDiffBase  = billed - special;
-        const unitDiffIncl  = unitDiffBase * (1 + gstPct / 100);  // Diff/Unit incl. GST
-        const unitMargin    = (special * marginPct) / 100;          // 10% of Special Price
+        const unitDiffIncl  = unitDiffBase * (1 + gstPct / 100);
+        const unitMargin    = (special * marginPct) / 100;
         const finalItemPDCN = (unitDiffIncl + unitMargin) * qty;
 
+        item.saleDiff = parseFloat((unitDiffIncl * qty).toFixed(2));
+        item.stkMargin = parseFloat((unitMargin * qty).toFixed(2));
         item.finalPDCN = parseFloat(finalItemPDCN.toFixed(2));
         grandTotal += item.finalPDCN;
 
@@ -5021,19 +5020,51 @@ function renderPDCNReviewItems() {
                         style="width: 45px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); font-weight: 800; text-align: center; font-size: 0.8rem; border-radius: 4px; padding: 4px;">
                     <span style="font-size: 0.6rem; color: var(--text-muted);">%</span>
                 </td>
-                <td style="padding: 12px; text-align: right; font-weight: 800; color: #fff; width: 120px; background: rgba(255,255,255,0.02);">₹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td id="admin-pdcn-row-final-${idx}" style="padding: 12px; text-align: right; font-weight: 800; color: #fff; width: 120px; background: rgba(255,255,255,0.02);">₹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td style="padding: 12px; font-size: 0.65rem; color: var(--text-muted); font-style: italic;">${item.remarks || '-'}</td>
             </tr>
         `;
     }).join('');
 
-
     document.getElementById('pdcn-modal-grand-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 function updateAdminPDCNItem(idx, field, val) {
-    currentPDCNReviewItems[idx][field] = parseFloat(val) || 0;
-    renderPDCNReviewItems();
+    // Update data source
+    const newVal = parseFloat(val) || 0;
+    currentPDCNReviewItems[idx][field] = newVal;
+    
+    // Recalculate row specifically
+    const item = currentPDCNReviewItems[idx];
+    const billed = parseFloat(item.billedPrice || 0);
+    const special = parseFloat(item.specialPrice || 0);
+    const qty = Number(item.qty || 0);
+    const gstPct = parseFloat(item.gstPercent) || 0;
+    const marginPct = parseFloat(item.marginPct) || 10;
+    
+    const unitDiffBase  = billed - special;
+    const unitDiffIncl  = unitDiffBase * (1 + gstPct / 100);
+    const unitMargin    = (special * marginPct) / 100;
+    const finalItemPDCN = (unitDiffIncl + unitMargin) * qty;
+
+    // Update broken-down fields for server storage
+    item.saleDiff = parseFloat((unitDiffIncl * qty).toFixed(2));
+    item.stkMargin = parseFloat((unitMargin * qty).toFixed(2));
+    item.finalPDCN = parseFloat(finalItemPDCN.toFixed(2));
+
+    // Update row total cell
+    const rowTotalEl = document.getElementById(`admin-pdcn-row-final-${idx}`);
+    if (rowTotalEl) {
+        rowTotalEl.innerText = `₹${item.finalPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    }
+
+    // Update Grand Total
+    let grandTotal = 0;
+    currentPDCNReviewItems.forEach(it => grandTotal += (it.finalPDCN || 0));
+    const grandTotalEl = document.getElementById('pdcn-modal-grand-total');
+    if (grandTotalEl) {
+        grandTotalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    }
 }
 
 function closePDCNClaimModal() {
