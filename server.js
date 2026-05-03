@@ -1354,8 +1354,9 @@ app.post('/api/admin/payments', async (req, res) => {
 
 
         const stockist = await db.Stockist.findByPk(partyId);
-        const adj = type === 'RECEIPT' ? -amount : amount;
+        const adj = type === 'RECEIPT' ? -Number(amount) : Number(amount);
         if (stockist) await stockist.increment('outstandingBalance', { by: adj });
+
 
         res.json({ success: true, payment: { ...payment.toJSON(), linkedBills: [] } });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -1390,9 +1391,10 @@ app.put('/api/admin/payments/:id', async (req, res) => {
         // 3. APPLY NEW Ledger Balance for the NEW party
         const newParty = await db.Stockist.findByPk(party);
         if (newParty) {
-            const newAdj = type === 'RECEIPT' ? -amount : amount;
+            const newAdj = type === 'RECEIPT' ? -Number(amount) : Number(amount);
             await newParty.increment('outstandingBalance', { by: newAdj });
         }
+
 
         res.json({ success: true, payment: { ...payment.toJSON(), linkedBills: [] } });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
@@ -1420,8 +1422,10 @@ app.post('/api/admin/expenses', async (req, res) => {
         const expenseNo = await getNextDocNo('expense');
         const expense = await db.Expense.create({
             ...req.body,
+            amount: Number(req.body.amount) || 0,
             expenseNo
         });
+
         res.json({ success: true, expense });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });

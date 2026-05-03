@@ -1961,19 +1961,22 @@ function updateModalTotals(orderId, triggerItemId) {
 
     o.items.forEach(item => {
         const rateInput = document.getElementById(`rate-${orderId}-${item._id}`);
-        const rate = rateInput ? parseFloat(rateInput.value || 0) : item.priceUsed;
-        const lineTotal = Number(rate) * Number(item.qty);
+        const rate = Number(rateInput ? (rateInput.value || 0) : (item.priceUsed || 0));
+        const qty = Number(item.qty || 0);
+        const lineTotal = rate * qty;
         
         const lineTotalEl = document.getElementById(`linetotal-${orderId}-${item._id}`);
         if (lineTotalEl) lineTotalEl.innerText = `₹${lineTotal.toFixed(2)}`;
         
-        const itemGst = (lineTotal * (item.gstPercent || 0)) / 100;
+        const gstPct = Number(item.gstPercent || 0);
+        const itemGst = (lineTotal * gstPct) / 100;
         subTotal += lineTotal;
         gstAmount += itemGst;
     });
 
-    const netAmount = subTotal + gstAmount;
+    const netAmount = Number((subTotal + gstAmount).toFixed(2));
     const grandTotal = Math.round(netAmount);
+
     const roundOff = (grandTotal - netAmount).toFixed(2);
 
     // Update Modal Summary Fields
@@ -2106,19 +2109,20 @@ function renderLedger(ledger) {
     let runningBalance = 0;
 
     tbody.innerHTML = ledger.map(entry => {
-        runningBalance += (entry.debit - entry.credit);
+        runningBalance += (Number(entry.debit || 0) - Number(entry.credit || 0));
 
         return '<tr>' +
                 '<td>' + new Date(entry.date).toLocaleDateString('en-GB') + '</td>' +
                 '<td style="font-family:monospace; font-weight:700;">' + entry.refNo + '</td>' +
                 '<td><span class="badge" style="background:rgba(255,255,255,0.05); color:#fff;">' + entry.type + '</span></td>' +
                 '<td style="font-size:0.85rem;">' + entry.description + '</td>' +
-                '<td style="text-align:right; color:#ef4444; font-weight:700;">' + (entry.debit > 0 ? '₹' + entry.debit.toLocaleString('en-IN') : '-') + '</td>' +
-                '<td style="text-align:right; color:#10b981; font-weight:700;">' + (entry.credit > 0 ? '₹' + entry.credit.toLocaleString('en-IN') : '-') + '</td>' +
+                '<td style="text-align:right; color:#ef4444; font-weight:700;">' + (Number(entry.debit || 0) > 0 ? '₹' + Number(entry.debit).toLocaleString('en-IN') : '-') + '</td>' +
+                '<td style="text-align:right; color:#10b981; font-weight:700;">' + (Number(entry.credit || 0) > 0 ? '₹' + Number(entry.credit).toLocaleString('en-IN') : '-') + '</td>' +
                 '<td style="text-align:right; font-weight:800; color:' + (runningBalance >= 0 ? 'var(--accent)' : '#10b981') + '">₹' + Math.abs(runningBalance).toLocaleString('en-IN') + ' ' + (runningBalance >= 0 ? 'Dr' : 'Cr') + '</td>' +
             '</tr>';
     }).join('');
 }
+
 
 function closeLedgerModal() {
     document.getElementById('ledgerModal').classList.add('hidden');
@@ -2221,7 +2225,8 @@ function renderPurchaseEntries() {
             <td>${p.supplierInvoiceNo}</td>
             <td>${new Date(p.invoiceDate).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${p.items.length}</td>
-            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${p.grandTotal.toLocaleString('en-IN')}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${Number(p.grandTotal || 0).toLocaleString('en-IN')}</td>
+
             <td style="text-align:right; white-space:nowrap;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">VIEW</button>
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')">EDIT</button>
@@ -2295,8 +2300,10 @@ function renderPurchaseItems() {
     let gstTotal = 0;
 
     tbody.innerHTML = purchaseItems.map((item, index) => {
-        const gst = (item.totalValue * item.gstPercent) / 100;
-        subTotal += item.totalValue;
+        const val = Number(item.totalValue) || 0;
+        const pct = Number(item.gstPercent) || 0;
+        const gst = (val * pct) / 100;
+        subTotal += val;
         gstTotal += gst;
         
         return `<tr>
@@ -2307,12 +2314,13 @@ function renderPurchaseItems() {
             <td>${item.batch}</td>
             <td>${item.expDate}</td>
             <td style="text-align:center;">${item.qty}</td>
-            <td style="text-align:right;">₹${item.purchaseRate.toFixed(2)}</td>
-            <td style="text-align:center;">${item.gstPercent}%</td>
-            <td style="text-align:right; font-weight:700;">₹${(item.totalValue + gst).toFixed(2)}</td>
+            <td style="text-align:right;">₹${Number(item.purchaseRate || 0).toFixed(2)}</td>
+            <td style="text-align:center;">${pct}%</td>
+            <td style="text-align:right; font-weight:700;">₹${(val + gst).toFixed(2)}</td>
             <td><button type="button" onclick="purchaseItems.splice(${index},1); renderPurchaseItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
         </tr>`;
     }).join('');
+
 
     const total = subTotal + gstTotal;
     const rounded = Math.round(total);
@@ -2342,10 +2350,11 @@ async function savePurchaseEntry(e) {
         paymentMode: document.getElementById('pur-payment-type').value,
         remarks: document.getElementById('pur-remarks').value,
         items: purchaseItems,
-        subTotal: purchaseItems.reduce((s, i) => s + i.totalValue, 0),
-        gstAmount: purchaseItems.reduce((s, i) => s + (i.totalValue * i.gstPercent / 100), 0),
-        grandTotal: purchaseItems.reduce((s, i) => s + (i.totalValue * (1 + i.gstPercent / 100)), 0)
+        subTotal: Number(purchaseItems.reduce((s, i) => s + (Number(i.totalValue) || 0), 0).toFixed(2)),
+        gstAmount: Number(purchaseItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (Number(i.gstPercent) || 0) / 100), 0).toFixed(2)),
+        grandTotal: Math.round(purchaseItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (1 + (Number(i.gstPercent) || 0) / 100)), 0))
     };
+
 
     const purId = document.getElementById('pur-id').value;
     const method = purId ? 'PUT' : 'POST';
@@ -2563,20 +2572,23 @@ function renderSaleItems() {
     let gstTotal = 0;
 
     tbody.innerHTML = directSaleItems.map((item, index) => {
-        const gst = (item.totalValue * item.gstPercent) / 100;
-        subTotal += item.totalValue;
+        const val = Number(item.totalValue) || 0;
+        const pct = Number(item.gstPercent) || 0;
+        const gst = (val * pct) / 100;
+        subTotal += val;
         gstTotal += gst;
 
         return `<tr>
             <td><strong>${item.name}</strong></td>
             <td>${item.batch}</td>
             <td style="text-align:center;">${item.qty}</td>
-            <td style="text-align:right;">₹${item.rate.toFixed(2)}</td>
-            <td style="text-align:center;">${item.gstPercent}%</td>
-            <td style="text-align:right; font-weight:700;">₹${(item.totalValue + gst).toFixed(2)}</td>
+            <td style="text-align:right;">₹${Number(item.rate || 0).toFixed(2)}</td>
+            <td style="text-align:center;">${pct}%</td>
+            <td style="text-align:right; font-weight:700;">₹${(val + gst).toFixed(2)}</td>
             <td><button type="button" onclick="directSaleItems.splice(${index},1); renderSaleItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
         </tr>`;
     }).join('');
+
 
     const total = subTotal + gstTotal;
     const rounded = Math.round(total);
@@ -2611,6 +2623,10 @@ async function saveDirectSale(e) {
         btn.innerText = '⌛ SAVING SALE...';
     }
 
+    const subTotal = Number(directSaleItems.reduce((s, i) => s + (Number(i.totalValue) || 0), 0).toFixed(2));
+    const gstAmount = Number(directSaleItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (Number(i.gstPercent) || 0) / 100), 0).toFixed(2));
+    const grandTotal = Math.round(subTotal + gstAmount);
+
     const data = {
         party: partyId,
         partyName: party ? (party.companyName || party.name) : 'Direct Customer',
@@ -2619,14 +2635,15 @@ async function saveDirectSale(e) {
         channel: document.getElementById('sale-channel').value,
         paymentMode: document.getElementById('sale-payment-mode').value,
         remarks: document.getElementById('sale-remarks').value,
-        placeOfSupply: document.getElementById('sale-supply').value || companyProfile.defaultPlaceOfSupply,
-        dueDate: document.getElementById('sale-due-date').value,
+        placeOfSupply: (document.getElementById('sale-supply') ? document.getElementById('sale-supply').value : '') || companyProfile.defaultPlaceOfSupply,
+        dueDate: document.getElementById('sale-due-date') ? document.getElementById('sale-due-date').value : '',
         items: directSaleItems,
-        subTotal: Number(document.getElementById('sale-subtotal').innerText.replace(/[^\d.]/g, '')),
-        gstAmount: Number(document.getElementById('sale-gst-total').innerText.replace(/[^\d.]/g, '')),
-        grandTotal: Number(document.getElementById('sale-total').innerText.replace(/[^\d.]/g, '')),
+        subTotal,
+        gstAmount,
+        grandTotal,
         type: document.getElementById('sale-type-input').value
     };
+
 
     try {
         const res = await fetch(`${API_BASE}/admin/direct-sale`, {
@@ -2792,7 +2809,8 @@ function renderFinancialNotes(data = allNotes) {
                         ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
                         : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
                 </td>
-                <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${n.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${Number(n.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+
                 <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
                 <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
                     ${isPending ? `
@@ -3134,8 +3152,8 @@ function calculateReturnTotals() {
         const price = Number(document.getElementById(`return-price-${id}`).value) || 0;
         const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value) || 0;
         
-        const taxable = qty * price;
-        const gst = taxable * (gstPct / 100);
+        const taxable = Number((qty * price).toFixed(2));
+        const gst = Number((taxable * (gstPct / 100)).toFixed(2));
         const rowTotal = taxable + gst;
         
         subtotal += taxable;
@@ -3143,6 +3161,7 @@ function calculateReturnTotals() {
         
         document.getElementById(`return-row-total-${id}`).innerText = `₹${rowTotal.toFixed(2)}`;
     });
+
 
     const total = subtotal + gstTotal;
     const rounded = Math.round(total);

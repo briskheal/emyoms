@@ -907,8 +907,9 @@ function renderMyOrders(orders) {
                                             </span>
                                         </td>
                                         <td style="text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">
-                                            ₹${o.grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                            ₹${Number(o.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                         </td>
+
                                     </tr>
                                 `;
                             }).join('')}
@@ -1741,17 +1742,21 @@ function updatePDCNGrandTotals() {
 
         variations.forEach(v => {
             if (!v.active) return;
-            const billedPrice = parseFloat(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
-            const gstPct = v.gstPercent; // Use pre-captured GST from the variation
-            const diffPerUnit = billedPrice - v.splPrice;
+            const billedPrice = Number(item.priceUsed || item.rate || (item.totalValue / item.qty) || 0);
+            const claimQty = Number(v.claimQty || 0);
+            const splPrice = Number(v.splPrice || 0);
+            const gstPct = Number(v.gstPercent || 0); 
             
-            totalTaxable += (diffPerUnit * v.claimQty);
-            totalTax += (diffPerUnit * (gstPct / 100) * v.claimQty);
-            totalMargin += (diffPerUnit * 0.10 * v.claimQty);
+            const diffPerUnit = billedPrice - splPrice;
+            
+            totalTaxable += Number((diffPerUnit * claimQty).toFixed(2));
+            totalTax += Number((diffPerUnit * (gstPct / 100) * claimQty).toFixed(2));
+            totalMargin += Number((diffPerUnit * 0.10 * claimQty).toFixed(2));
         });
     });
 
-    const netAmount = totalTaxable + totalTax + totalMargin;
+    const netAmount = Number((totalTaxable + totalTax + totalMargin).toFixed(2));
+
     const finalGrandTotal = Math.round(netAmount);
     const roundOffValue = (finalGrandTotal - netAmount).toFixed(2);
 
