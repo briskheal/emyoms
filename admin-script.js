@@ -4910,7 +4910,7 @@ function renderPDCNClaims() {
             <td style="font-weight: 700; color: #fff;">${c.Stockist ? c.Stockist.name : 'Unknown'}</td>
             <td style="font-family: monospace; color: #fff; font-weight: 700;">${c.invoiceNo}</td>
             <td style="text-align: center;">${c.items.length}</td>
-            <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(c.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(c.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td style="text-align: center;">
                 <span class="badge ${c.status === 'approved' ? 'badge-approved' : (c.status === 'rejected' ? 'badge-pending' : 'badge-pending')}" 
                       style="${c.status === 'rejected' ? 'background: #ef4444; color: #fff;' : ''}">
@@ -4974,36 +4974,32 @@ async function openPDCNClaimModal(id) {
     } else {
         actionBtns.classList.add('hidden');
     }
-
-    document.getElementById('pdcnClaimModal').classList.remove('hidden');
 }
 
 function renderPDCNReviewItems() {
-    const tbody = document.getElementById('pdcn-modal-items-body');
-    if (!tbody) return;
-
+    const tbody = document.getElementById('pdcn-review-body');
     let grandTotal = 0;
 
     tbody.innerHTML = currentPDCNReviewItems.map((item, idx) => {
-        const billed = parseFloat(item.billedPrice);
-        const special = parseFloat(item.specialPrice);
-        const diff = billed - special;
-        const gstPct = parseFloat(item.gstPercent) || 12;
+        const billed = parseFloat(item.billedPrice || 0);
+        const special = parseFloat(item.specialPrice || 0);
+        const qty = Number(item.qty || 0);
+        const gstPct = parseFloat(item.gstPercent) || 0;
         const marginPct = parseFloat(item.marginPct) || 10;
         
-        const taxableVal = (diff * item.qty) * (1 + gstPct / 100); 
-        const marginVal = (diff * item.qty) * (marginPct / 100);
-        const finalItemPDCN = taxableVal + marginVal;
+        // Stockist portal calculation: (Billed - Special) * (1 + GST%) + (Margin% of Difference) * Qty
+        const unitDiffBase = billed - special;
+        const unitDiffIncl = unitDiffBase * (1 + gstPct / 100);
+        const unitMargin = (unitDiffBase * marginPct) / 100; 
+        const finalItemPDCN = (unitDiffIncl + unitMargin) * qty;
         
         item.finalPDCN = finalItemPDCN;
-        item.stkMargin = marginVal;
-        item.saleDiff = diff;
         grandTotal += finalItemPDCN;
 
         return `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <td style="padding: 12px; font-weight: 700; color: #fff; width: 250px; overflow: hidden; text-overflow: ellipsis;">${item.name}</td>
-                <td style="padding: 12px; text-align: center; color: #fff; width: 60px;">${item.qty}</td>
+                <td style="padding: 12px; text-align: center; color: #fff; width: 60px;">${qty}</td>
                 <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.75rem; width: 60px;">${gstPct}%</td>
                 <td style="padding: 12px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.75rem; width: 100px;">₹${billed.toFixed(2)}</td>
                 <td style="padding: 12px; text-align: center; width: 100px;">

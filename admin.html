@@ -319,19 +319,19 @@
     <div class="blob blob-2"></div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <div class="marquee-container">
-        <div class="marquee-text">Welcome to EMYRIS OMS Admin Command Center â€¢ System Status: Active â€¢ Monitoring Real-time Orders</div>
+        <div class="marquee-text">Welcome to EMYRIS OMS Admin Command Center • System Status: Active • Monitoring Real-time Orders</div>
     </div>
 
     <nav class="navbar">
         <div class="nav-left">
-            <button class="menu-toggle" onclick="toggleSidebar()">â˜°</button>
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
             <div class="nav-logo">EMYRIS OMS <span style="font-weight: 400; font-size: 0.8rem; opacity: 0.6; margin-left: 5px;">ADMIN COMMAND</span></div>
         </div>
         <div style="display: flex; align-items: center; gap: 1rem;">
             <button type="button" id="musicToggleAdmin" onclick="toggleMusic()" style="background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: 0.3s;">
-                <span>ðŸ”‡</span> <span id="musicTextAdmin">Music Off</span>
+                <span>🎵</span> <span id="musicTextAdmin">Music Off</span>
             </button>
-            <div id="adminStatus" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; display: none;">â— ACTIVE</div>
+            <div id="adminStatus" style="font-size: 0.75rem; color: var(--accent); font-weight: 700; display: none;">● ACTIVE</div>>â— ACTIVE</div>
             <button class="btn btn-ghost" style="padding: 6px 15px; font-size: 0.7rem;" onclick="logout()">LOGOUT</button>
         </div>
     </nav>
@@ -353,7 +353,7 @@
                 </div>
                 <div class="form-group" style="text-align: left;">
                     <label>Password</label>
-                    <input type="password" id="admin-pass-input" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                    <input type="password" id="admin-pass-input" required placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">VERIFY & ENTER</button>
             </form>
@@ -362,24 +362,24 @@
 
     <div class="main-container">
         <aside class="sidebar">
-            <div class="nav-item active" onclick="switchTab('dashboard', this); closeSidebar()"><span>ðŸ“Š</span> Dashboard</div>
-            <div class="nav-item" onclick="switchTab('products', this); closeSidebar()"><span>ðŸ’Š</span> Product Master</div>
-            <div class="nav-item" onclick="switchTab('stockists', this); closeSidebar()"><span>ðŸ¤</span> Party Master</div>
-            <div class="nav-item" onclick="switchTab('masters', this); closeSidebar()"><span>ðŸ“‹</span> Global Masters</div>
-            <div class="nav-item" onclick="switchTab('orders', this); closeSidebar()"><span>ðŸ›’</span> Order History</div>
-            <div class="nav-item" onclick="switchTab('pdcn-approvals', this); closeSidebar()"><span>ðŸ“</span> PDCN Approvals <span id="pdcn-pending-count" class="badge-pending" style="font-size: 0.6rem; padding: 2px 6px; margin-left: auto; display: none;">0</span></div>
+            <div class="nav-item active" onclick="switchTab('dashboard', this); closeSidebar()"><span>📊</span> Dashboard</div>
+            <div class="nav-item" onclick="switchTab('products', this); closeSidebar()"><span>📦</span> Product Master</div>
+            <div class="nav-item" onclick="switchTab('stockists', this); closeSidebar()"><span>👥</span> Party Master</div>
+            <div class="nav-item" onclick="switchTab('masters', this); closeSidebar()"><span>⚙️</span> Global Masters</div>
+            <div class="nav-item" onclick="switchTab('orders', this); closeSidebar()"><span>🛒</span> Order History</div>
+            <div class="nav-item" onclick="switchTab('pdcn-approvals', this); closeSidebar()"><span>📝</span> PDCN Approvals <span id="pdcn-pending-count" class="badge-pending" style="font-size: 0.6rem; padding: 2px 6px; margin-left: auto; display: none;">0</span></div>
             <div style="margin-bottom: 0.5rem;">
                 <div class="nav-item" onclick="toggleSubmenu('sub-finance', this)">
-                    <span>ðŸ’°</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">â–¼</i>
+                    <span>💰</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
                 <div id="sub-finance" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null); closeSidebar()">â— Sales Invoices</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT'); closeSidebar()">â— Payment In (Receipts)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT'); closeSidebar()">â— Payment Out (Payouts)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null); closeSidebar()">● Sales Invoices</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT'); closeSidebar()">● Payment In (Receipts)</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT'); closeSidebar()">● Payment Out (Payouts)</div>
                     
                     <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
 
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleSubmenu('sub-notes', null)">â— Financial Notes (CN/DN) <i style="font-size: 0.6rem; opacity: 0.5;">â–¶</i></div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleSubmenu('sub-notes', null)">● Financial Notes (CN/DN) <i style="font-size: 0.6rem; opacity: 0.5;">▶</i></div>
                     <div id="sub-notes" style="display:none; padding-left: 1rem; flex-direction: column; gap: 0.5rem;">
                         <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Salable Return'); closeSidebar()">- Sales Linked CN</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Purchase Return'); closeSidebar()">- Purc. Linked DN</div>
