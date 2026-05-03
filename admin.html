@@ -413,7 +413,7 @@
                     </div>
                     <div class="stat-card">
                         <span class="stat-label">Revenue (Ex. GST)</span>
-                        <div class="stat-value" id="stat-revenue" style="font-size: 1.1rem; font-weight: 900;">â‚¹0.00</div>
+                        <div class="stat-value" id="stat-revenue" style="font-size: 1.1rem; font-weight: 900;">₹0.00</div>
                     </div>
                     <div class="stat-card">
                         <span class="stat-label">Pending Orders</span>
@@ -436,7 +436,7 @@
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                     <div class="glass-card" style="padding: 2rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">ðŸ“ˆ Sales Performance (This Month)</h3>
+                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">📈 Sales Performance (This Month)</h3>
                             <div id="mom-badge" style="padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">-</div>
                         </div>
                         <div style="height: 220px;">
@@ -444,7 +444,7 @@
                         </div>
                     </div>
                     <div class="glass-card" style="padding: 2rem;">
-                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">ðŸŽ¯ Top 5 Best Sellers</h3>
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🎯 Top 5 Best Sellers</h3>
                         <div style="height: 220px;">
                             <canvas id="topProductsChart"></canvas>
                         </div>
@@ -2048,22 +2048,22 @@
                     <div style="display:flex;align-items:center;gap:1.2rem;background:rgba(0,0,0,0.4);padding:8px 16px;border-radius:9px;border:1px solid rgba(255,255,255,0.06);">
                         <div style="text-align:right;">
                             <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">Subtotal</div>
-                            <div id="return-subtotal" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">â‚¹0.00</div>
+                            <div id="return-subtotal" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">₹0.00</div>
                         </div>
                         <span style="color:#334155;font-size:0.65rem;">+</span>
                         <div style="text-align:right;">
                             <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">GST</div>
-                            <div id="return-gst" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">â‚¹0.00</div>
+                            <div id="return-gst" style="font-size:0.75rem;font-weight:700;color:#94a3b8;font-family:monospace;">₹0.00</div>
                         </div>
                         <span style="color:#334155;font-size:0.65rem;">Â±</span>
                         <div style="text-align:right;">
                             <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:2px;">Round Off</div>
-                            <div id="return-roundoff" style="font-size:0.75rem;font-weight:700;color:#64748b;font-family:monospace;">â‚¹0.00</div>
+                            <div id="return-roundoff" style="font-size:0.75rem;font-weight:700;color:#64748b;font-family:monospace;">₹0.00</div>
                         </div>
                         <div style="width:1px;height:28px;background:rgba(255,255,255,0.07);"></div>
                         <div style="text-align:right;">
                             <div style="font-size:0.52rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;">Grand Total</div>
-                            <div id="return-total" style="font-size:1.05rem;font-weight:900;color:var(--primary);font-family:monospace;">â‚¹0.00</div>
+                            <div id="return-total" style="font-size:1.05rem;font-weight:900;color:var(--primary);font-family:monospace;">₹0.00</div>
                         </div>
                     </div>
                 </div>
@@ -2071,7 +2071,7 @@
                 <!-- â”€â”€ Footer Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
                 <div style="display:flex;justify-content:flex-end;align-items:center;gap:0.6rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.06);">
                     <button type="button" onclick="closeReturnModal()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#64748b;padding:7px 18px;border-radius:7px;font-size:0.7rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.04em;">âœ• CANCEL</button>
-                    <button type="submit" id="return-submit-btn" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;padding:7px 22px;border-radius:7px;font-size:0.72rem;font-weight:900;cursor:pointer;letter-spacing:0.06em;transition:all 0.2s;box-shadow:0 4px 14px rgba(99,102,241,0.35);">âœ“ POST RETURN & GENERATE CN</button>
+                    <button type="submit" id="return-submit-btn" style="background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;padding:7px 22px;border-radius:7px;font-size:0.72rem;font-weight:900;cursor:pointer;letter-spacing:0.06em;transition:all 0.2s;box-shadow:0 4px 14px rgba(99,102,241,0.35);">✅ POST RETURN & GENERATE CN</button>
                 </div>
             </form>
         </div>

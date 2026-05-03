@@ -4974,10 +4974,15 @@ async function openPDCNClaimModal(id) {
     } else {
         actionBtns.classList.add('hidden');
     }
+
+    // SHOW MODAL
+    document.getElementById('pdcnClaimModal').classList.remove('hidden');
 }
 
 function renderPDCNReviewItems() {
-    const tbody = document.getElementById('pdcn-review-body');
+    const tbody = document.getElementById('pdcn-modal-items-body');
+    if (!tbody) return;
+
     let grandTotal = 0;
 
     tbody.innerHTML = currentPDCNReviewItems.map((item, idx) => {
