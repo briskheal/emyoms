@@ -5082,6 +5082,16 @@ async function processPDCNClaim(action) {
 
     if (!confirm(`Are you sure you want to ${action.toUpperCase()} this claim with the current adjustments?`)) return;
 
+    const btnId = action === 'approve' ? 'btn-pdcn-approve' : 'btn-pdcn-reject';
+    const btn = document.getElementById(btnId);
+    const originalHTML = btn ? btn.innerHTML : (action === 'approve' ? "APPROVE" : "REJECT");
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> PROCESSING...`;
+        btn.style.opacity = "0.7";
+    }
+
     try {
         const body = { remarks };
         if (action === 'approve') {
@@ -5100,8 +5110,20 @@ async function processPDCNClaim(action) {
             fetchPDCNClaims();
         } else {
             alert("Error: " + result.message);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                btn.style.opacity = "1";
+            }
         }
-    } catch (e) { alert("Action failed."); }
+    } catch (e) { 
+        alert("Action failed."); 
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            btn.style.opacity = "1";
+        }
+    }
 }
 
 

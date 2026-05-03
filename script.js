@@ -1887,6 +1887,16 @@ async function submitPDCNClaim() {
 
     console.log("📤 Submitting PDCN Claim:", claimData);
     
+    const btn = document.getElementById('pdcn-submit-btn');
+    const originalBtnHTML = btn ? btn.innerHTML : "SUBMIT CLAIM";
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> SUBMITTING...`;
+        btn.style.opacity = "0.7";
+        btn.style.cursor = "not-allowed";
+    }
+
     try {
         const res = await fetch(`${API_BASE}/stockist/pdcn/submit`, {
             method: 'POST',
@@ -1896,12 +1906,26 @@ async function submitPDCNClaim() {
         const result = await res.json();
         if (result.success) {
             alert("✅ PDCN Claim Submitted Successfully! Admin will review and issue CN.");
-            switchOrderTab('history');
+            switchOrderTab('pdcn-history'); // Change to history tab to see submission
+            resetPDCNWorksheet();
         } else {
             alert("Submission failed: " + result.message);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHTML;
+                btn.style.opacity = "1";
+                btn.style.cursor = "pointer";
+            }
         }
     } catch (e) { 
-        alert("Success! Claim submitted to workflow."); // Fallback if endpoint not fully ready
+        console.error("PDCN Submit Error:", e);
+        alert("Action failed. Please check your connection.");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnHTML;
+            btn.style.opacity = "1";
+            btn.style.cursor = "pointer";
+        }
     }
 }
 
@@ -2074,7 +2098,7 @@ async function openPDCNViewModal(id) {
                 <td style="padding: 15px 20px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.8rem;">₹${billed.toFixed(2)}</td>
                 <td style="padding: 15px 20px; text-align: right; color: var(--accent); font-weight: 700;">₹${special.toFixed(2)}</td>
                 <td style="padding: 15px 20px; text-align: right; color: #f59e0b; font-weight: 700;">₹${(baseDiff * qty * (1 + gstPct / 100)).toFixed(2)}</td>
-                <td style="padding: 15px 20px; text-align: right; color: var(--primary); font-weight: 700;">₹${marginValue.toFixed(2)}</td>
+                <td style="padding: 15px 20px; text-align: right; color: var(--primary); font-weight: 700;">₹${(unitStkMargin * qty).toFixed(2)}</td>
                 <td style="padding: 15px 20px; text-align: right; font-weight: 900; color: #fff; background: rgba(99,102,241,0.1);">₹${finalPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `;
