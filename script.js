@@ -2044,21 +2044,40 @@ async function openPDCNViewModal(id) {
     document.getElementById('pdcn-view-total').innerText = `₹${parseFloat(claim.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const tbody = document.getElementById('pdcn-view-items-body');
+    let recalcTotal = 0;
+
     tbody.innerHTML = (claim.items || []).map(item => {
-        const billed = parseFloat(item.billedPrice || 0);
-        const special = parseFloat(item.specialPrice || 0);
-        const diff = billed - special;
+        const billed   = parseFloat(item.billedPrice || 0);
+        const special  = parseFloat(item.specialPrice || 0);
+        const qty      = Number(item.qty || 0);
+        const gstPct   = parseFloat(item.gstPercent || 0);
+        const marginPct = parseFloat(item.marginPct || 10);
+
+        // Canonical formula — same as worksheet display & server
+        const baseDiff      = billed - special;
+        const taxableValue  = baseDiff * qty * (1 + gstPct / 100);
+        const marginValue   = baseDiff * qty * (marginPct / 100);
+        const finalPDCN     = parseFloat((taxableValue + marginValue).toFixed(2));
+
+        recalcTotal += finalPDCN;
+
         return `
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <td style="padding: 15px 20px; font-weight: 700; color: #fff; font-size: 0.85rem;">${item.name}</td>
-                <td style="padding: 15px 20px; text-align: center; color: #fff; font-weight: 700;">${item.qty}</td>
+                <td style="padding: 15px 20px; text-align: center; color: #fff; font-weight: 700;">${qty}</td>
+                <td style="padding: 15px 20px; text-align: center; color: #fff; font-size: 0.75rem;">${gstPct}%</td>
                 <td style="padding: 15px 20px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.8rem;">₹${billed.toFixed(2)}</td>
                 <td style="padding: 15px 20px; text-align: right; color: var(--accent); font-weight: 700;">₹${special.toFixed(2)}</td>
-                <td style="padding: 15px 20px; text-align: right; color: #f59e0b; font-weight: 700;">₹${diff.toFixed(2)}</td>
-                <td style="padding: 15px 20px; text-align: right; font-weight: 800; color: #fff; background: rgba(255,255,255,0.02);">₹${parseFloat(item.finalPDCN || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 15px 20px; text-align: right; color: #f59e0b; font-weight: 700;">₹${(baseDiff * qty * (1 + gstPct / 100)).toFixed(2)}</td>
+                <td style="padding: 15px 20px; text-align: right; color: var(--primary); font-weight: 700;">₹${marginValue.toFixed(2)}</td>
+                <td style="padding: 15px 20px; text-align: right; font-weight: 900; color: #fff; background: rgba(99,102,241,0.1);">₹${finalPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             </tr>
         `;
     }).join('');
+
+    // Overwrite grand total with recalculated sum (fixes stale/corrupt stored totalAmount)
+    document.getElementById('pdcn-view-total').innerText = `₹${recalcTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
 
     // Store for printing
     window.currentViewingPDCNClaim = claim;
