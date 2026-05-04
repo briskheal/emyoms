@@ -4720,12 +4720,18 @@ async function generateSampleMatchedPDF({
     doc.autoTable({
         startY: partyY + 30,
         head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
-        body: items.map((it, idx) => [
-            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
-            (it.mrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
-            it.price.toFixed(2), (it.gstPercent || 0) + '%', 
-            (it.qty * it.price).toFixed(2)
-        ]),
+        body: items.map((it, idx) => {
+            const mrp = Number(it.mrp || 0);
+            const price = Number(it.price || 0);
+            const qty = Number(it.qty || 0);
+            const bonus = Number(it.bonusQty || 0);
+            return [
+                idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
+                mrp.toFixed(2), qty, bonus, 
+                price.toFixed(2), (it.gstPercent || 0) + '%', 
+                (qty * price).toFixed(2)
+            ];
+        }),
         theme: 'grid',
         headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
         styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1 },
@@ -4755,7 +4761,9 @@ async function generateSampleMatchedPDF({
     let totalTaxable = 0; let totalGST = 0;
     items.forEach(it => {
         const rate = parseFloat(it.gstPercent) || 0;
-        const taxable = it.qty * it.price;
+        const price = Number(it.price || 0);
+        const qty = Number(it.qty || 0);
+        const taxable = qty * price;
         const gst = (taxable * rate) / 100;
         if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
         taxMap[rate].taxable += taxable;
