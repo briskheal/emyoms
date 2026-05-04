@@ -1021,6 +1021,103 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
     }
 });
 
+app.post('/api/admin/invoices/bulk', async (req, res) => {
+    const { invoices } = req.body;
+    let successCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    for (const invData of invoices) {
+        const t = await db.sequelize.transaction();
+        try {
+            // 1. Validate Stockist
+            const stockist = await db.Stockist.findOne({ 
+                where: { name: { [db.Sequelize.Op.iLike]: invData.partyName.trim() } } 
+            });
+            if (!stockist) throw new Error(`Stockist not found: ${invData.partyName}`);
+
+            // 2. Check Duplicate Invoice
+            const existing = await db.Invoice.findOne({ where: { invoiceNo: invData.invoiceNo } });
+            if (existing) throw new Error(`Invoice No ${invData.invoiceNo} already exists`);
+
+            // 3. Parse Date (DD-MM-YYYY)
+            let invoiceDate = new Date();
+            if (invData.date) {
+                const parts = String(invData.date).split('-');
+                if (parts.length === 3) {
+                    invoiceDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                }
+            }
+
+            // 4. Calculate Totals & Prep Items
+            let subTotal = 0;
+            let gstAmount = 0;
+            const preparedItems = [];
+
+            for (const item of invData.items) {
+                const product = await db.Product.findOne({ 
+                    where: { name: { [db.Sequelize.Op.iLike]: item.productName.trim() } } 
+                });
+                if (!product) throw new Error(`Product not found: ${item.productName}`);
+
+                const lineTotal = Number(item.qty) * Number(item.rate);
+                const lineGst = (lineTotal * Number(item.gstPercent)) / 100;
+                
+                subTotal += lineTotal;
+                gstAmount += lineGst;
+
+                preparedItems.push({
+                    productId: product.id,
+                    name: product.name,
+                    batch: item.batch || 'N/A',
+                    qty: item.qty,
+                    bonusQty: item.bonusQty || 0,
+                    priceUsed: item.rate,
+                    mrp: product.mrp,
+                    totalValue: lineTotal,
+                    gstPercent: item.gstPercent,
+                    hsn: product.hsn
+                });
+            }
+
+            const grandTotal = Math.round(subTotal + gstAmount);
+
+            // 5. Create Invoice
+            const newInvoice = await db.Invoice.create({
+                invoiceNo: invData.invoiceNo,
+                stockistId: stockist.id,
+                subTotal,
+                gstAmount,
+                grandTotal,
+                outstandingAmount: grandTotal,
+                status: 'approved',
+                createdAt: invoiceDate,
+                updatedAt: invoiceDate
+            }, { transaction: t });
+
+            // 6. Create Items
+            for (const pItem of preparedItems) {
+                await db.InvoiceItem.create({
+                    ...pItem,
+                    invoiceId: newInvoice.id
+                }, { transaction: t });
+            }
+
+            // 7. Update Stockist Balance
+            await stockist.increment('outstandingBalance', { by: grandTotal, transaction: t });
+
+            await t.commit();
+            successCount++;
+        } catch (err) {
+            await t.rollback();
+            failedCount++;
+            errors.push({ invoiceNo: invData.invoiceNo, error: err.message });
+        }
+    }
+
+    res.json({ success: true, results: { success: successCount, failed: failedCount, errors } });
+});
+
 // Admin: Direct Sale (Online/Manual) -> Creates Order + Deducts Inventory + Generates Invoice
 
 app.post('/api/admin/direct-sale', async (req, res) => {

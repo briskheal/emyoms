@@ -2166,16 +2166,27 @@ function closePaymentModal() {
 
 
 // --- INVOICE LOGIC ---
-function renderInvoices() {
+async function loadInvoices() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/invoices`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        allInvoices = await res.json();
+        renderInvoices();
+    } catch (e) { console.error("Load invoices fail", e); }
+}
+
+function renderInvoices(list = null) {
     const tbody = document.getElementById('invoiceTableBody');
     if (!tbody) return;
 
-    if (!allInvoices || allInvoices.length === 0) {
+    const data = list || allInvoices;
+
+    if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 2rem;">No invoices found.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = allInvoices.map(inv => {
+    tbody.innerHTML = data.map(inv => {
         const partyName = inv.stockist?.name || inv.stockistName || 'N/A';
         const subTotal = Number(inv.subTotal || 0);
         const gstAmount = Number(inv.gstAmount || 0);
@@ -2196,6 +2207,86 @@ function renderInvoices() {
             </td>
         </tr>`;
     }).join('');
+}
+
+function filterInvoices(query) {
+    const q = query.toLowerCase();
+    const filtered = allInvoices.filter(inv => 
+        inv.invoiceNo.toLowerCase().includes(q) || 
+        (inv.stockist && inv.stockist.name.toLowerCase().includes(q)) ||
+        (inv.stockistName && inv.stockistName.toLowerCase().includes(q))
+    );
+    renderInvoices(filtered);
+}
+
+function downloadInvoiceTemplate() {
+    const headers = [
+        ["Invoice No*", "Date (DD-MM-YYYY)*", "Party Name*", "Product Name*", "Qty*", "Rate (Ex. GST)*", "GST %*", "Batch No", "Bonus Qty"]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(headers);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Invoices");
+    XLSX.writeFile(wb, "Emyris_Invoice_Bulk_Template.xlsx");
+}
+
+async function handleInvoiceBulkUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!jsonData.length) throw new Error("File is empty.");
+
+        // Group by Invoice No
+        const invoicesMap = {};
+        jsonData.forEach(row => {
+            const invNo = String(row["Invoice No*"]).trim();
+            if (!invoicesMap[invNo]) {
+                invoicesMap[invNo] = {
+                    invoiceNo: invNo,
+                    date: row["Date (DD-MM-YYYY)*"],
+                    partyName: row["Party Name*"],
+                    items: []
+                };
+            }
+            invoicesMap[invNo].items.push({
+                productName: row["Product Name*"],
+                qty: Number(row["Qty*"]),
+                rate: Number(row["Rate (Ex. GST)*"]),
+                gstPercent: Number(row["GST %*"]),
+                batch: row["Batch No"] || 'N/A',
+                bonusQty: Number(row["Bonus Qty"] || 0)
+            });
+        });
+
+        const invoices = Object.values(invoicesMap);
+
+        const res = await fetch(`${API_BASE}/admin/invoices/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invoices })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            alert(`Bulk upload complete! Created: ${result.results.success}, Failed: ${result.results.failed}`);
+            if (result.results.errors && result.results.errors.length > 0) {
+                console.warn("Bulk Upload Errors:", result.results.errors);
+            }
+            await loadInvoices();
+            renderInvoices();
+        } else {
+            alert("Bulk upload failed: " + result.message);
+        }
+    } catch (e) { 
+        console.error("Bulk Upload Error:", e);
+        alert("Bulk upload failed: " + e.message); 
+    }
+    input.value = '';
 }
 
 async function generateInvoice(orderId) {
