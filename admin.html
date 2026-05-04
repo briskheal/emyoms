@@ -1830,7 +1830,7 @@
                             <th style="text-align: center; min-width: 70px;">Qty</th>
                             <th style="text-align: center; min-width: 80px;">Bonus</th>
                             <th style="text-align: right; min-width: 110px;">Total</th>
-                            <th style="text-align: center; min-width: 240px;">Negotiation Actions</th>
+                            <th style="text-align: center; min-width: 120px;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="detail-items-body"></tbody>
@@ -1840,10 +1840,10 @@
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                 <button class="btn btn-ghost" onclick="closeOrderModal()" style="flex: 1; justify-content: center;">CLOSE</button>
                 <button class="btn" id="detail-delete-btn" style="flex: 1; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); justify-content: center;">DELETE RECORD</button>
-                <button class="btn" id="detail-reject-btn" style="flex: 1.5; background: #991b1b; color: #fff; justify-content: center;">❌ REJECT ORDER</button>
-                <button class="btn btn-primary" id="detail-approve-btn" style="flex: 2; justify-content: center;">✅ APPROVE ORDER</button>
-                <button class="btn" id="detail-invoice-btn" style="flex: 2; background: var(--accent); color: #fff; justify-content: center; display: none;">🧾 GENERATE INVOICE</button>
-                <button class="btn" id="detail-download-btn" style="flex: 2; background: #6366f1; color: #fff; justify-content: center; display: none;">📥 DOWNLOAD PDF</button>
+                <button class="btn" id="detail-reject-btn" style="flex: 1; background: #991b1b; color: #fff; justify-content: center;">❌ REJECT</button>
+                <button class="btn btn-primary" id="detail-approve-btn" style="flex: 1; justify-content: center;">✅ APPROVE</button>
+                <button class="btn" id="detail-invoice-btn" style="flex: 1; background: var(--accent); color: #fff; justify-content: center; display: none;">🧾 INVOICE</button>
+                <button class="btn" id="detail-download-btn" style="flex: 1; background: #6366f1; color: #fff; justify-content: center; display: none;">📥 DOWNLOAD</button>
             </div>
 
             <!-- FIXED CALCULATION STRIP -->

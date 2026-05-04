@@ -3423,15 +3423,15 @@ function numberToWords(num) {
 async function generateStandardPDF({ 
     doc: passedDoc, title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = "Document.pdf"
 }) {
-    const { jsPDF } = window.jspdf || window;
-    const doc = passedDoc || new jsPDF('p', 'mm', 'a4');
+    const PDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || window.jspdf);
+    const doc = passedDoc || new PDFLib('p', 'mm', 'a4');
     const style = (companyProfile && companyProfile.invoiceStyle) || 'classic';
 
     if (style === 'sample') {
-        await generateSampleMatchedPDF({ 
+        // Use the comprehensive version defined later in the file
+        return await generateSampleMatchedPDF({ 
             doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
         });
-        return;
     }
 
     // Header
@@ -3479,79 +3479,23 @@ async function generateStandardPDF({
     if (filename) doc.save(filename);
 }
 
-async function generateSampleMatchedPDF({ 
-    doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields = [], filename = null 
-}) {
-    // --- 1. SETTINGS & BORDER ---
-    const pageH = 297; const pageW = 210;
-    doc.setDrawColor(0); doc.setLineWidth(0.3);
-    doc.rect(10, 10, 190, 277); 
-
-    // Header
-    doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-    doc.text(companyProfile.name || "EMYRIS", 105, 18, { align: 'center' });
-    doc.setFontSize(7.5); doc.setFont("helvetica", "normal");
-    doc.text(companyProfile.address || "", 105, 23, { align: 'center' });
-    doc.text(`GSTIN: ${companyProfile.gstNo} | DL No: ${companyProfile.dlNo}`, 105, 28, { align: 'center' });
-    doc.line(10, 35, 200, 35);
-
-    // Title
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), 105, 42, { align: 'center' });
-    doc.line(10, 45, 200, 45);
-
-    // Party Info
-    doc.setFontSize(9); doc.text(`M/s: ${party.name}`, 15, 52);
-    doc.setFontSize(7.5); doc.text(party.address || 'N/A', 15, 56);
-    doc.text(`GSTIN: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 15, 62);
-
-    // Doc Info
-    doc.text(`${docTypeLabel}: ${docNo}`, 140, 52);
-    doc.text(`Date: ${date}`, 140, 56);
-    extraFields.forEach((f, i) => doc.text(`${f.label}: ${f.value}`, 140, 62 + (i * 5)));
-
-    doc.line(10, 80, 200, 80);
-
-    // Table
-    doc.autoTable({
-        startY: 82,
-        head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Rate', 'GST%', 'Total']],
-        body: items.map((it, idx) => {
-            const price = Number(it.price) || 0;
-            const rate = Number(it.gstPercent) || 0;
-            const taxable = Number(it.qty) * price;
-            const total = taxable + (taxable * rate / 100);
-            return [
-                idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
-                (Number(it.mrp) || 0).toFixed(2), it.qty, price.toFixed(2), 
-                rate + '%', total.toFixed(2)
-            ];
-        }),
-        theme: 'grid', headStyles: { fillColor: [245, 245, 245], textColor: 0 }, styles: { fontSize: 7 }
-    });
-
-
-    const finalY = doc.lastAutoTable.finalY + 10;
-    const gTotal = Number(grandTotal) || 0;
-    doc.setFont("helvetica", "bold");
-    doc.text(`GRAND TOTAL: Rs. ${gTotal.toFixed(2)}`, 198, finalY, { align: 'right' });
-    doc.setFont("helvetica", "italic"); doc.setFontSize(8);
-    doc.text(`Amount in Words: ${numberToWords(gTotal)}`, 12, finalY + 10);
-
-
-    if (filename) doc.save(filename);
-}
+// Duplicate generateSampleMatchedPDF removed (replaced by the one at line 4711 area)
+// Dead code removed
 
 async function viewInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id == id);
-        if (!inv) return alert("Invoice not found");
+        if (!inv) return alert("Invoice not found in system.");
         const partyData = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
             { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
         ];
-        const doc = new jspdf.jsPDF('p', 'mm', 'a4');
+        
+        const PDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+        if (!PDFLib) throw new Error("PDF Library (jsPDF) not loaded properly.");
+        
+        const doc = new PDFLib('p', 'mm', 'a4');
         await generateStandardPDF({
             doc, title: "TAX INVOICE", docNo: inv.invoiceNo, date: new Date(inv.createdAt).toLocaleDateString('en-GB'),
             party: { 
@@ -3564,13 +3508,16 @@ async function viewInvoicePDF(id) {
             grandTotal: Number(inv.grandTotal || 0), extraFields
         });
         window.open(doc.output('bloburl'), '_blank');
-    } catch (e) { alert("View failed"); }
+    } catch (e) { 
+        console.error("View PDF error:", e);
+        alert("View failed: " + e.message); 
+    }
 }
 
 async function downloadInvoicePDF(id) {
     try {
         const inv = allInvoices.find(x => x._id == id);
-        if (!inv) return alert("Invoice not found");
+        if (!inv) return alert("Invoice not found in system.");
         const partyData = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
             { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
@@ -3587,7 +3534,10 @@ async function downloadInvoicePDF(id) {
             items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
             grandTotal: Number(inv.grandTotal || 0), extraFields, filename: `Invoice_${inv.invoiceNo}.pdf`
         });
-    } catch (e) { alert("Download failed"); }
+    } catch (e) { 
+        console.error("PDF Download Error:", e);
+        alert("Download failed: " + e.message); 
+    }
 }
 
 function previewInvoiceStyle(style) {
