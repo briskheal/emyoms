@@ -609,6 +609,7 @@ async function loadOrders() {
 async function loadInvoices() {
     try {
         const res = await fetch(`${API_BASE}/admin/invoices`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
         allInvoices = data.map(inv => ({
             ...inv,
@@ -616,7 +617,7 @@ async function loadInvoices() {
             stockist: inv.stockist || inv.Stockist
         }));
         renderInvoices();
-    } catch (e) { console.error("Load invoices fail"); }
+    } catch (e) { console.error("Load invoices fail", e); }
 }
 
 async function loadPurchaseEntries() {
@@ -1860,10 +1861,10 @@ function viewOrderDetails(id) {
     const unroundedTotal = Number((safeSubTotal + safeGstAmount).toFixed(2));
     const roundOffValue = (safeGrandTotal - unroundedTotal).toFixed(2);
 
-    document.getElementById('detail-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    document.getElementById('detail-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
-    document.getElementById('detail-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (document.getElementById('detail-subtotal')) document.getElementById('detail-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (document.getElementById('detail-gst')) document.getElementById('detail-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (document.getElementById('detail-roundoff')) document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
+    if (document.getElementById('detail-total')) document.getElementById('detail-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     // Update Strip
     if (document.getElementById('strip-order-count')) document.getElementById('strip-order-count').innerText = o.items.length;
@@ -2166,14 +2167,7 @@ function closePaymentModal() {
 
 
 // --- INVOICE LOGIC ---
-async function loadInvoices() {
-    try {
-        const res = await fetch(`${API_BASE}/admin/invoices`);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        allInvoices = await res.json();
-        renderInvoices();
-    } catch (e) { console.error("Load invoices fail", e); }
-}
+// Duplicate loadInvoices removed
 
 function renderInvoices(list = null) {
     const tbody = document.getElementById('invoiceTableBody');

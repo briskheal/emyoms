@@ -1530,7 +1530,7 @@
 
                     <!-- Failed Email Queue -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 0.9rem; color: #ef4444;">âœ‰ï¸ Critical Email Queue (Failures)</h3>
+                        <h3 class="section-title" style="font-size: 0.9rem; color: #ef4444;">✉️  Critical Email Queue (Failures)</h3>
                         <div class="table-container">
                             <table>
                                 <thead>
@@ -1559,7 +1559,7 @@
                     </div>
                     <div style="text-align: right; opacity: 0.7;">
                         <p id="footer-co-web" style="margin: 0; font-weight: 700; color: var(--primary);">www.emyrisbio.com</p>
-                        <p style="margin: 2px 0 0 0; font-size: 0.6rem;">Â© 2026 Emyris Bio. All Rights Reserved.</p>
+                        <p style="margin: 2px 0 0 0; font-size: 0.6rem;">© 2026 Emyris Bio. All Rights Reserved.</p>
                     </div>
                 </div>
             </footer>
@@ -1681,7 +1681,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
                 <div>
                     <div id="party-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">GLOBAL MASTER</div>
-                    <div id="party-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🤝 Manage Party Record</div>
+                    <div id="party-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🤝  Manage Party Record</div>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
                     <button type="button" class="btn btn-ghost" id="btn-party-order" onclick="openDirectOrderFromParty()" style="padding:5px 12px;font-size:0.72rem; border-color: var(--accent); color: var(--accent); display:none;">🛒 NEW DIRECT ORDER</button>
@@ -1708,7 +1708,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label style="color: #f59e0b; font-weight: 800;">📝 Assign Headquarter (HQ) *</label>
+                        <label style="color: #f59e0b; font-weight: 800;">📝  Assign Headquarter (HQ) *</label>
                         <select id="party-hq" required style="border: 1px solid #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);">
                             <option value="">-- Select HQ --</option>
                         </select>
@@ -1836,32 +1836,11 @@
                     <tbody id="detail-items-body"></tbody>
                 </table>
             </div>
-
-            <div style="display: flex; justify-content: flex-end;">
-                <div style="width: 300px; background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--glass-border);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <span style="color: var(--text-muted);">Taxable Amount:</span>
-                        <span id="detail-subtotal" style="font-weight: 700;">₹0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <span style="color: var(--text-muted);">GST Total:</span>
-                        <span id="detail-gst" style="font-weight: 700;">₹0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--glass-border);">
-                        <span style="color: var(--text-muted);">Round Off:</span>
-                        <span id="detail-roundoff" style="font-weight: 700;">₹0.00</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                        <span style="font-weight: 800; color: #fff;">Grand Total:</span>
-                        <span id="detail-total" style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">₹0.00</span>
-                    </div>
-                </div>
-            </div>
             
             <div style="margin-top: 2rem; display: flex; gap: 1rem;">
                 <button class="btn btn-ghost" onclick="closeOrderModal()" style="flex: 1; justify-content: center;">CLOSE</button>
                 <button class="btn" id="detail-delete-btn" style="flex: 1; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); justify-content: center;">DELETE RECORD</button>
-                <button class="btn" id="detail-reject-btn" style="flex: 1.5; background: #991b1b; color: #fff; justify-content: center;">âŒ REJECT ORDER</button>
+                <button class="btn" id="detail-reject-btn" style="flex: 1.5; background: #991b1b; color: #fff; justify-content: center;">❌ REJECT ORDER</button>
                 <button class="btn btn-primary" id="detail-approve-btn" style="flex: 2; justify-content: center;">✅ APPROVE ORDER</button>
                 <button class="btn" id="detail-invoice-btn" style="flex: 2; background: var(--accent); color: #fff; justify-content: center; display: none;">🧾 GENERATE INVOICE</button>
                 <button class="btn" id="detail-download-btn" style="flex: 2; background: #6366f1; color: #fff; justify-content: center; display: none;">📥 DOWNLOAD PDF</button>
