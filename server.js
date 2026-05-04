@@ -108,15 +108,35 @@ async function getNextDocNo(type) {
     let company = await db.Company.findOne();
     if (!company) company = await db.Company.create({});
     
-    const counters = company.documentCounters || {};
+    const counters = JSON.parse(JSON.stringify(company.documentCounters || {}));
     const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 0 };
     
-    // Increment first so that if nextNumber was 0, the first doc is 0001
-    config.nextNumber = (Number(config.nextNumber) || 0) + 1;
-    const docNo = `${config.prefix}${config.nextNumber.toString().padStart(4, '0')}`;
+    let docNo = '';
+    let exists = true;
+    let attempts = 0;
+
+    while (exists && attempts < 100) {
+        attempts++;
+        config.nextNumber = (Number(config.nextNumber) || 0) + 1;
+        docNo = `${config.prefix}${config.nextNumber.toString().padStart(4, '0')}`;
+        
+        // Check for collisions in FinancialNote (since PDCN/CN/DN live there)
+        const collision = await db.FinancialNote.findOne({ where: { noteNo: docNo } });
+        if (!collision) {
+            // Also check Invoice if type is 'invoice'
+            if (type === 'invoice') {
+                const invCollision = await db.Invoice.findOne({ where: { invoiceNo: docNo } });
+                if (!invCollision) exists = false;
+            } else {
+                exists = false;
+            }
+        }
+    }
     
     counters[type] = config;
-    await company.update({ documentCounters: counters });
+    company.documentCounters = counters;
+    company.changed('documentCounters', true);
+    await company.save();
     return docNo;
 }
 
