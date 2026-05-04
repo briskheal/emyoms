@@ -5182,7 +5182,20 @@ function renderPDCNReviewItems() {
         `;
     }).join('');
 
-    document.getElementById('pdcn-modal-grand-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    updatePDCNTotals(grandTotal);
+}
+
+function updatePDCNTotals(unroundedSum) {
+    const subtotalEl = document.getElementById('pdcn-modal-subtotal');
+    const roundoffEl = document.getElementById('pdcn-modal-roundoff');
+    const grandTotalEl = document.getElementById('pdcn-modal-grand-total');
+
+    const rounded = Math.round(unroundedSum);
+    const roundOff = rounded - unroundedSum;
+
+    if (subtotalEl) subtotalEl.innerText = `₹${unroundedSum.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (roundoffEl) roundoffEl.innerText = `₹${roundOff.toFixed(2)}`;
+    if (grandTotalEl) grandTotalEl.innerText = `₹${rounded.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 function updateAdminPDCNItem(idx, field, val) {
@@ -5215,12 +5228,9 @@ function updateAdminPDCNItem(idx, field, val) {
     }
 
     // Update Grand Total
-    let grandTotal = 0;
-    currentPDCNReviewItems.forEach(it => grandTotal += (it.finalPDCN || 0));
-    const grandTotalEl = document.getElementById('pdcn-modal-grand-total');
-    if (grandTotalEl) {
-        grandTotalEl.innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    }
+    let totalSum = 0;
+    currentPDCNReviewItems.forEach(it => totalSum += (it.finalPDCN || 0));
+    updatePDCNTotals(totalSum);
 }
 
 function closePDCNClaimModal() {
