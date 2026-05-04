@@ -1459,8 +1459,7 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
                 name: item.name,
                 qty: item.qty,
                 price: item.specialPrice,
-                totalValue: item.finalPDCN,
-                remarks: item.remarks
+                totalValue: item.finalPDCN
             });
         }
 
