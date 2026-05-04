@@ -5275,7 +5275,7 @@ async function processPDCNClaim(action) {
             closePDCNClaimModal();
             fetchPDCNClaims();
         } else {
-            alert("Error: " + result.message);
+            alert("Error: " + (result.message || "Action failed. Check server connectivity."));
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalHTML;
