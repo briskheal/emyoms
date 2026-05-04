@@ -5274,6 +5274,12 @@ async function processPDCNClaim(action) {
     try {
         const body = { remarks };
         if (action === 'approve') {
+            // Safety check: Ensure no NaN values are sent
+            currentPDCNReviewItems.forEach(it => {
+                it.finalPDCN = Number(it.finalPDCN) || 0;
+                it.specialPrice = Number(it.specialPrice) || 0;
+                it.marginPct = Number(it.marginPct) || 0;
+            });
             body.editedItems = currentPDCNReviewItems;
         }
 

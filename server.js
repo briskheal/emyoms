@@ -1432,6 +1432,9 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
                     newTotal += Number(editedItem.finalPDCN);
                 }
             }
+            if (isNaN(newTotal)) {
+                throw new Error("Calculation error: New total is not a number (NaN). Please check item values.");
+            }
             await claim.update({ totalAmount: newTotal });
         }
 
@@ -1474,7 +1477,10 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
         });
 
         res.json({ success: true, financialNote });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { 
+        console.error("PDCN Approval Error:", e);
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
 
 
