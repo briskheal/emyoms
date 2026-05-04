@@ -5044,6 +5044,7 @@ async function fetchPDCNClaims() {
             _id: c._id || c.id,
             items: (c.items || []).map(i => ({
                 ...i,
+                id: i.id || i._id, // Ensure Sequelize 'id' is preserved
                 billedPrice: Number(i.billedPrice || 0),
                 specialPrice: Number(i.specialPrice || 0),
                 qty: Number(i.qty || 0),
@@ -5281,13 +5282,16 @@ async function processPDCNClaim(action) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = await res.json();
+        const result = await res.json().catch(() => ({ success: false, error: "Invalid server response (not JSON)." }));
+        console.log(`PDCN Action [${action}] Result:`, result);
+
         if (result.success) {
             alert(`✅ Claim ${action === 'approve' ? 'Approved & CN Generated' : 'Rejected'} Successfully!`);
             closePDCNClaimModal();
             fetchPDCNClaims();
         } else {
-            alert("Error: " + (result.message || "Action failed. Check server connectivity."));
+            const errMsg = result.message || result.error || result.details || "Unknown server error.";
+            alert("Error: " + errMsg);
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalHTML;
@@ -5295,7 +5299,8 @@ async function processPDCNClaim(action) {
             }
         }
     } catch (e) { 
-        alert("Action failed."); 
+        console.error("PDCN Process Error:", e);
+        alert("Action Error: " + e.message); 
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalHTML;
