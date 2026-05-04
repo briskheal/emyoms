@@ -5038,7 +5038,19 @@ let allPDCNClaims = [];
 async function fetchPDCNClaims() {
     try {
         const res = await fetch(`${API_BASE}/admin/pdcn/claims`);
-        allPDCNClaims = await res.json();
+        const data = await res.json();
+        allPDCNClaims = data.map(c => ({
+            ...c,
+            _id: c._id || c.id,
+            items: (c.items || []).map(i => ({
+                ...i,
+                billedPrice: Number(i.billedPrice || 0),
+                specialPrice: Number(i.specialPrice || 0),
+                qty: Number(i.qty || 0),
+                gstPercent: Number(i.gstPercent || 0),
+                marginPct: Number(i.marginPct || 10)
+            }))
+        }));
         renderPDCNClaims();
         updatePDCNBadge();
     } catch (e) { console.error("Fetch PDCN Claims failed", e); }
