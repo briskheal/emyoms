@@ -3449,7 +3449,7 @@ function numberToWords(num) {
 }
 
 async function generateStandardPDF({ 
-    doc: passedDoc, title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = "Document.pdf"
+    doc: passedDoc, title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = null
 }) {
     const PDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || window.jspdf);
     const doc = passedDoc || new PDFLib('p', 'mm', 'a4');
@@ -3504,7 +3504,9 @@ async function generateStandardPDF({
     doc.text(`Words: ${numberToWords(gTotal)}`, 15, finalY + 10);
 
     
-    if (filename) doc.save(filename);
+    if (filename) {
+        doc.save(filename);
+    }
 }
 
 // Duplicate generateSampleMatchedPDF removed (replaced by the one at line 4711 area)
@@ -4861,7 +4863,9 @@ async function generateSampleMatchedPDF({
     }
     doc.text("Authorised Signatory", 198, footerY + 25, { align: 'right' });
 
-    doc.save(filename);
+    if (filename) {
+        doc.save(filename);
+    }
 }
 // --- PRODUCT SEARCH ENGINE (AUTOCOMPLETE) ---
 function handleProductSearch(input, context) {
