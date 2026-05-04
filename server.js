@@ -1478,6 +1478,11 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
         res.json({ success: true, financialNote });
     } catch (e) { 
         console.error("PDCN Approval Error:", e);
+        // Handle Sequelize Validation / Unique Errors specifically
+        if (e.name === 'SequelizeValidationError' || e.name === 'SequelizeUniqueConstraintError') {
+            const detail = e.errors ? e.errors.map(x => x.message).join(', ') : e.message;
+            return res.status(400).json({ success: false, message: `Validation Error: ${detail}` });
+        }
         res.status(500).json({ success: false, error: e.message }); 
     }
 });
