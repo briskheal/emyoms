@@ -599,8 +599,16 @@ async function loadOrders() {
         allOrders = data.map(o => ({ 
             ...o, 
             _id: o._id || o.id,
-            stockist: o.stockist || o.Stockist, // Normalize Sequelize capitalized include
-            items: (o.items || []).map(i => ({ ...i, _id: i._id || i.id, productId: i.productId || i.product }))
+            grandTotal: Number(o.grandTotal || 0),
+            subTotal: Number(o.subTotal || 0),
+            stockist: o.stockist || o.Stockist,
+            items: (o.items || []).map(i => ({ 
+                ...i, 
+                _id: i._id || i.id, 
+                productId: i.productId || i.product,
+                priceUsed: Number(i.priceUsed || 0),
+                totalValue: Number(i.totalValue || 0)
+            }))
         }));
         renderOrderHistory();
     } catch (e) { console.error("Load orders fail"); }
@@ -614,7 +622,10 @@ async function loadInvoices() {
         allInvoices = data.map(inv => ({
             ...inv,
             _id: inv._id || inv.id,
-            stockist: inv.stockist || inv.Stockist
+            stockist: inv.stockist || inv.Stockist,
+            subTotal: Number(inv.subTotal || 0),
+            gstAmount: Number(inv.gstAmount || 0),
+            grandTotal: Number(inv.grandTotal || 0)
         }));
         renderInvoices();
     } catch (e) { console.error("Load invoices fail", e); }
@@ -839,7 +850,18 @@ async function loadProducts() {
         allProducts = data.map(p => ({ 
             ...p, 
             _id: p._id || p.id,
-            batches: (p.batches || []).map(b => ({ ...b, _id: b._id || b.id }))
+            pts: Number(p.pts || 0),
+            ptr: Number(p.ptr || 0),
+            mrp: Number(p.mrp || 0),
+            qtyAvailable: Number(p.qtyAvailable || p.stock || 0),
+            batches: (p.batches || []).map(b => ({ 
+                ...b, 
+                _id: b._id || b.id,
+                qtyAvailable: Number(b.qtyAvailable || 0),
+                mrp: Number(b.mrp || 0),
+                pts: Number(b.pts || 0),
+                ptr: Number(b.ptr || 0)
+            }))
         }));
         renderProducts();
         updateDatalists();
@@ -855,7 +877,12 @@ async function loadStockists(type = '') {
         const res = await fetch(`${API_BASE}/admin/stockists${type ? `?type=${type}` : ''}`);
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        allStockists = data.map(s => ({ ...s, _id: s._id || s.id }));
+        allStockists = data.map(s => ({ 
+            ...s, 
+            _id: s._id || s.id,
+            outstandingBalance: Number(s.outstandingBalance || 0),
+            creditLimit: Number(s.creditLimit || 0)
+        }));
         renderStockists();
     } catch (e) { console.error("Load parties fail", e); }
 }
@@ -2829,6 +2856,7 @@ async function loadFinancialNotes() {
         allNotes = data.map(n => ({
             ...n,
             _id: n._id || n.id,
+            amount: Number(n.amount || 0),
             stockist: n.stockist || n.Stockist,
             partyName: n.partyName || (n.stockist || n.Stockist)?.name || 'Direct Customer'
         }));
@@ -4133,6 +4161,7 @@ async function loadPayments() {
         allPayments = data.map(p => ({
             ...p,
             _id: p._id || p.id,
+            amount: Number(p.amount || 0),
             stockist: p.stockist || p.Stockist,
             partyName: p.partyName || (p.stockist || p.Stockist)?.name || 'Direct Customer'
         }));
