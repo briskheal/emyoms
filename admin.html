@@ -9,6 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -183,7 +185,30 @@
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .glass-card:hover { border-color: rgba(255, 255, 255, 0.15); }
-        .section-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 2rem; display: flex; align-items: center; gap: 12px; color: #fff; letter-spacing: -0.2px; text-transform: uppercase; }
+        .section-title { 
+            font-size: 0.85rem; 
+            font-weight: 800; 
+            margin-bottom: 1.5rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            color: #fff; 
+            letter-spacing: 0.5px; 
+            text-transform: uppercase;
+            padding: 10px 20px;
+            border-radius: 12px;
+            width: fit-content;
+            min-width: 280px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .title-blue { border-left-color: #6366f1; background: rgba(99, 102, 241, 0.1); }
+        .title-green { border-left-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        .title-purple { border-left-color: #a855f7; background: rgba(168, 85, 247, 0.1); }
+        .title-orange { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .title-red { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
 
         .stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; margin-bottom: 2rem; }
         .stat-card { 
@@ -436,7 +461,7 @@
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                     <div class="glass-card" style="padding: 2rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">📈 Sales Performance (This Month)</h3>
+                            <h3 class="section-title title-blue" style="margin: 0;"><i class="fas fa-chart-line"></i> Sales Performance</h3>
                             <div id="mom-badge" style="padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">-</div>
                         </div>
                         <div style="height: 220px;">
@@ -444,7 +469,7 @@
                         </div>
                     </div>
                     <div class="glass-card" style="padding: 2rem;">
-                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🎯 Top 5 Best Sellers</h3>
+                        <h3 class="section-title title-purple" style="margin-bottom: 1.5rem;"><i class="fas fa-trophy"></i> Top 5 Best Sellers</h3>
                         <div style="height: 220px;">
                             <canvas id="topProductsChart"></canvas>
                         </div>
@@ -453,13 +478,13 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                     <div class="glass-card" style="padding: 2rem;">
-                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">🤝 Leading Stockists</h3>
+                        <h3 class="section-title title-green" style="margin-bottom: 1.5rem;"><i class="fas fa-handshake"></i> Leading Stockists</h3>
                         <div style="height: 220px;">
                             <canvas id="topStockistsChart"></canvas>
                         </div>
                     </div>
                     <div class="glass-card" style="padding: 2rem;">
-                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 1.5rem;">📦 Order Fulfillment</h3>
+                        <h3 class="section-title title-blue" style="margin-bottom: 1.5rem;"><i class="fas fa-shipping-fast"></i> Order Fulfillment</h3>
                         <div style="height: 220px; display: flex; align-items: center; justify-content: center;">
                             <canvas id="orderStatusChart"></canvas>
                         </div>
@@ -469,7 +494,7 @@
                 <!-- NEW ANALYTICS: Group Share & GST -->
                 <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; margin-top: 2rem;">
                     <div class="glass-card" style="padding: 2.5rem; display: flex; flex-direction: column; align-items: center;">
-                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 2rem; width: 100%; text-align: center;">💊 Product Group Share</h3>
+                        <h3 class="section-title title-purple" style="margin-bottom: 2rem; width: 100%; text-align: center;"><i class="fas fa-capsules"></i> Product Group Share</h3>
                         <div style="flex-grow: 1; width: 100%; display: flex; justify-content: center; align-items: center; height: 220px;">
                             <canvas id="groupPieChart"></canvas>
                         </div>
@@ -477,7 +502,7 @@
                     </div>
                     <div class="glass-card" style="padding: 2.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                            <h3 class="section-title" style="margin: 0; font-size: 1.1rem;">💰 GST Liability (Per Group)</h3>
+                            <h3 class="section-title title-orange" style="margin: 0;"><i class="fas fa-file-invoice-dollar"></i> GST Liability</h3>
                             <div id="total-gst-display" style="color: var(--primary); font-weight: 900; background: rgba(99, 102, 241, 0.1); padding: 5px 12px; border-radius: 8px; font-size: 0.9rem; border: 1px solid rgba(99, 102, 241, 0.2);">₹0.00</div>
                         </div>
                         <div style="height: 220px;">
@@ -490,14 +515,14 @@
             <!-- PRODUCT MASTER TAB -->
             <div id="tab-products" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">💊 Product Master</h2>
+                    <h2 class="section-title title-purple" style="margin: 0;"><i class="fas fa-boxes"></i> Product Master</h2>
                     <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <input type="text" id="productSearch" placeholder="🔍 Search Products..." onkeyup="filterProducts(this.value)" 
+                        <input type="text" id="productSearch" placeholder="🔍  Search Products..." onkeyup="filterProducts(this.value)" 
                                style="padding: 10px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff; width: 280px; font-size: 0.85rem;">
-                        <button class="btn btn-ghost" onclick="downloadProductTemplate()">📥 Template</button>
-                        <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()">📤 Bulk Upload</button>
+                        <button class="btn btn-ghost" onclick="downloadProductTemplate()"><i class="fas fa-file-download"></i> Template</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()"><i class="fas fa-file-upload"></i> Bulk Upload</button>
                         <input type="file" id="bulkProductInput" hidden accept=".csv, .xlsx, .xls" onchange="handleProductBulkUpload(this)">
-                        <button class="btn btn-primary" onclick="openProductModal()">+ Single Entry</button>
+                        <button class="btn btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> Single Entry</button>
                     </div>
                 </div>
                 
@@ -527,11 +552,11 @@
             <!-- STOCKIST MANAGEMENT TAB -->
             <div id="tab-stockists" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">🤝 Party Master (Stockists & Suppliers)</h2>
+                    <h2 class="section-title title-green" style="margin: 0;"><i class="fas fa-users"></i> Party Master</h2>
                     <div style="display: flex; gap: 0.75rem;">
                         <div style="position: relative; width: 250px;">
                             <input type="text" id="stockistSearch" placeholder="Search by name/city..." onkeyup="filterStockists(this.value)" style="padding: 0.6rem 1rem 0.6rem 2.5rem;">
-                            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
+                            <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍 </span>
                         </div>
                         <button class="btn btn-ghost" onclick="clearStockistSearch()">Clear</button>
                         <select id="party-type-filter" onchange="loadStockists(this.value)" style="width: 150px; padding: 0.5rem;">
@@ -539,9 +564,11 @@
                             <option value="STOCKIST">Stockists Only</option>
                             <option value="SUPPLIER">Suppliers Only</option>
                         </select>
-                        <button class="btn btn-ghost" onclick="exportParties()">📥 EXPORT PARTIES</button>
-                        <button class="btn btn-primary" onclick="openPartyModal()">+ Create Party Master</button>
-                        <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()">🗑️ DELETE ALL</button>
+                        <button class="btn btn-ghost" onclick="downloadStockistTemplate()"><i class="fas fa-file-download"></i> Template</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('bulkStockistInput').click()"><i class="fas fa-file-upload"></i> Bulk Upload</button>
+                        <input type="file" id="bulkStockistInput" hidden accept=".csv, .xlsx, .xls" onchange="handleStockistBulkUpload(this)">
+                        <button class="btn btn-primary" onclick="openPartyModal()"><i class="fas fa-plus"></i> Single Entry</button>
+                        <button class="btn btn-ghost" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteAllStockists()"><i class="fas fa-trash-alt"></i>  DELETE ALL</button>
                     </div>
                 </div>
 
@@ -586,15 +613,15 @@
 
             <div id="tab-masters" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">📦 Global Master Data</h2>
-                    <button class="btn btn-primary" id="btn-sync-masters" onclick="(async()=>{ const btn=document.getElementById('btn-sync-masters'); btn.disabled=true; btn.innerHTML='â³ SAVING...'; try{ await saveSettings(null); await loadMasters(); btn.innerHTML='✅ SAVED &amp; REFRESHED'; } catch(err){ btn.innerHTML='âŒ FAILED'; console.error(err); } setTimeout(()=>{ btn.innerHTML='💾 SAVE &amp; REFRESH ALL'; btn.disabled=false; },2500); })()">💾 SAVE &amp; REFRESH ALL</button>
+                    <h2 class="section-title title-orange" style="margin: 0;"><i class="fas fa-cogs"></i> Global Master Data</h2>
+                    <button class="btn btn-primary" id="btn-sync-masters" onclick="(async()=>{ const btn=document.getElementById('btn-sync-masters'); btn.disabled=true; btn.innerHTML='â ³ SAVING...'; try{ await saveSettings(null); await loadMasters(); btn.innerHTML='✅ SAVED &amp; REFRESHED'; } catch(err){ btn.innerHTML='â Œ FAILED'; console.error(err); } setTimeout(()=>{ btn.innerHTML='💾 SAVE &amp; REFRESH ALL'; btn.disabled=false; },2500); })()">💾 SAVE &amp; REFRESH ALL</button>
                 </div>
 
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
                     <!-- Category Master -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1rem;">💊 Product Categories</h3>
+                        <h3 class="section-title title-purple" style="font-size: 0.8rem; min-width: 200px;"><i class="fas fa-tags"></i> Product Categories</h3>
                         <div class="form-group" style="display: flex; gap: 5px;">
                             <input type="text" id="new-cat-name" placeholder="Category Name">
                             <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('categories')">ADD</button>
@@ -603,7 +630,7 @@
                     </div>
                     <!-- HSN Master -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1rem;">🔢 HSN Codes</h3>
+                        <h3 class="section-title title-blue" style="font-size: 0.8rem; min-width: 200px;"><i class="fas fa-barcode"></i> HSN Codes</h3>
                         <div class="form-group" style="display: flex; gap: 5px; flex-direction: column;">
                             <input type="text" id="new-hsn-code" placeholder="HSN Code">
                             <input type="text" id="new-hsn-desc" placeholder="Description (Optional)" style="font-size: 0.7rem;">
@@ -613,7 +640,7 @@
                     </div>
                     <!-- GST Master -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1rem;">💰 GST Rates (%)</h3>
+                        <h3 class="section-title title-orange" style="font-size: 0.8rem; min-width: 200px;"><i class="fas fa-percent"></i> GST Rates</h3>
                         <div class="form-group" style="display: flex; gap: 5px;">
                             <input type="number" id="new-gst-rate" placeholder="12">
                             <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('gst')">ADD</button>
@@ -622,16 +649,17 @@
                     </div>
                     <!-- Product Groups Master -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1rem;">ðŸ·ï¸ Product Groups</h3>
+                        <h3 class="section-title title-purple" style="font-size: 0.8rem; min-width: 200px;"><i class="fas fa-layer-group"></i> Product Groups</h3>
                         <div class="form-group" style="display: flex; gap: 5px;">
                             <input type="text" id="new-group-name" placeholder="Group Name">
                             <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('groups')">ADD</button>
                         </div>
                         <div id="master-group-list" style="max-height: 200px; overflow-y: auto;"></div>
                     </div>
+
                     <!-- HQ Master -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1rem;">ðŸ¢ Operational HQs</h3>
+                        <h3 class="section-title title-green" style="font-size: 0.8rem; min-width: 200px;"><i class="fas fa-map-marker-alt"></i> HQ Locations</h3>
                         <div class="form-group" style="display: flex; gap: 5px;">
                             <input type="text" id="new-hq-name" placeholder="HQ Name (e.g. Hyderabad)">
                             <button class="btn btn-primary" style="padding: 5px 15px;" onclick="addMaster('hq')">ADD</button>
@@ -641,7 +669,7 @@
 
                     <!-- Expense Categories Master -->
                     <div class="glass-card">
-                        <h3 class="section-title" style="font-size: 1rem;">💸 Expense Categories</h3>
+                        <h3 class="section-title title-red" style="font-size: 0.8rem; min-width: 200px;"><i class="fas fa-money-bill-wave"></i> Expense Categories</h3>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             <div class="form-group" style="display: flex; gap: 5px;">
                                 <input type="text" id="new-exp-cat-name" placeholder="Category (e.g. Rent)">
@@ -657,7 +685,7 @@
 
                     <!-- DOCUMENT NUMBERING MASTER -->
                     <div class="glass-card" style="grid-column: 1 / -1; margin-top: 1rem; border: 1px solid var(--primary);">
-                        <h3 class="section-title" style="font-size: 1rem; color: var(--primary);">🧾 Document Numbering & Counters</h3>
+                        <h3 class="section-title title-blue" style="font-size: 0.8rem; color: #fff;"><i class="fas fa-list-ol"></i> Document Numbering</h3>
                         <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1.5rem;">Define prefixes (e.g., INV-24-) and starting numbers for all financial documents.</p>
                         
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
@@ -736,7 +764,7 @@
 
                     <div class="glass-card" style="grid-column: 1 / -1; border: 1px solid var(--accent-glow); padding: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
-                            <h3 class="section-title" style="font-size: 1rem; color: var(--accent); margin: 0;">🎬 Multimedia Command Center</h3>
+                            <h3 class="section-title title-green" style="color: var(--accent); margin: 0;"><i class="fas fa-clapperboard"></i> Multimedia Command</h3>
                             <div style="font-size: 0.65rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
                                 💡 Tip: Use local files or permanent links for stability.
                             </div>
@@ -847,7 +875,7 @@
             <!-- PDCN APPROVALS TAB -->
             <div id="tab-pdcn-approvals" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">📝 PDCN Worksheet Approvals</h2>
+                    <h2 class="section-title" style="margin: 0;">📝  PDCN Worksheet Approvals</h2>
                     <div style="display: flex; gap: 1rem; align-items: center;">
                         <select id="pdcn-status-filter" onchange="renderPDCNClaims()" style="width: 150px; padding: 0.5rem;">
                             <option value="pending">Pending Only</option>
@@ -1032,7 +1060,7 @@
                         <p style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 5px;">Strategic reporting and tax audit portal</p>
                     </div>
                     <div style="display: flex; gap: 1rem;">
-                         <button class="btn btn-ghost" onclick="window.print()" style="font-size: 0.7rem;">âŽ™ PRINT VIEW</button>
+                         <button class="btn btn-ghost" onclick="window.print()" style="font-size: 0.7rem;">⏣ PRINT VIEW</button>
                          <button class="btn btn-primary" style="font-size: 0.7rem; background: var(--accent);" onclick="exportAllReports()">📦 EXCEL CONSOLIDATED</button>
                     </div>
                 </div>
@@ -1084,7 +1112,7 @@
 
                     <!-- PARTY & LEDGER REPORTS -->
                     <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--accent);">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">🤝</span> Party & Ledger</h3>
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">🤝 </span> Party & Ledger</h3>
                         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                             <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('consolidated-ledger')">
                                 <div style="display: flex; flex-direction: column;">
@@ -1224,7 +1252,7 @@
                             </button>
                             
                             <button class="btn btn-primary" style="margin-top: 1rem;" onclick="document.getElementById('expenseModal').classList.remove('hidden')">
-                                âž• LOG NEW EXPENSE
+                                ➕ LOG NEW EXPENSE
                             </button>
                         </div>
                     </div>
@@ -1235,7 +1263,7 @@
             <!-- SETTINGS TAB -->
             <div id="tab-settings" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">⚙️ Company & Portal Configuration</h2>
+                    <h2 class="section-title" style="margin: 0;">⚙️  Company & Portal Configuration</h2>
                     <button id="save-settings-btn" class="btn btn-primary" type="submit" form="companyForm">💾 SAVE ALL SETTINGS</button>
                 </div>
 
@@ -1245,7 +1273,7 @@
                         <!-- ZONE 1: CORPORATE IDENTITY & CONTACT -->
                         <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid var(--primary);">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-                                <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--primary);">ðŸ¢</div>
+                                <div style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: var(--primary);">🏢</div>
                                 <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Corporate Identity & Contact</h3>
                             </div>
                             <div class="form-group">
@@ -1317,7 +1345,7 @@
                         <!-- ZONE 2: STATUTORY & COMPLIANCE -->
                         <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #ef4444;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-                                <div style="width: 35px; height: 35px; background: rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #ef4444;">âš–ï¸</div>
+                                <div style="width: 35px; height: 35px; background: rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #ef4444;">⚖️ </div>
                                 <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Statutory & Legal</h3>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1351,7 +1379,7 @@
                         <!-- ZONE 3: BANKING & FINANCE -->
                         <div class="glass-card" style="padding: 1.5rem; border-left: 4px solid #10b981;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-                                <div style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #10b981;">ðŸ¦</div>
+                                <div style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #10b981;">🏦</div>
                                 <h3 class="section-title" style="font-size: 0.95rem; margin: 0; color: #fff;">Banking & Finance</h3>
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1457,7 +1485,7 @@
                                         <button type="button" class="btn btn-primary" onclick="uploadInvoiceDesign()" style="white-space: nowrap;">UPLOAD BLUEPRINT</button>
                                     </div>
                                     <div style="margin-top: 1.5rem; background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2); font-size: 0.75rem; color: #10b981;">
-                                        ℹ️ <b>AI Engine Status:</b> Once uploaded, the AI will automatically attempt to match your coordinates and font hierarchy for the next download.
+                                        ℹ️  <b>AI Engine Status:</b> Once uploaded, the AI will automatically attempt to match your coordinates and font hierarchy for the next download.
                                     </div>
                                 </div>
 
@@ -1508,7 +1536,7 @@
             <!-- SYSTEM HEALTH TAB -->
             <div id="tab-system" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" style="margin: 0;">🛠️ System Health & Logs</h2>
+                    <h2 class="section-title" style="margin: 0;">🛠️  System Health & Logs</h2>
                     <button class="btn btn-ghost" onclick="loadFailedEmails()">🔄 Refresh Logs</button>
                 </div>
 
@@ -2397,7 +2425,7 @@
                     <button type="button" class="btn btn-primary" onclick="downloadAdminPDCN_PDF()" style="background: var(--accent); color: #fff; padding: 6px 15px; border-radius: 8px; font-size: 0.65rem; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                         <i class="fas fa-file-pdf"></i> PRINT PDF
                     </button>
-                    <button type="button" class="btn btn-ghost" onclick="closePDCNClaimModal()">✕ Close</button>
+                    <button type="button" class="btn btn-ghost" onclick="closePDCNClaimModal()" style="width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; font-size: 1.2rem;" onmouseover="this.style.background='rgba(239,68,68,0.3)'; this.style.color='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';">✕</button>
                 </div>
             </div>
 
@@ -2478,7 +2506,7 @@
                     </div>
                     <h2 id="payment-modal-title" style="font-size: 1.4rem; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.02em;">💰 Financial Voucher Entry</h2>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+                <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; font-size: 1.2rem;" onmouseover="this.style.background='rgba(239,68,68,0.3)'; this.style.color='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';">✕</button>
             </div>
 
             <form id="paymentForm" onsubmit="savePayment(event)" style="padding: 2rem;">
@@ -2562,7 +2590,7 @@
                     <h2 id="report-modal-title" style="font-size: 1.4rem; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.02em;">📊 Intelligence Report Viewer</h2>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Filter, preview, and export intelligence data.</p>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="closeReportModal()" style="width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+                <button type="button" class="btn btn-ghost" onclick="closeReportModal()" style="width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; font-size: 1.2rem;" onmouseover="this.style.background='rgba(239,68,68,0.3)'; this.style.color='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';">✕</button>
             </div>
 
             <!-- Toolbar / Filters -->
@@ -2638,7 +2666,7 @@
                     <div style="font-size:0.55rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#ef4444; margin-bottom:4px;">EXPENSE MANAGEMENT</div>
                     <h2 style="font-size:1.3rem; font-weight:900; color:#fff; margin:0;">💸 Log New Expense</h2>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width:40px;height:40px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; font-size: 1.2rem;" onmouseover="this.style.background='rgba(239,68,68,0.3)'; this.style.color='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';">✕</button>
             </div>
 
             <form id="expenseForm" onsubmit="saveExpense(event)" style="padding: 2rem;">

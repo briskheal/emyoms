@@ -377,7 +377,8 @@ async function saveSettings(e) {
             color: safeGetVal('set-msg-color'),
             speed: Number(safeGetVal('set-msg-speed'))
         },
-        invoiceStyle: safeGetVal('set-inv-style')
+        invoiceStyle: safeGetVal('set-inv-style'),
+        referenceInvoiceUrl: companyProfile.referenceInvoiceUrl // PERSIST BLUEPRINT URL
     };
 
     try {
@@ -1125,6 +1126,65 @@ async function handleProductBulkUpload(input) {
         if (result.success) {
             alert(`Bulk upload complete! Success: ${result.results.success}, Failed: ${result.results.failed}`);
             loadProducts();
+        }
+    } catch (e) { alert("Bulk upload failed: " + e.message); }
+    input.value = '';
+}
+
+// --- BULK STOCKIST UPLOAD ---
+function downloadStockistTemplate() {
+    const headers = [
+        ["Firm Name*", "Login ID*", "Password*", "Party Type (STOCKIST/SUPPLIER)", "Address", "City", "State", "Pincode", "Phone", "Email", "GSTIN", "PAN*", "DL No", "FSSAI No", "HQ", "Bank Name", "Bank Acc No", "IFSC Code"]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(headers);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Parties");
+    XLSX.writeFile(wb, "Emyris_Party_Template.xlsx");
+}
+
+async function handleStockistBulkUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!jsonData.length) throw new Error("File is empty.");
+
+        const stockists = jsonData.map(row => ({
+            name: row["Firm Name*"],
+            loginId: row["Login ID*"],
+            password: String(row["Password*"] || "emyris123"),
+            partyType: (row["Party Type (STOCKIST/SUPPLIER)"] || "STOCKIST").toUpperCase(),
+            address: row["Address"],
+            city: row["City"],
+            state: row["State"],
+            pincode: row["Pincode"],
+            phone: row["Phone"],
+            email: row["Email"],
+            gstNo: row["GSTIN"],
+            panNo: row["PAN*"] || "N/A",
+            dlNo: row["DL No"],
+            fssaiNo: row["FSSAI No"],
+            hq: row["HQ"],
+            bankName: row["Bank Name"],
+            bankAccountNo: row["Bank Acc No"],
+            bankIfsc: row["IFSC Code"]
+        }));
+
+        const res = await fetch(`${API_BASE}/admin/stockists/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stockists })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            alert(`Bulk upload complete! Success: ${result.results.success}, Failed: ${result.results.failed}`);
+            loadStockists();
         }
     } catch (e) { alert("Bulk upload failed: " + e.message); }
     input.value = '';
