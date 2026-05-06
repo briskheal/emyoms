@@ -551,10 +551,31 @@
 
             <!-- STOCKIST MANAGEMENT TAB -->
             <div id="tab-stockists" class="hidden">
+                <!-- PARTY MASTER STATS (NOW TOP LINE) -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;">
+                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
+                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Total Parties</span>
+                        <div id="stat-total-parties" class="stat-value" style="font-size: 1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
+                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Stockists</span>
+                        <div id="stat-total-stockists" class="stat-value" style="color: var(--primary); font-size: 1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
+                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Suppliers</span>
+                        <div id="stat-total-suppliers" class="stat-value" style="color: var(--accent); font-size: 1rem;">0</div>
+                    </div>
+                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
+                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Pending</span>
+                        <div id="stat-pending-approval" class="stat-value" style="color: #f59e0b; font-size: 1rem;">0</div>
+                    </div>
+                </div>
+
+                <!-- CONTROLS (NOW 2ND LINE) -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; background: rgba(255,255,255,0.02); padding: 10px 15px; border-radius: 16px; border: 1px solid var(--glass-border);">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <h2 class="section-title title-green" style="margin: 0; min-width: auto; padding: 8px 16px; font-size: 0.8rem; border-radius: 8px; font-weight: 700;"><i class="fas fa-users"></i> Party Master</h2>
-                        <button class="btn btn-primary" onclick="openPartyModal()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);"><i class="fas fa-plus-circle"></i> CREATE NEW PARTY</button>
+                        <button class="btn btn-primary" onclick="openPartyModal()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);"><i class="fas fa-plus-circle"></i> CREATE PARTY</button>
                     </div>
                     
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
@@ -571,26 +592,6 @@
                         <button class="btn btn-ghost" style="padding: 0 12px; height: 32px; font-size: 0.75rem; border-radius: 8px;" onclick="document.getElementById('bulkStockistInput').click()"><i class="fas fa-file-upload" style="margin-right: 5px; opacity: 0.8;"></i> Bulk Upload</button>
                         <input type="file" id="bulkStockistInput" hidden accept=".csv, .xlsx, .xls" onchange="handleStockistBulkUpload(this)">
                         <button class="btn btn-ghost" style="padding: 0 10px; height: 32px; font-size: 0.75rem; color: #ef4444; border-color: rgba(239, 68, 68, 0.2); border-radius: 8px;" onclick="deleteAllStockists()" title="Delete All Data"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                </div>
-
-                <!-- PARTY MASTER STATS -->
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
-                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
-                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Total Parties</span>
-                        <div id="stat-total-parties" class="stat-value" style="font-size: 1rem;">0</div>
-                    </div>
-                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
-                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Stockists</span>
-                        <div id="stat-total-stockists" class="stat-value" style="color: var(--primary); font-size: 1rem;">0</div>
-                    </div>
-                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
-                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Suppliers</span>
-                        <div id="stat-total-suppliers" class="stat-value" style="color: var(--accent); font-size: 1rem;">0</div>
-                    </div>
-                    <div class="glass-card" style="margin-bottom:0; padding: 0.75rem 1rem; border-radius: 16px; min-height: auto; display: flex; flex-direction: column; justify-content: center;">
-                        <span class="stat-label" style="font-size: 0.55rem; margin-bottom: 2px;">Pending</span>
-                        <div id="stat-pending-approval" class="stat-value" style="color: #f59e0b; font-size: 1rem;">0</div>
                     </div>
                 </div>
                 <div class="glass-card">
