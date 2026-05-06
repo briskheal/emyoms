@@ -658,12 +658,24 @@ app.post('/api/admin/products/bulk', async (req, res) => {
 
         for (const p of products) {
             try {
-                await db.Product.create({
+                const product = await db.Product.create({
                     ...p,
                     active: true,
                     qtyAvailable: p.qtyAvailable || 0,
-                    bonusScheme: { buy: p.buy || 0, get: p.get || 0 }
+                    bonusBuy: p.buy || 0,
+                    bonusGet: p.get || 0
                 });
+
+                if (p.batch) {
+                    await db.Batch.create({
+                        batchNo: String(p.batch),
+                        qtyAvailable: p.qtyAvailable || 0,
+                        mrp: p.mrp || 0,
+                        pts: p.pts || 0,
+                        ptr: p.ptr || 0,
+                        productId: product.id
+                    });
+                }
                 success++;
             } catch (e) { 
                 console.error("Bulk Product Fail:", e.message);

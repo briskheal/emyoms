@@ -1015,10 +1015,8 @@ async function saveProduct(e) {
         pts: Number(document.getElementById('prod-pts').value),
         qtyAvailable: Number(document.getElementById('prod-qty').value),
         batches: currentProductBatches,
-        bonusScheme: {
-            buy: Number(document.getElementById('prod-buy').value),
-            get: Number(document.getElementById('prod-get').value)
-        }
+        bonusBuy: Number(document.getElementById('prod-buy').value),
+        bonusGet: Number(document.getElementById('prod-get').value)
     };
 
     try {
@@ -1071,8 +1069,8 @@ function editProduct(id) {
     document.getElementById('prod-ptr').value = p.ptr;
     document.getElementById('prod-pts').value = p.pts;
     document.getElementById('prod-qty').value = p.qtyAvailable;
-    document.getElementById('prod-buy').value = p.bonusScheme ? p.bonusScheme.buy : 0;
-    document.getElementById('prod-get').value = p.bonusScheme ? p.bonusScheme.get : 0;
+    document.getElementById('prod-buy').value = p.bonusBuy || 0;
+    document.getElementById('prod-get').value = p.bonusGet || 0;
     
     currentProductBatches = p.batches || [];
     renderProductBatches();
@@ -1083,7 +1081,7 @@ function editProduct(id) {
 // --- BULK PRODUCT UPLOAD ---
 function downloadProductTemplate() {
     const headers = [
-        ["Product Name*", "HSN Code", "Category", "MRP", "PTR", "PTS", "GST %", "Qty Available", "Bonus Buy", "Bonus Get"]
+        ["Product Name*", "Manufacturer", "HSN Code", "Category", "Group", "Packing*", "Batch", "MRP*", "PTR", "PTS", "GST %*", "Qty Available", "Bonus Buy", "Bonus Get"]
     ];
     const ws = XLSX.utils.aoa_to_sheet(headers);
     const wb = XLSX.utils.book_new();
@@ -1105,15 +1103,19 @@ async function handleProductBulkUpload(input) {
 
         const products = jsonData.map(row => ({
             name: row["Product Name*"],
+            manufacturer: row["Manufacturer"],
             hsn: row["HSN Code"],
             category: row["Category"],
-            mrp: row["MRP"],
-            ptr: row["PTR"],
-            pts: row["PTS"],
-            gstPercent: row["GST %"],
-            qtyAvailable: row["Qty Available"],
-            buy: row["Bonus Buy"],
-            get: row["Bonus Get"]
+            group: row["Group"],
+            packing: row["Packing*"] || "N/A",
+            batch: row["Batch"],
+            mrp: Number(row["MRP*"] || 0),
+            ptr: Number(row["PTR"] || 0),
+            pts: Number(row["PTS"] || 0),
+            gstPercent: Number(row["GST %*"] || 0),
+            qtyAvailable: Number(row["Qty Available"] || 0),
+            buy: Number(row["Bonus Buy"] || 0),
+            get: Number(row["Bonus Get"] || 0)
         }));
 
         const res = await fetch(`${API_BASE}/admin/products/bulk`, {
