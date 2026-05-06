@@ -3161,9 +3161,9 @@ let returnItems = [];
 const RETURN_MODULE_CONFIG = {
     'Salable Return':   { badge:'CREDIT NOTE', title:'Sale Return — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
     'Exp/Brk/Damg CN':  { badge:'CREDIT NOTE', title:'Exp / Broken / Damaged — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
-    'Price Diff CN':    { badge:'CREDIT NOTE', title:'Price Difference — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
+    'Price Diff CN':    { badge:'CREDIT NOTE', title:'Price Difference — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'], isPriceDiff: true },
     'Purchase Return':  { badge:'DEBIT NOTE',  title:'Purchase Return — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] },
-    'Price Diff DN':    { badge:'DEBIT NOTE',  title:'Price Difference — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] },
+    'Price Diff DN':    { badge:'DEBIT NOTE',  title:'Price Difference — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'], isPriceDiff: true },
     'Brk/Dmg/Loss DN': { badge:'DEBIT NOTE',  title:'Breakage / Damage / Loss — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] }
 };
 
@@ -3197,6 +3197,64 @@ function openReturnModal(reason, editData = null) {
                    color:${active ? '#fff' : '#64748b'};"
         >${cfg.tabLabels[i]}</button>`;
     }).join('');
+    
+    // --- Dynamic Table Structure ---
+    const colgroup = document.getElementById('return-table-colgroup');
+    const thead = document.getElementById('return-table-thead');
+    const accentColor = cfg.noteType === 'CN' ? '#6366f1' : '#ef4444';
+    const headerColor = cfg.isPriceDiff ? '#f59e0b' : '#475569'; // Gold for Price Diff
+    
+    if (cfg.isPriceDiff) {
+        colgroup.innerHTML = `
+            <col style="width:23%"><!-- Product -->
+            <col style="width:10%"><!-- Batch -->
+            <col style="width:7%"><!-- Qty -->
+            <col style="width:10%"><!-- Old Rate -->
+            <col style="width:10%"><!-- New Rate -->
+            <col style="width:10%"><!-- Diff -->
+            <col style="width:7%"><!-- GST% -->
+            <col style="width:12%"><!-- Total -->
+            <col style="width:4%"><!-- Del -->
+        `;
+        thead.innerHTML = `
+            <tr style="background:rgba(245,158,11,0.1); border-bottom:1px solid rgba(245,158,11,0.25);">
+                <th style="padding:7px 8px;text-align:left;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">Product</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">Batch No</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">Qty</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">Inv Rate</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">New Rate</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">Diff</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">GST%</th>
+                <th style="padding:7px 8px;text-align:right;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:${headerColor};">Total</th>
+                <th></th>
+            </tr>
+        `;
+    } else {
+        colgroup.innerHTML = `
+            <col style="width:24%"><!-- Product -->
+            <col style="width:7%"><!-- HSN -->
+            <col style="width:10%"><!-- Batch -->
+            <col style="width:9%"><!-- Exp MM-YY -->
+            <col style="width:6%"><!-- Qty -->
+            <col style="width:9%"><!-- Price -->
+            <col style="width:5%"><!-- GST% -->
+            <col style="width:10%"><!-- Total -->
+            <col style="width:3%"><!-- Del -->
+        `;
+        thead.innerHTML = `
+            <tr style="background:rgba(99,102,241,0.08);border-bottom:1px solid rgba(99,102,241,0.15);">
+                <th style="padding:7px 8px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Product</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">HSN</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Batch No</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Exp (MM-YY)</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Qty</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Price</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">GST%</th>
+                <th style="padding:7px 8px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Total</th>
+                <th></th>
+            </tr>
+        `;
+    }
 
     // Party dropdown
     const sel = document.getElementById('return-party');
@@ -3249,7 +3307,6 @@ function closeReturnModal() {
     currentEditingNoteId = null;
 }
 
-let returnRowCounter = 0;
 function addReturnRow() {
     const id  = Date.now() + '-' + (returnRowCounter++);
     const row = document.createElement('tr');
@@ -3258,57 +3315,96 @@ function addReturnRow() {
     row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.025)';
     row.onmouseout  = () => row.style.background = 'transparent';
 
-    // Month options 01-12
-    const months = Array.from({length:12},(_,i)=>{const m=String(i+1).padStart(2,'0'); return `<option value="${m}">${m}</option>`;}).join('');
-    // Year options current year to +5
-    const curYear = new Date().getFullYear();
-    const years   = Array.from({length:8},(_,i)=>{const y=curYear+i; return `<option value="${y}">${y}</option>`;}).join('');
+    const reason = document.getElementById('return-reason').value;
+    const cfg = RETURN_MODULE_CONFIG[reason] || {};
+    const isPD = cfg.isPriceDiff;
 
     const cellStyle = 'padding:4px 5px;';
     const inputBase = 'width:100%;box-sizing:border-box;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.07);border-radius:5px;color:#e2e8f0;font-size:0.72rem;padding:4px 6px;transition:border-color 0.2s;';
-    const selBase   = inputBase + 'cursor:pointer;';
 
-    row.innerHTML = `
-        <td style="${cellStyle}padding-left:8px;" class="search-container">
-            <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
-                oninput="handleProductSearch(this, 'RETURN-${id}')"
-                onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
-                style="${inputBase}font-size:0.71rem;">
-            <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
-            <div id="return-search-results-${id}" class="search-results"></div>
-        </td>
-        <td style="${cellStyle}">
-            <input type="text" id="return-hsn-${id}" readonly
-                style="${inputBase}background:transparent;border-color:transparent;color:#64748b;font-size:0.68rem;text-align:center;">
-        </td>
-        <td style="${cellStyle}">
-            <input type="text" id="return-batch-${id}" placeholder="Batch No"
-                style="${inputBase}">
-        </td>
-        <td style="${cellStyle}">
-            <input type="text" id="return-exp-${id}" placeholder="MM-YY"
-                oninput="formatMMYY(this); calculateReturnTotals()" maxlength="5"
-                style="${inputBase}text-align:center;">
-        </td>
-        <td style="${cellStyle}">
-            <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
-                style="${inputBase}width:52px;text-align:center;">
-        </td>
-        <td style="${cellStyle}">
-            <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
-                style="${inputBase}width:88px;text-align:right;font-family:monospace;">
-        </td>
-        <td style="${cellStyle}">
-            <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
-                style="${inputBase}width:46px;text-align:center;color:#fff;font-weight:700;">
-        </td>
-        <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
-        <td style="padding:4px 6px;text-align:center;">
-            <button type="button" onclick="removeReturnRow('${id}')"
-                style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
-                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
-        </td>
-    `;
+    if (isPD) {
+        row.innerHTML = `
+            <td style="${cellStyle}padding-left:8px;" class="search-container">
+                <input type="text" id="return-prod-search-${id}" placeholder="Search Product..." 
+                    oninput="handleProductSearch(this, 'RETURN-${id}')"
+                    onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
+                    style="${inputBase}font-size:0.71rem; border-color:rgba(245,158,11,0.2);">
+                <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
+                <div id="return-search-results-${id}" class="search-results"></div>
+            </td>
+            <td style="${cellStyle}">
+                <input type="text" id="return-batch-${id}" placeholder="Batch" style="${inputBase}">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
+                    style="${inputBase}width:100%;text-align:center;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-old-rate-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="Old"
+                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-new-rate-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="New"
+                    style="${inputBase}text-align:right; font-family:monospace; border-color:rgba(245,158,11,0.3);">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" readonly
+                    style="${inputBase}text-align:right; font-family:monospace; background:transparent; border:none; color:var(--accent); font-weight:800;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5"
+                    style="${inputBase}text-align:center; color:#fff; font-weight:700;">
+            </td>
+            <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
+            <td style="padding:4px 6px;text-align:center;">
+                <button type="button" onclick="removeReturnRow('${id}')"
+                    style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
+                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
+            </td>
+        `;
+    } else {
+        row.innerHTML = `
+            <td style="${cellStyle}padding-left:8px;" class="search-container">
+                <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
+                    oninput="handleProductSearch(this, 'RETURN-${id}')"
+                    onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
+                    style="${inputBase}font-size:0.71rem;">
+                <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
+                <div id="return-search-results-${id}" class="search-results"></div>
+            </td>
+            <td style="${cellStyle}">
+                <input type="text" id="return-hsn-${id}" readonly
+                    style="${inputBase}background:transparent;border-color:transparent;color:#64748b;font-size:0.68rem;text-align:center;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="text" id="return-batch-${id}" placeholder="Batch No"
+                    style="${inputBase}">
+            </td>
+            <td style="${cellStyle}">
+                <input type="text" id="return-exp-${id}" placeholder="MM-YY"
+                    oninput="formatMMYY(this); calculateReturnTotals()" maxlength="5"
+                    style="${inputBase}text-align:center;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
+                    style="${inputBase}width:52px;text-align:center;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
+                    style="${inputBase}width:88px;text-align:right;font-family:monospace;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
+                    style="${inputBase}width:46px;text-align:center;color:#fff;font-weight:700;">
+            </td>
+            <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
+            <td style="padding:4px 6px;text-align:center;">
+                <button type="button" onclick="removeReturnRow('${id}')"
+                    style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
+                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
+            </td>
+        `;
+    }
     document.getElementById('return-items-body').appendChild(row);
     returnItems.push(id);
     return id;
@@ -3323,14 +3419,24 @@ function removeReturnRow(id) {
 function updateReturnRowData(rowId, productId) {
     const p = allProducts.find(x => x._id === productId);
     if (p) {
-        document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
-        document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
+        const reason = document.getElementById('return-reason').value;
+        const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
+
+        if (isPD) {
+            document.getElementById(`return-old-rate-${rowId}`).value = p.pts || 0;
+        } else {
+            document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
+            document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
+        }
+
         document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 0;
+        
         if (p.batches && p.batches.length > 0) {
             const b = p.batches[0];
             document.getElementById(`return-batch-${rowId}`).value = b.batchNo || '';
-            // Auto-fill MM-YY from batch expDate
-            if (b.expDate) {
+            
+            // Auto-fill MM-YY from batch expDate (only if standard return)
+            if (b.expDate && !isPD) {
                 const el = document.getElementById(`return-exp-${rowId}`);
                 if (el) el.value = b.expDate.replace('/', '-');
             }
@@ -3343,9 +3449,21 @@ function calculateReturnTotals() {
     let subtotal = 0;
     let gstTotal = 0;
 
+    const reason = document.getElementById('return-reason').value;
+    const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
+
     returnItems.forEach(id => {
         const qty = Number(document.getElementById(`return-qty-${id}`).value) || 0;
-        const price = Number(document.getElementById(`return-price-${id}`).value) || 0;
+        let price = Number(document.getElementById(`return-price-${id}`).value) || 0;
+        
+        if (isPD) {
+            const oldR = Number(document.getElementById(`return-old-rate-${id}`).value) || 0;
+            const newR = Number(document.getElementById(`return-new-rate-${id}`).value) || 0;
+            // Difference is what we bill
+            price = Math.abs(oldR - newR); 
+            document.getElementById(`return-price-${id}`).value = price.toFixed(2);
+        }
+
         const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value) || 0;
         
         const taxable = Number((qty * price).toFixed(2));
@@ -3372,6 +3490,7 @@ function calculateReturnTotals() {
 async function saveMultiItemReturn(e) {
     e.preventDefault();
     const reasonValue = document.getElementById('return-reason').value;
+    const isPD = (RETURN_MODULE_CONFIG[reasonValue] || {}).isPriceDiff;
     const pId = document.getElementById('return-party').value;
     const pName = allStockists.find(s => s._id == pId)?.name || 'Direct Customer';
     
@@ -3388,11 +3507,14 @@ async function saveMultiItemReturn(e) {
             const price  = Number(document.getElementById(`return-price-${id}`).value);
             const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
             const batch  = document.getElementById(`return-batch-${id}`).value;
-            const hsn    = document.getElementById(`return-hsn-${id}`).value;
-            const exp = document.getElementById(`return-exp-${id}`).value || 'N/A';
+            const hsn    = isPD ? '' : document.getElementById(`return-hsn-${id}`).value;
+            const exp    = isPD ? 'N/A' : (document.getElementById(`return-exp-${id}`).value || 'N/A');
 
-            if (!prodId || !qty || !price || !batch || !exp) {
-                throw new Error('All columns (Product, Batch, Exp Month/Year, Qty, Price) are mandatory.');
+            if (!prodId || !qty || !price || !batch) {
+                throw new Error('Required columns (Product, Batch, Qty, Rate) are mandatory.');
+            }
+            if (!isPD && exp === 'N/A') {
+                throw new Error('Expiry Month/Year is mandatory for Returns.');
             }
             const taxable = qty * price;
             return {
