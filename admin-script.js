@@ -177,6 +177,7 @@ let directSaleItems = []; // Temporary storage for direct sales entry
 let currentEditingNoteId = null; 
 let allPayments = [];
 let currentPaymentTypeFilter = 'RECEIPT';
+let returnRowCounter = 0;
 
 // --- INITIALIZATION ---
 window.onload = async () => {
