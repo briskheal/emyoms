@@ -423,52 +423,55 @@ async function handleAdminLogin(e) {
 
 // --- NAVIGATION ---
 function switchTab(tabId, el, subType = null) {
-    // 1. Update Sidebar UI - Clear all active states from both nav-items and sub-menu links
-    document.querySelectorAll('.nav-item, .sidebar aside div[onclick*="switchTab"]').forEach(item => {
-        item.classList.remove('active');
-        if (item.style) item.style.color = ''; // Reset inline color if any
-    });
-    if (el) el.classList.add('active');
+    try {
+        // 1. Update Sidebar UI
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.style) item.style.color = '';
+        });
+        if (el) el.classList.add('active');
 
-    // 2. Switch Content Visibility
-    document.querySelectorAll('.content > div').forEach(div => div.classList.add('hidden'));
-    const targetTab = document.getElementById(`tab-${tabId}`);
-    if (targetTab) {
-        targetTab.classList.remove('hidden');
-    } else {
-        console.error(`Tab ${tabId} not found`);
-        return;
-    }
-
-    // 3. Trigger Data Renders
-    if (tabId === 'stockists') renderStockists();
-    if (tabId === 'masters') renderMasterLists();
-    if (tabId === 'orders') renderOrderHistory();
-    if (tabId === 'invoices') renderInvoices();
-    if (tabId === 'pdcn-approvals') fetchPDCNClaims();
-    if (tabId === 'notes') {
-        currentNoteReason = subType || 'ALL';
-        renderFinancialNotes();
-        filterNotes();
-        
-        // Update context label
-        const label = document.getElementById('note-context-label');
-        if(label) {
-            let labelText = "Global View";
-            if (currentNoteReason === 'Salable Return') labelText = "Sales Linked CN (Returns/Claims)";
-            else if (currentNoteReason === 'Purchase Return') labelText = "Purc. Linked DN (Stock/Rate)";
-            else if (currentNoteReason === 'Price Diff') labelText = "Price Difference (CN/DN)";
-            else if (currentNoteReason !== 'ALL') labelText = `Viewing: ${currentNoteReason}`;
-            label.innerText = labelText;
+        // 2. Switch Content Visibility
+        document.querySelectorAll('.content > div').forEach(div => div.classList.add('hidden'));
+        const targetTab = document.getElementById(`tab-${tabId}`);
+        if (targetTab) {
+            targetTab.classList.remove('hidden');
+        } else {
+            console.error(`Tab tab-${tabId} not found`);
+            return;
         }
+
+        // 3. Trigger Data Renders
+        if (tabId === 'stockists') renderStockists();
+        if (tabId === 'masters') renderMasterLists();
+        if (tabId === 'orders') renderOrderHistory();
+        if (tabId === 'invoices') renderInvoices();
+        if (tabId === 'pdcn-approvals') fetchPDCNClaims();
+        if (tabId === 'notes') {
+            currentNoteReason = subType || 'ALL';
+            renderFinancialNotes();
+            filterNotes();
+            
+            const label = document.getElementById('note-context-label');
+            if(label) {
+                let labelText = "Global View";
+                if (currentNoteReason === 'Salable Return') labelText = "Sales Linked CN (Returns/Claims)";
+                else if (currentNoteReason === 'Purchase Return') labelText = "Purc. Linked DN (Stock/Rate)";
+                else if (currentNoteReason === 'Price Diff') labelText = "Price Difference (CN/DN)";
+                else if (currentNoteReason !== 'ALL') labelText = `Viewing: ${currentNoteReason}`;
+                label.innerText = labelText;
+            }
+        }
+        if (tabId === 'purchase') renderPurchaseEntries();
+        if (tabId === 'payments') {
+            currentPaymentTypeFilter = subType || 'RECEIPT';
+            renderPayments();
+        }
+        if (tabId === 'reports') refreshInventoryVal();
+        if (tabId === 'system') loadFailedEmails();
+    } catch (err) {
+        console.error("Navigation error:", err);
     }
-    if (tabId === 'purchase') renderPurchaseEntries();
-    if (tabId === 'payments') {
-        currentPaymentTypeFilter = subType || 'RECEIPT';
-        renderPayments();
-    }
-    if (tabId === 'reports') refreshInventoryVal();
-    if (tabId === 'system') loadFailedEmails();
 }
 
 
@@ -2934,6 +2937,8 @@ async function loadFinancialNotes() {
     try {
         const res = await fetch('/api/admin/financial-notes');
         const data = await res.json();
+        if (!Array.isArray(data)) return;
+
         allNotes = data.map(n => ({
             ...n,
             _id: n._id || n.id,
@@ -2956,7 +2961,10 @@ function filterNotes() {
     }
 
     const filtered = allNotes.filter(n => {
-        const matchesQuery = n.noteNo.toLowerCase().includes(query) || n.partyName.toLowerCase().includes(query);
+        const nNo = (n.noteNo || '').toLowerCase();
+        const nParty = (n.partyName || '').toLowerCase();
+        const matchesQuery = nNo.includes(query) || nParty.includes(query);
+        
         let matchesReason = currentNoteReason === 'ALL' || n.reason === currentNoteReason;
         
         // Combined filter for Price Difference
@@ -2982,7 +2990,7 @@ function updateNotePartyDetails(id, infoId = 'note-party-info') {
 
 function renderFinancialNotes(data = allNotes) {
     const tbody = document.getElementById('noteTableBody');
-    if (!tbody) return;
+    if (!tbody || !Array.isArray(data)) return;
 
     tbody.innerHTML = data.map(n => {
         const isPending = n.status === 'pending';
