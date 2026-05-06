@@ -5149,7 +5149,11 @@ function handleProductSearch(input, context) {
         return;
     }
 
-    let html = `<table>
+    let html = `<div class="search-results-ribbon">
+        <span>PRODUCT SEARCH RESULTS</span>
+        <span>${matches.length} MATCHES</span>
+    </div>
+    <table>
         <thead>
             <tr>
                 <th>Product Name</th>
@@ -5237,7 +5241,11 @@ function handlePartySearch(input, context) {
         return;
     }
 
-    let html = `<table>
+    let html = `<div class="search-results-ribbon">
+        <span>PARTY / STOCKIST SEARCH</span>
+        <span>${matches.length} MATCHES</span>
+    </div>
+    <table>
         <thead>
             <tr>
                 <th>Party Name</th>
@@ -5280,6 +5288,8 @@ function selectParty(id, context) {
     } else if (context === 'RETURN') {
         document.getElementById('return-party-search').value = s.name;
         document.getElementById('return-party').value = id;
+        const supplyEl = document.getElementById('return-supply');
+        if (supplyEl) supplyEl.value = s.state || '';
         document.getElementById('return-party-search-results').style.display = 'none';
         updateNotePartyDetails(id, 'return-party-info');
     }
