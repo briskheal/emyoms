@@ -423,8 +423,11 @@ async function handleAdminLogin(e) {
 
 // --- NAVIGATION ---
 function switchTab(tabId, el, subType = null) {
-    // 1. Update Sidebar UI
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    // 1. Update Sidebar UI - Clear all active states from both nav-items and sub-menu links
+    document.querySelectorAll('.nav-item, .sidebar aside div[onclick*="switchTab"]').forEach(item => {
+        item.classList.remove('active');
+        if (item.style) item.style.color = ''; // Reset inline color if any
+    });
     if (el) el.classList.add('active');
 
     // 2. Switch Content Visibility
@@ -2501,10 +2504,21 @@ function renderPurchaseItems() {
     const rounded = Math.round(total);
     const roundOff = rounded - total;
 
-    document.getElementById('pur-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits:2});
-    document.getElementById('pur-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2});
-    if (document.getElementById('pur-roundoff')) document.getElementById('pur-roundoff').innerText = '₹' + roundOff.toFixed(2);
-    document.getElementById('pur-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:2});
+    // Safety checks for element existence
+    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+    
+    setVal('pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
+    setVal('pur-gst-total', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
+    setVal('pur-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:2}));
+    
+    const roEl = document.getElementById('pur-roundoff');
+    if (roEl) roEl.innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
+
+    // Update Strip if exists
+    setVal('strip-pur-count', purchaseItems.length);
+    setVal('strip-pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
+    setVal('strip-pur-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
+    setVal('strip-pur-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:2}));
 }
 
 async function savePurchaseEntry(e) {
@@ -2769,17 +2783,22 @@ function renderSaleItems() {
     const rounded = Math.round(total);
     const roundOff = rounded - total;
 
-    document.getElementById('sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    document.getElementById('sale-gst-total').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    if (document.getElementById('sale-roundoff')) document.getElementById('sale-roundoff').innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
-    document.getElementById('sale-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    // Safety checks for element existence
+    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+
+    setVal('sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('sale-gst-total', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    
+    const roEl = document.getElementById('sale-roundoff');
+    if (roEl) roEl.innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
 
     // Update Strip
-    if (document.getElementById('strip-sale-count')) document.getElementById('strip-sale-count').innerText = directSaleItems.length;
-    if (document.getElementById('strip-sale-subtotal')) document.getElementById('strip-sale-subtotal').innerText = '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    if (document.getElementById('strip-sale-gst')) document.getElementById('strip-sale-gst').innerText = '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-    if (document.getElementById('strip-sale-roundoff')) document.getElementById('strip-sale-roundoff').innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
-    if (document.getElementById('strip-sale-total')) document.getElementById('strip-sale-total').innerText = '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    setVal('strip-sale-count', directSaleItems.length);
+    setVal('strip-sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
+    setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
 }
 
 async function saveDirectSale(e) {
@@ -3174,7 +3193,7 @@ function openReturnModal(reason, editData = null) {
             style="padding:5px 13px;border-radius:6px;font-size:0.63rem;font-weight:700;
                    letter-spacing:0.05em;border:1px solid ${active ? accentColor : 'transparent'};
                    cursor:pointer;transition:all 0.2s;
-                   background:${active ? 'rgba(' + (cfg.noteType==='CN'?'99?02,241':'239,68,68') + ',0.22)' : 'transparent'};
+                   background:${active ? 'rgba(' + (cfg.noteType==='CN'?'99,102,241':'239,68,68') + ',0.22)' : 'transparent'};
                    color:${active ? '#fff' : '#64748b'};"
         >${cfg.tabLabels[i]}</button>`;
     }).join('');
@@ -3253,6 +3272,7 @@ function addReturnRow() {
         <td style="${cellStyle}padding-left:8px;" class="search-container">
             <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
                 oninput="handleProductSearch(this, 'RETURN-${id}')"
+                onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
                 style="${inputBase}font-size:0.71rem;">
             <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
             <div id="return-search-results-${id}" class="search-results"></div>
@@ -4929,8 +4949,50 @@ async function generateSampleMatchedPDF({
         doc.save(filename);
     }
 }
+// --- KEYBOARD NAVIGATION FOR SEARCH ---
+let currentSearchFocus = -1;
+
+function handleSearchKey(e, resultsId) {
+    const resultsDiv = document.getElementById(resultsId);
+    if (!resultsDiv || resultsDiv.style.display === 'none') return;
+
+    const rows = resultsDiv.querySelectorAll('tbody tr');
+    if (rows.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        currentSearchFocus++;
+        addActive(rows);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        currentSearchFocus--;
+        addActive(rows);
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (currentSearchFocus > -1) {
+            if (rows[currentSearchFocus]) rows[currentSearchFocus].click();
+        }
+    } else if (e.key === 'Escape') {
+        resultsDiv.style.display = 'none';
+    }
+}
+
+function addActive(rows) {
+    if (!rows) return false;
+    removeActive(rows);
+    if (currentSearchFocus >= rows.length) currentSearchFocus = 0;
+    if (currentSearchFocus < 0) currentSearchFocus = rows.length - 1;
+    rows[currentSearchFocus].classList.add('active');
+    rows[currentSearchFocus].scrollIntoView({ block: 'nearest' });
+}
+
+function removeActive(rows) {
+    rows.forEach(r => r.classList.remove('active'));
+}
+
 // --- PRODUCT SEARCH ENGINE (AUTOCOMPLETE) ---
 function handleProductSearch(input, context) {
+    currentSearchFocus = -1;
     const query = input.value.toLowerCase().trim();
     const resultsDiv = document.getElementById(
         context.startsWith('RETURN-') ? `return-search-results-${context.replace('RETURN-', '')}` :
@@ -5019,6 +5081,7 @@ function selectProduct(id, context) {
 }
 
 function handlePartySearch(input, context) {
+    currentSearchFocus = -1;
     const query = input.value.toLowerCase().trim();
     const resultsDiv = document.getElementById(
         context === 'SALE' ? 'sale-party-search-results' : 

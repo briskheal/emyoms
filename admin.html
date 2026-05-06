@@ -316,27 +316,37 @@
         /* Search Autocomplete */
         .search-results {
             position: absolute;
-            background: #1e293b;
-            border: 1px solid var(--glass-border);
+            background: #0f172a;
+            border: 1px solid rgba(255,255,255,0.12);
             border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
             z-index: 10000;
             width: 100%;
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
             display: none;
             margin-top: 5px;
+            animation: fadeIn 0.2s ease-out;
         }
         .search-results table { width: 100%; border-collapse: collapse; }
-        .search-results th { background: rgba(255,255,255,0.03); padding: 8px; font-size: 0.65rem; color: var(--primary); text-align: left; position: sticky; top: 0; z-index: 10001; }
-        .search-results tr { border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s; }
-        .search-results tr:hover { background: rgba(99, 102, 241, 0.1); }
-        .search-results td { padding: 10px 8px; font-size: 0.8rem; }
+        .search-results th { background: rgba(255,255,255,0.05); padding: 10px; font-size: 0.65rem; color: var(--primary); text-align: left; position: sticky; top: 0; z-index: 10001; text-transform: uppercase; letter-spacing: 1px; }
+        .search-results tr { border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s; }
+        .search-results tr:hover { background: rgba(99, 102, 241, 0.25); }
+        .search-results tr.active { background: var(--primary); }
+        .search-results tr.active div, .search-results tr.active td { color: #fff !important; }
+        .search-results td { padding: 12px 10px; font-size: 0.8rem; vertical-align: middle; }
         .search-results .stock-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; }
         .search-results .stock-ok { background: rgba(16, 185, 129, 0.2); color: #10b981; }
         .search-results .stock-low { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
         .search-results .stock-out { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .search-container { position: relative; width: 100%; }
+
+        /* Global Selection & Scrollbar */
+        ::selection { background: #6366f1; color: #fff; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
@@ -398,17 +408,17 @@
                     <span>💰</span> Treasury & Finance <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
                 <div id="sub-finance" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('invoices', null); closeSidebar()">● Sales Invoices</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'RECEIPT'); closeSidebar()">● Payment In (Receipts)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('payments', null, 'PAYMENT'); closeSidebar()">● Payment Out (Payouts)</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('invoices', this); closeSidebar()">● Sales Invoices</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('payments', this, 'RECEIPT'); closeSidebar()">● Payment In (Receipts)</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('payments', this, 'PAYMENT'); closeSidebar()">● Payment Out (Payouts)</div>
                     
                     <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
 
                     <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleSubmenu('sub-notes', null)">● Financial Notes (CN/DN) <i style="font-size: 0.6rem; opacity: 0.5;">▶</i></div>
                     <div id="sub-notes" style="display:none; padding-left: 1rem; flex-direction: column; gap: 0.5rem;">
-                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Salable Return'); closeSidebar()">- Sales Linked CN</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Purchase Return'); closeSidebar()">- Purc. Linked DN</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer;" onclick="switchTab('notes', null, 'Price Diff'); closeSidebar()">- Price Difference (CN/DN)</div>
+                        <div class="nav-item" style="font-size: 0.75rem; padding: 4px 8px;" onclick="switchTab('notes', this, 'Salable Return'); closeSidebar()">- Sales Linked CN</div>
+                        <div class="nav-item" style="font-size: 0.75rem; padding: 4px 8px;" onclick="switchTab('notes', this, 'Purchase Return'); closeSidebar()">- Purc. Linked DN</div>
+                        <div class="nav-item" style="font-size: 0.75rem; padding: 4px 8px;" onclick="switchTab('notes', this, 'Price Diff'); closeSidebar()">- Price Difference (CN/DN)</div>
                     </div>
                 </div>
             </div>
@@ -417,8 +427,8 @@
                     <span>🌐</span> Direct Sales <i style="margin-left: auto; font-size: 0.7rem; opacity: 0.5;">▼</i>
                 </div>
                 <div id="sub-direct-sales" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openOnlineOrderModal(); closeSidebar()">● Online Orders</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="openDirectOrderModal(); closeSidebar()">● Direct Order to Company</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="openOnlineOrderModal(); closeSidebar()">● Online Orders</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="openDirectOrderModal(); closeSidebar()">● Direct Order to Company</div>
                 </div>
             </div>
 
@@ -1952,7 +1962,7 @@
                     <p style="font-size: 0.7rem; color: var(--primary); margin-bottom: 10px; font-weight: 700;">📦 INVENTORY IMPACT DETAILS</p>
                     <div class="form-group search-container">
                         <label>Select Product</label>
-                        <input type="text" id="note-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'NOTE')">
+                        <input type="text" id="note-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'NOTE')" onkeydown="handleSearchKey(event, 'note-search-results')">
                         <input type="hidden" id="note-product">
                         <div id="note-search-results" class="search-results"></div>
                     </div>
@@ -1982,8 +1992,8 @@
     </div>
 
     <!-- MODAL (Multi-Item Return - Sale/Purchase) -->
-    <div id="returnModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;z-index:3000;">
-        <div class="glass-card" style="width:98%;max-width:1380px;padding:1.25rem 1.75rem;max-height:96vh;overflow-y:auto;border:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:0;">
+    <div id="returnModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.94);backdrop-filter:blur(24px);display:flex;align-items:center;justify-content:center;z-index:3000;">
+        <div class="glass-card" style="width:95%;max-width:1250px;padding:1.25rem 1.75rem;max-height:95vh;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;gap:0;">
 
             <!-- ── Header ────────────────────────────────────────────── -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;border-bottom:1px solid var(--glass-border);padding-bottom:0.75rem;">
@@ -2005,7 +2015,7 @@
                 <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:0.85rem;margin-bottom:0.85rem;">
                     <div class="search-container">
                         <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Party / Stockist</label>
-                        <input type="text" id="return-party-search" placeholder="Type Name..." oninput="handlePartySearch(this, 'RETURN')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;">
+                        <input type="text" id="return-party-search" placeholder="Type Name..." oninput="handlePartySearch(this, 'RETURN')" onkeydown="handleSearchKey(event, 'return-party-search-results')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;">
                         <input type="hidden" id="return-party" required>
                         <div id="return-party-search-results" class="search-results"></div>
                         <div id="return-party-info" style="font-size:0.6rem;color:var(--accent);margin-top:3px;min-height:0.8rem;"></div>
@@ -2128,8 +2138,8 @@
 
 
     <!-- MODAL (Purchase Entry) -->
-    <div id="purchaseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 1300px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary);">
+    <div id="purchaseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.94); backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 1250px; max-height: 95vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary); border-radius: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
                 <div>
                     <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:2px;opacity:0.9;">PROCUREMENT MODULE</div>
@@ -2144,7 +2154,7 @@
                 <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
                     <div class="form-group search-container">
                         <label>Select Supplier</label>
-                        <input type="text" id="pur-supplier-search" placeholder="Type Supplier Name/City..." oninput="handlePartySearch(this, 'PURCHASE')">
+                        <input type="text" id="pur-supplier-search" placeholder="Type Supplier Name/City..." oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')">
                         <input type="hidden" id="pur-supplier" required>
                         <div id="pur-party-search-results" class="search-results"></div>
                         <div id="supplier-compliance-box" style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">
@@ -2193,7 +2203,7 @@
                     <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
                         <div class="search-container">
                             <label style="font-size: 0.65rem;">Product Search</label>
-                            <input type="text" id="pur-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'PURCHASE')">
+                            <input type="text" id="pur-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-search-results')">
                             <input type="hidden" id="pur-prod-select">
                             <div id="pur-search-results" class="search-results"></div>
                         </div>
@@ -2265,12 +2275,33 @@
                     <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; letter-spacing: 1px;">✓ CONFIRM & POST PURCHASE</button>
                 </div>
             </form>
+
+            <!-- FIXED CALCULATION STRIP (Similarity Fix) -->
+            <div id="pur-calc-strip" style="position: sticky; bottom: 0; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--primary); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">TOTAL ITEMS:</span>
+                    <span id="strip-pur-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
+                </div>
+                <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">TAXABLE:</span>
+                    <span id="strip-pur-subtotal" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
+                    <span id="strip-pur-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                </div>
+                <div style="margin-left: auto; background: var(--primary); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 0.7rem; font-weight: 900; color: #fff; letter-spacing: 1px;">NET PURCHASE:</span>
+                    <span id="strip-pur-total" style="font-size: 1.2rem; font-weight: 900; color: #fff;">₹0.00</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- MODAL (Direct Sales / Online & Direct) -->
-    <div id="directSaleModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 1300px; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem 5rem 2rem; border-top: 4px solid var(--accent); position: relative;">
+    <div id="directSaleModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.94); backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="glass-card" style="width: 1250px; max-height: 95vh; overflow-y: auto; padding: 1.5rem 2rem 5rem 2rem; border-top: 4px solid var(--accent); position: relative; border-radius: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
                 <div>
                     <div id="sale-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">DIRECT SALES MODULE</div>
@@ -2285,7 +2316,7 @@
                 <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
                     <div class="form-group search-container">
                         <label>Select Party / Customer</label>
-                        <input type="text" id="sale-party-search" placeholder="Type Customer Name/City..." oninput="handlePartySearch(this, 'SALE')">
+                        <input type="text" id="sale-party-search" placeholder="Type Customer Name/City..." oninput="handlePartySearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-party-search-results')">
                         <input type="hidden" id="sale-party" required>
                         <div id="sale-party-search-results" class="search-results"></div>
                     </div>
@@ -2326,7 +2357,7 @@
                     <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
                         <div class="search-container">
                             <label style="font-size: 0.65rem;">Product Search</label>
-                            <input type="text" id="sale-prod-search" placeholder="Type Name/HSN/Group..." oninput="handleProductSearch(this, 'SALE')">
+                            <input type="text" id="sale-prod-search" placeholder="Type Name/HSN/Group..." oninput="handleProductSearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-search-results')">
                             <input type="hidden" id="sale-prod-select">
                             <div id="sale-search-results" class="search-results"></div>
                         </div>
