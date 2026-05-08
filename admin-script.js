@@ -3400,6 +3400,7 @@ function addReturnRow() {
         row.innerHTML = `
             <td style="${cellStyle}padding-left:8px;" class="search-container">
                 <input type="text" id="return-prod-search-${id}" placeholder="Search Product..." 
+                    onfocus="handleProductSearch(this, 'RETURN-${id}')"
                     oninput="handleProductSearch(this, 'RETURN-${id}')"
                     onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
                     style="${inputBase}font-size:0.71rem; border-color:rgba(245,158,11,0.2);">
@@ -3422,6 +3423,10 @@ function addReturnRow() {
                     style="${inputBase}text-align:right; font-family:monospace; border-color:rgba(245,158,11,0.3);">
             </td>
             <td style="${cellStyle}">
+                <input type="number" id="return-mrp-${id}" readonly
+                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; background:transparent; border:none;">
+            </td>
+            <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" readonly
                     style="${inputBase}text-align:right; font-family:monospace; background:transparent; border:none; color:var(--accent); font-weight:800;">
             </td>
@@ -3440,6 +3445,7 @@ function addReturnRow() {
         row.innerHTML = `
             <td style="${cellStyle}padding-left:8px;" class="search-container">
                 <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
+                    onfocus="handleProductSearch(this, 'RETURN-${id}')"
                     oninput="handleProductSearch(this, 'RETURN-${id}')"
                     onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
                     style="${inputBase}font-size:0.71rem;">
@@ -3463,11 +3469,15 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
-                    style="${inputBase}width:52px;text-align:center;">
+                    style="${inputBase}width:100%;text-align:center;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="number" id="return-mrp-${id}" readonly
+                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; background:transparent; border:none;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
-                    style="${inputBase}width:88px;text-align:right;font-family:monospace;">
+                    style="${inputBase}width:100%;text-align:right;font-family:monospace;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
@@ -3502,6 +3512,7 @@ function updateReturnRowData(rowId, productId) {
             document.getElementById(`return-old-rate-${rowId}`).value = p.pts || 0;
         } else {
             document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
+            document.getElementById(`return-mrp-${rowId}`).value   = p.mrp || 0;
             document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
         }
 
@@ -3538,6 +3549,7 @@ function updateBatchDetails(rowId) {
             const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
             
             if (!isPD) {
+                if (b.mrp) document.getElementById(`return-mrp-${rowId}`).value = b.mrp;
                 if (b.pts) document.getElementById(`return-price-${rowId}`).value = b.pts;
                 if (b.expDate) {
                     const el = document.getElementById(`return-exp-${rowId}`);
@@ -5231,21 +5243,25 @@ function handleProductSearch(input, context) {
         return;
     }
 
-    if (allProducts.length === 0) {
-        console.warn("Product search triggered but allProducts is empty. Reloading...");
-        loadProducts();
+    let matches = [];
+    if (query.length === 0) {
+        matches = allProducts.slice(0, 15);
+    } else {
+        matches = allProducts.filter(p => 
+            p.name.toLowerCase().includes(query) || 
+            (p.hsn && p.hsn.toLowerCase().includes(query)) ||
+            (p.group && p.group.toLowerCase().includes(query)) ||
+            (p.category && p.category.toLowerCase().includes(query))
+        ).slice(0, 15);
     }
 
-    const matches = allProducts.filter(p => 
-        p.name.toLowerCase().includes(query) || 
-        (p.hsn && p.hsn.toLowerCase().includes(query)) ||
-        (p.group && p.group.toLowerCase().includes(query)) ||
-        (p.category && p.category.toLowerCase().includes(query))
-    ).slice(0, 15);
-
     if (matches.length === 0) {
-        resultsDiv.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">No matches found for "${query}"</div>`;
-        resultsDiv.style.display = 'block';
+        if (query.length > 0) {
+            resultsDiv.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">No matches found for "${query}"</div>`;
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.style.display = 'none';
+        }
         return;
     }
 

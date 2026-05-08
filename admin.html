@@ -2047,7 +2047,7 @@
                     </div>
                     <div>
                         <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Invoice Date</label>
-                        <input type="text" id="return-inv-date" placeholder="DD-MM-YYYY" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
+                        <input type="date" id="return-inv-date" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
                     </div>
                     <div>
                         <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Place of Supply</label>
@@ -2059,12 +2059,13 @@
                 <div style="flex:1;border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;background:rgba(6,12,24,0.6);margin-bottom:0.75rem;min-height:280px;max-height:450px;overflow-y:auto;">
                     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
                         <colgroup id="return-table-colgroup">
-                            <col style="width:24%"><!-- Product -->
+                            <col style="width:22%"><!-- Product -->
                             <col style="width:7%"><!-- HSN -->
                             <col style="width:10%"><!-- Batch -->
                             <col style="width:9%"><!-- Exp MM-YY -->
-                            <col style="width:6%"><!-- Qty -->
-                            <col style="width:9%"><!-- Price -->
+                            <col style="width:5%"><!-- Qty -->
+                            <col style="width:8%"><!-- MRP -->
+                            <col style="width:8%"><!-- Price -->
                             <col style="width:5%"><!-- GST% -->
                             <col style="width:10%"><!-- Total -->
                             <col style="width:3%"><!-- Del -->
@@ -2076,6 +2077,7 @@
                                 <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Batch No</th>
                                 <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Exp (MM-YY)</th>
                                 <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Qty</th>
+                                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">MRP</th>
                                 <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Price</th>
                                 <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">GST%</th>
                                 <th style="padding:7px 8px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Total</th>
