@@ -39,33 +39,71 @@ function formatMMYY(el) {
 }
 
 let currentPickerTarget = null;
+let currentPickerYear = new Date().getFullYear();
 function openMonthYearPicker(targetId) {
     currentPickerTarget = targetId;
     const modal = document.getElementById('monthYearPickerModal');
-    const yearSelect = document.getElementById('picker-year');
-    const currentYear = new Date().getFullYear();
+    const display = document.getElementById('picker-year-display');
+    const currentVal = document.getElementById(targetId)?.value || '';
     
-    // Populate years (10 years back, 20 years forward)
-    let yearHtml = '';
-    for (let y = currentYear - 5; y <= currentYear + 15; y++) {
-        const shortYear = String(y).slice(-2);
-        yearHtml += `<option value="${shortYear}">${y}</option>`;
+    if (currentVal && currentVal.includes('-')) {
+        const parts = currentVal.split('-');
+        if (parts[1].length === 2) currentPickerYear = 2000 + parseInt(parts[1]);
+        else currentPickerYear = parseInt(parts[1]);
+    } else {
+        currentPickerYear = new Date().getFullYear();
     }
-    yearSelect.innerHTML = yearHtml;
-    yearSelect.value = String(currentYear).slice(-2);
     
+    display.textContent = currentPickerYear;
+    renderPickerMonths();
     modal.classList.remove('hidden');
+}
+
+function renderPickerMonths() {
+    const grid = document.getElementById('picker-month-grid');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const targetVal = document.getElementById(currentPickerTarget)?.value || '';
+    let selMM = '';
+    if (targetVal.includes('-')) selMM = targetVal.split('-')[0];
+
+    grid.innerHTML = months.map((m, i) => {
+        const mm = (i + 1).toString().padStart(2, '0');
+        const isSelected = (selMM === mm && currentPickerYear === (targetVal.includes('-') ? (targetVal.split('-')[1].length === 2 ? 2000+parseInt(targetVal.split('-')[1]) : parseInt(targetVal.split('-')[1])) : -1));
+        const isPast = currentPickerYear < currentYear || (currentPickerYear === currentYear && i < currentMonth);
+        
+        return `
+            <button type="button" onclick="confirmMonthYearSelection('${mm}')" 
+                style="padding: 12px 5px; border-radius: 10px; border: 1px solid ${isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.08)'}; 
+                background: ${isSelected ? 'var(--grad-primary)' : 'rgba(255,255,255,0.03)'}; 
+                color: ${isSelected ? '#fff' : (isPast ? '#64748b' : '#e2e8f0')};
+                font-weight: ${isSelected ? '800' : '500'}; cursor: pointer; transition: all 0.2s; font-size: 0.75rem;">
+                ${m.toUpperCase()}
+            </button>
+        `;
+    }).join('');
+}
+
+function changePickerYear(delta) {
+    currentPickerYear += delta;
+    document.getElementById('picker-year-display').textContent = currentPickerYear;
+    renderPickerMonths();
 }
 
 function closeMonthYearPicker() {
     document.getElementById('monthYearPickerModal').classList.add('hidden');
 }
 
-function confirmMonthYearSelection() {
-    const month = document.getElementById('picker-month').value;
-    const year = document.getElementById('picker-year').value;
+function confirmMonthYearSelection(month) {
     if (currentPickerTarget) {
-        document.getElementById(currentPickerTarget).value = `${month}-${year}`;
+        const shortYear = currentPickerYear.toString().slice(-2);
+        document.getElementById(currentPickerTarget).value = `${month}-${shortYear}`;
+        
+        // Trigger calculation if it's a return row
+        if (currentPickerTarget.startsWith('return-exp-')) {
+            calculateReturnTotals();
+        }
     }
     closeMonthYearPicker();
 }
@@ -3391,14 +3429,9 @@ function addReturnRow() {
                     style="${inputBase}">
             </td>
             <td style="${cellStyle}">
-                <div style="display:flex; gap:2px;">
-                    <select id="return-exp-mm-${id}" onchange="calculateReturnTotals()" style="${inputBase}padding:4px 2px; text-align:center; min-width:40px;">
-                        ${Array.from({length:12}, (_,i)=> (i+1).toString().padStart(2,'0')).map(m => `<option value="${m}">${m}</option>`).join('')}
-                    </select>
-                    <select id="return-exp-yy-${id}" onchange="calculateReturnTotals()" style="${inputBase}padding:4px 2px; text-align:center; min-width:45px;">
-                        ${Array.from({length:16}, (_,i)=> (new Date().getFullYear() + i).toString().slice(-2)).map(y => `<option value="${y}">${y}</option>`).join('')}
-                    </select>
-                </div>
+                <input type="text" id="return-exp-${id}" placeholder="MM-YY" readonly
+                    onclick="openMonthYearPicker('return-exp-${id}')"
+                    style="${inputBase}text-align:center; cursor:pointer; background:rgba(99,102,241,0.1); border-color:rgba(99,102,241,0.3);">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
@@ -3452,13 +3485,8 @@ function updateReturnRowData(rowId, productId) {
             
             // Auto-fill MM-YY from batch expDate (only if standard return)
             if (b.expDate && !isPD) {
-                const parts = b.expDate.split(/[-\/]/);
-                if (parts.length === 2) {
-                    const mm = document.getElementById(`return-exp-mm-${rowId}`);
-                    const yy = document.getElementById(`return-exp-yy-${rowId}`);
-                    if (mm) mm.value = parts[0].padStart(2, '0');
-                    if (yy) yy.value = parts[1].padStart(2, '0');
-                }
+                const el = document.getElementById(`return-exp-${rowId}`);
+                if (el) el.value = b.expDate.replace('/', '-');
             }
         }
     }
@@ -3528,9 +3556,7 @@ async function saveMultiItemReturn(e) {
             const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
             const batch  = document.getElementById(`return-batch-${id}`).value;
             const hsn    = isPD ? '' : document.getElementById(`return-hsn-${id}`).value;
-            const expMM  = document.getElementById(`return-exp-mm-${id}`)?.value || '01';
-            const expYY  = document.getElementById(`return-exp-yy-${id}`)?.value || '24';
-            const exp    = isPD ? 'N/A' : `${expMM}-${expYY}`;
+            const exp    = isPD ? 'N/A' : (document.getElementById(`return-exp-${id}`).value || 'N/A');
 
             if (!prodId || !qty || !price || !batch) {
                 throw new Error('Required columns (Product, Batch, Qty, Rate) are mandatory.');
