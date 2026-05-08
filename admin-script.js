@@ -44,7 +44,8 @@ function openMonthYearPicker(targetId) {
     currentPickerTarget = targetId;
     const modal = document.getElementById('monthYearPickerModal');
     const display = document.getElementById('picker-year-display');
-    const currentVal = document.getElementById(targetId)?.value || '';
+    const input = document.getElementById(targetId);
+    const currentVal = input?.value || '';
     
     if (currentVal && currentVal.includes('-')) {
         const parts = currentVal.split('-');
@@ -54,9 +55,34 @@ function openMonthYearPicker(targetId) {
         currentPickerYear = new Date().getFullYear();
     }
     
+    // Position Picker near Input
+    if (input) {
+        const rect = input.getBoundingClientRect();
+        const pickerHeight = 280; // Approximate
+        const spaceBelow = window.innerHeight - rect.bottom;
+        
+        if (spaceBelow < pickerHeight) {
+            modal.style.top = (rect.top + window.scrollY - pickerHeight - 10) + 'px';
+        } else {
+            modal.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+        }
+        modal.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 300) + 'px';
+    }
+
     display.textContent = currentPickerYear;
     renderPickerMonths();
     modal.classList.remove('hidden');
+
+    // Global Click Outside Listener
+    setTimeout(() => {
+        const closeOnOutsideClick = (e) => {
+            if (!modal.contains(e.target) && e.target.id !== targetId) {
+                closeMonthYearPicker();
+                document.removeEventListener('click', closeOnOutsideClick);
+            }
+        };
+        document.addEventListener('click', closeOnOutsideClick);
+    }, 10);
 }
 
 function renderPickerMonths() {
@@ -74,11 +100,11 @@ function renderPickerMonths() {
         const isPast = currentPickerYear < currentYear || (currentPickerYear === currentYear && i < currentMonth);
         
         return `
-            <button type="button" onclick="confirmMonthYearSelection('${mm}')" 
-                style="padding: 12px 5px; border-radius: 10px; border: 1px solid ${isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.08)'}; 
+            <button type="button" onclick="event.stopPropagation(); confirmMonthYearSelection('${mm}')" 
+                style="padding: 10px 5px; border-radius: 8px; border: 1px solid ${isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.08)'}; 
                 background: ${isSelected ? 'var(--grad-primary)' : 'rgba(255,255,255,0.03)'}; 
                 color: ${isSelected ? '#fff' : (isPast ? '#64748b' : '#e2e8f0')};
-                font-weight: ${isSelected ? '800' : '500'}; cursor: pointer; transition: all 0.2s; font-size: 0.75rem;">
+                font-weight: ${isSelected ? '800' : '500'}; cursor: pointer; transition: all 0.2s; font-size: 0.72rem;">
                 ${m.toUpperCase()}
             </button>
         `;
