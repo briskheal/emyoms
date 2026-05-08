@@ -3266,9 +3266,10 @@ function openReturnModal(reason, editData = null) {
     }
 
     // Party dropdown
-    const sel = document.getElementById('return-party');
-    sel.innerHTML = '<option value="">\u2014 Select Party \u2014</option>' +
-        allStockists.map(s => `<option value="${s._id}">${s.name} (${s.partyType || 'STOCKIST'})</option>`).join('');
+    // Party Search Setup
+    document.getElementById('return-party-search').value = '';
+    document.getElementById('return-party').value = '';
+    document.getElementById('return-party-info').innerHTML = '';
 
     document.getElementById('returnForm').reset();
     document.getElementById('return-items-body').innerHTML = '';
@@ -3390,9 +3391,14 @@ function addReturnRow() {
                     style="${inputBase}">
             </td>
             <td style="${cellStyle}">
-                <input type="text" id="return-exp-${id}" placeholder="MM-YY"
-                    oninput="formatMMYY(this); calculateReturnTotals()" maxlength="5"
-                    style="${inputBase}text-align:center;">
+                <div style="display:flex; gap:2px;">
+                    <select id="return-exp-mm-${id}" onchange="calculateReturnTotals()" style="${inputBase}padding:4px 2px; text-align:center; min-width:40px;">
+                        ${Array.from({length:12}, (_,i)=> (i+1).toString().padStart(2,'0')).map(m => `<option value="${m}">${m}</option>`).join('')}
+                    </select>
+                    <select id="return-exp-yy-${id}" onchange="calculateReturnTotals()" style="${inputBase}padding:4px 2px; text-align:center; min-width:45px;">
+                        ${Array.from({length:16}, (_,i)=> (new Date().getFullYear() + i).toString().slice(-2)).map(y => `<option value="${y}">${y}</option>`).join('')}
+                    </select>
+                </div>
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
@@ -3446,8 +3452,13 @@ function updateReturnRowData(rowId, productId) {
             
             // Auto-fill MM-YY from batch expDate (only if standard return)
             if (b.expDate && !isPD) {
-                const el = document.getElementById(`return-exp-${rowId}`);
-                if (el) el.value = b.expDate.replace('/', '-');
+                const parts = b.expDate.split(/[-\/]/);
+                if (parts.length === 2) {
+                    const mm = document.getElementById(`return-exp-mm-${rowId}`);
+                    const yy = document.getElementById(`return-exp-yy-${rowId}`);
+                    if (mm) mm.value = parts[0].padStart(2, '0');
+                    if (yy) yy.value = parts[1].padStart(2, '0');
+                }
             }
         }
     }
@@ -3517,7 +3528,9 @@ async function saveMultiItemReturn(e) {
             const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value);
             const batch  = document.getElementById(`return-batch-${id}`).value;
             const hsn    = isPD ? '' : document.getElementById(`return-hsn-${id}`).value;
-            const exp    = isPD ? 'N/A' : (document.getElementById(`return-exp-${id}`).value || 'N/A');
+            const expMM  = document.getElementById(`return-exp-mm-${id}`)?.value || '01';
+            const expYY  = document.getElementById(`return-exp-yy-${id}`)?.value || '24';
+            const exp    = isPD ? 'N/A' : `${expMM}-${expYY}`;
 
             if (!prodId || !qty || !price || !batch) {
                 throw new Error('Required columns (Product, Batch, Qty, Rate) are mandatory.');
@@ -5131,9 +5144,14 @@ function handleProductSearch(input, context) {
         context === 'PURCHASE' ? 'pur-search-results' : 'note-search-results'
     );
     
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
         resultsDiv.style.display = 'none';
         return;
+    }
+
+    if (allProducts.length === 0) {
+        console.warn("Product search triggered but allProducts is empty. Reloading...");
+        loadProducts();
     }
 
     const matches = allProducts.filter(p => 
@@ -5223,21 +5241,26 @@ function handlePartySearch(input, context) {
         context === 'PURCHASE' ? 'pur-party-search-results' : 'return-party-search-results'
     );
     
-    if (!query || query.length < 2) {
-        resultsDiv.style.display = 'none';
-        return;
+    let matches = [];
+    if (query.length === 0 && context === 'RETURN') {
+        // Show all stockists for the "Selection Menu" feel
+        matches = allStockists.filter(s => (s.partyType || 'STOCKIST') === 'STOCKIST').slice(0, 15);
+    } else if (query.length >= 1) {
+        matches = allStockists.filter(s => {
+            const nameMatch = s.name.toLowerCase().includes(query);
+            const cityMatch = (s.city || '').toLowerCase().includes(query);
+            const typeMatch = (context === 'PURCHASE') ? s.partyType === 'SUPPLIER' : (s.partyType || 'STOCKIST') === 'STOCKIST';
+            return (nameMatch || cityMatch) && typeMatch;
+        }).slice(0, 15);
     }
 
-    const matches = allStockists.filter(s => {
-        const nameMatch = s.name.toLowerCase().includes(query);
-        const cityMatch = (s.city || '').toLowerCase().includes(query);
-        const typeMatch = (context === 'PURCHASE') ? s.partyType === 'SUPPLIER' : (s.partyType || 'STOCKIST') === 'STOCKIST';
-        return (nameMatch || cityMatch) && typeMatch;
-    }).slice(0, 10);
-
-    if (matches.length === 0) {
-        resultsDiv.innerHTML = `<div style="padding:10px; text-align:center; color:var(--text-muted); font-size:0.75rem;">No parties found.</div>`;
-        resultsDiv.style.display = 'block';
+    if (!matches || matches.length === 0) {
+        if (query.length > 0) {
+            resultsDiv.innerHTML = `<div style="padding:10px; text-align:center; color:var(--text-muted); font-size:0.75rem;">No parties found.</div>`;
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.style.display = 'none';
+        }
         return;
     }
 

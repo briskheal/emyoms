@@ -2033,7 +2033,10 @@
                 <div style="display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:0.85rem;margin-bottom:0.85rem;">
                     <div class="search-container">
                         <label style="display:block;font-size:0.6rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:4px;">Party / Stockist</label>
-                        <input type="text" id="return-party-search" placeholder="Type Name..." oninput="handlePartySearch(this, 'RETURN')" onkeydown="handleSearchKey(event, 'return-party-search-results')" style="width:100%;font-size:0.78rem;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;">
+                        <div style="position:relative;">
+                            <input type="text" id="return-party-search" placeholder="Select Party..." onfocus="handlePartySearch(this, 'RETURN')" oninput="handlePartySearch(this, 'RETURN')" onkeydown="handleSearchKey(event, 'return-party-search-results')" style="width:100%;font-size:0.78rem;padding:6px 10px;padding-right:30px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:#e2e8f0;box-sizing:border-box;">
+                            <i class="fa fa-search" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.3);font-size:0.7rem;pointer-events:none;"></i>
+                        </div>
                         <input type="hidden" id="return-party" required>
                         <div id="return-party-search-results" class="search-results"></div>
                         <div id="return-party-info" style="font-size:0.6rem;color:var(--accent);margin-top:3px;min-height:0.8rem;"></div>
@@ -2053,7 +2056,7 @@
                 </div>
 
                 <!-- ── Items Table ──────────────────────────────── -->
-                <div style="flex:1;border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;background:rgba(6,12,24,0.6);margin-bottom:0.75rem;">
+                <div style="flex:1;border:1px solid rgba(99,102,241,0.15);border-radius:10px;overflow:hidden;background:rgba(6,12,24,0.6);margin-bottom:0.75rem;min-height:280px;max-height:450px;overflow-y:auto;">
                     <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
                         <colgroup id="return-table-colgroup">
                             <col style="width:24%"><!-- Product -->
