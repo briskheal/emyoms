@@ -3425,8 +3425,10 @@ function addReturnRow() {
                     style="${inputBase}background:transparent;border-color:transparent;color:#64748b;font-size:0.68rem;text-align:center;">
             </td>
             <td style="${cellStyle}">
-                <input type="text" id="return-batch-${id}" placeholder="Batch No"
+                <input type="text" id="return-batch-${id}" placeholder="Select Batch" list="batch-list-${id}"
+                    onchange="updateBatchDetails('${id}')"
                     style="${inputBase}">
+                <datalist id="batch-list-${id}"></datalist>
             </td>
             <td style="${cellStyle}">
                 <input type="text" id="return-exp-${id}" placeholder="MM-YY" readonly
@@ -3479,6 +3481,12 @@ function updateReturnRowData(rowId, productId) {
 
         document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 0;
         
+        // Populate Batch Datalist
+        const batchList = document.getElementById(`batch-list-${rowId}`);
+        if (batchList) {
+            batchList.innerHTML = (p.batches || []).map(b => `<option value="${b.batchNo}">${b.batchNo} (Exp: ${b.expDate})</option>`).join('');
+        }
+
         if (p.batches && p.batches.length > 0) {
             const b = p.batches[0];
             document.getElementById(`return-batch-${rowId}`).value = b.batchNo || '';
@@ -3487,6 +3495,28 @@ function updateReturnRowData(rowId, productId) {
             if (b.expDate && !isPD) {
                 const el = document.getElementById(`return-exp-${rowId}`);
                 if (el) el.value = b.expDate.replace('/', '-');
+            }
+        }
+    }
+    calculateReturnTotals();
+}
+
+function updateBatchDetails(rowId) {
+    const prodId = document.getElementById(`return-prod-select-${rowId}`).value;
+    const batchNo = document.getElementById(`return-batch-${rowId}`).value;
+    const p = allProducts.find(x => x._id === prodId);
+    if (p && p.batches) {
+        const b = p.batches.find(x => x.batchNo === batchNo);
+        if (b) {
+            const reason = document.getElementById('return-reason').value;
+            const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
+            
+            if (!isPD) {
+                if (b.pts) document.getElementById(`return-price-${rowId}`).value = b.pts;
+                if (b.expDate) {
+                    const el = document.getElementById(`return-exp-${rowId}`);
+                    if (el) el.value = b.expDate.replace('/', '-');
+                }
             }
         }
     }
