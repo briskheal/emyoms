@@ -3429,11 +3429,11 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-mrp-${id}" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; background:transparent; border:none;">
+                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; opacity:0.7;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; background:transparent; border:none; color:var(--accent); font-weight:800;">
+                    style="${inputBase}text-align:right; font-family:monospace; color:var(--accent); font-weight:800; opacity:0.9;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5"
@@ -3482,7 +3482,7 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-mrp-${id}" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; background:transparent; border:none;">
+                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; opacity:0.7;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
