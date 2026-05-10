@@ -2198,32 +2198,36 @@
                 <form id="purchaseForm" onsubmit="return false;" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     
                     <!-- SUPPLIER & HEADER INFO -->
-                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1.5fr 0.85fr 1fr 0.8fr 0.75fr 0.75fr; gap: 0.4rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Select Supplier</label>
-                            <input type="text" id="pur-party-search" placeholder="Type Supplier Name..." onfocus="handlePartySearch(this, 'PURCHASE')" oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')" style="font-size: 0.8rem; height: 32px;">
+                            <input type="text" id="pur-party-search" placeholder="Type Supplier Name..." onfocus="handlePartySearch(this, 'PURCHASE')" oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')" style="font-size: 0.75rem; height: 30px;">
                             <input type="hidden" id="pur-supplier" required>
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Purchase Bill No</label>
-                            <input type="text" id="pur-bill-no" required placeholder="Generating..." style="font-size: 0.8rem; height: 32px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7; color: var(--primary);">Internal Bill No</label>
+                            <input type="text" id="pur-bill-no" required placeholder="Auto..." style="font-size: 0.75rem; height: 30px; font-family: monospace; font-weight: 700; color: var(--primary);">
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Purchase Date</label>
-                            <input type="date" id="pur-date" required style="font-size: 0.8rem; height: 32px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7; color: var(--accent);">Supplier Invoice No ★</label>
+                            <input type="text" id="pur-supplier-inv-no" placeholder="Supplier Bill No..." style="font-size: 0.75rem; height: 30px; border-color: rgba(16,185,129,0.3);">
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Payment Mode</label>
-                            <select id="pur-payment-mode" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Purchase Date</label>
+                            <input type="date" id="pur-date" required style="font-size: 0.75rem; height: 30px;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Mode</label>
+                            <select id="pur-payment-mode" style="font-size: 0.75rem; height: 30px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 4px;">
                                 <option value="CASH">CASH</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CREDIT">CREDIT</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Warehouse</label>
-                            <select id="pur-warehouse" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
-                                <option value="MAIN">Main Warehouse</option>
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Warehouse</label>
+                            <select id="pur-warehouse" style="font-size: 0.75rem; height: 30px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 4px;">
+                                <option value="MAIN">Main WH</option>
                             </select>
                         </div>
                     </div>

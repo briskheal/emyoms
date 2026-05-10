@@ -2516,6 +2516,7 @@ function openPurchaseModal() {
         safeSetVal('pur-supplier', '');
         safeSetVal('pur-prod-search', '');
         safeSetVal('pur-prod-select', '');
+        safeSetVal('pur-supplier-inv-no', '');
         // Set Today's Date
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -2651,6 +2652,7 @@ async function savePurchaseEntry(event) {
         const payload = {
             supplierId: supplier,
             billNo,
+            supplierInvoiceNo: document.getElementById('pur-supplier-inv-no')?.value?.trim() || '',
             date: billDate,
             paymentMode: document.getElementById('pur-payment-mode').value,
             warehouse: document.getElementById('pur-warehouse')?.value || 'MAIN',
