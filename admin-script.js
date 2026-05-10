@@ -3321,6 +3321,7 @@ function openReturnModal(reason, editData = null) {
                 <th style="padding:7px 5px;text-align:left;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Batch No</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Exp (MM-YY)</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Qty</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">MRP</th>
                 <th style="padding:7px 5px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Price</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">GST%</th>
                 <th style="padding:7px 8px;text-align:right;font-size:0.55rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#475569;">Total</th>
@@ -3511,7 +3512,7 @@ function removeReturnRow(id) {
 }
 
 function updateReturnRowData(rowId, productId) {
-    const p = allProducts.find(x => x._id === productId);
+    const p = allProducts.find(x => String(x._id) === String(productId));
     if (p) {
         const reason = document.getElementById('return-reason').value;
         const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
@@ -5293,8 +5294,8 @@ function handleProductSearch(input, context) {
         const stockClass = stock > 50 ? 'stock-ok' : (stock > 0 ? 'stock-low' : 'stock-out');
         const stockLabel = stock > 0 ? stock : 'OUT';
 
-        html += `<tr onclick="selectProduct('${p._id}', '${context}')">
-            <td>
+        html += `<tr onclick="selectProduct('${p._id}', '${context}')" style="white-space: nowrap;">
+            <td style="min-width: 200px;">
                 <div style="font-weight:700; color:#fff;">${p.name}</div>
                 <div style="font-size:0.65rem; color:var(--text-muted);">${p.hsn || '-'} | ${p.group || 'GENERAL'}</div>
             </td>
