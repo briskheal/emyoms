@@ -3296,9 +3296,9 @@ function openReturnModal(reason, editData = null) {
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Qty</th>
                 <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Inv Rate</th>
                 <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">New Rate</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Diff</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Diff</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">GST%</th>
-                <th style="padding:7px 8px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Total</th>
+                <th style="padding:7px 8px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Total</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Act</th>
             </tr>
         `;
@@ -3321,8 +3321,8 @@ function openReturnModal(reason, editData = null) {
                 <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Batch No</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Exp (MM-YY)</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Qty</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">MRP</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Price</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">MRP</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Price</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">GST%</th>
                 <th style="padding:7px 8px;text-align:right;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Total</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Act</th>
