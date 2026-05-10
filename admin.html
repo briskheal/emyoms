@@ -2183,22 +2183,22 @@
         <div class="glass-card" style="width: 1250px; height: 95vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--primary); border-radius: 20px; position: relative;">
             
             <!-- FIXED HEADER -->
-            <div style="padding: 1.2rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); flex: 0 0 auto;">
+            <div style="padding: 0.45rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); flex: 0 0 auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:2px;opacity:0.9;">INVENTORY MANAGEMENT</div>
-                        <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Purchase Inward Entry</div>
+                        <div style="font-size:0.5rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);opacity:0.9;">INVENTORY MANAGEMENT</div>
+                        <div style="font-size:0.9rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Purchase Inward Entry</div>
                     </div>
-                    <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+                    <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:4px 10px;font-size:0.7rem;opacity:0.7;">✕ Close</button>
                 </div>
             </div>
             
             <!-- SCROLLABLE CONTENT -->
-            <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; padding: 0.8rem 1.5rem 0.5rem 1.5rem;">
-                <form id="purchaseForm" onsubmit="return false;" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.5rem;">
+            <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; padding: 0.4rem 1.5rem 0.4rem 1.5rem;">
+                <form id="purchaseForm" onsubmit="return false;" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     
                     <!-- SUPPLIER & HEADER INFO -->
-                    <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Select Supplier</label>
                             <input type="text" id="pur-party-search" placeholder="Type Supplier Name..." onfocus="handlePartySearch(this, 'PURCHASE')" oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')" style="font-size: 0.8rem; height: 32px;">
@@ -2233,20 +2233,20 @@
                         <div class="table-container" style="flex: 1; overflow-y: auto;">
                             <table style="font-size: 0.72rem; table-layout: fixed; border-collapse: separate; border-spacing: 0;">
                                 <thead style="position: sticky; top: 0; background: #0f172a; z-index: 100;">
-                                    <tr>
-                                        <th style="width: 45px; text-align: center;">ACT</th>
-                                        <th style="width: 25%;">Product Details</th>
-                                        <th style="width: 14%;">Batch No</th>
-                                        <th style="width: 9%;">Mfg (MM-YY)</th>
-                                        <th style="width: 9%;">Exp (MM-YY)</th>
-                                        <th style="width: 8%;">MRP</th>
-                                        <th style="width: 8%;">Rate</th>
-                                        <th style="width: 7%;">Qty</th>
-                                        <th style="width: 6%;">GST%</th>
-                                        <th style="width: 10%; text-align: right; padding-right: 12px;">Line Total</th>
+                                    <tr style="height: 26px;">
+                                        <th style="width: 45px; text-align: center; padding: 4px 2px;">ACT</th>
+                                        <th style="width: 25%; padding: 4px 6px;">Product Details</th>
+                                        <th style="width: 14%; padding: 4px 6px;">Batch No</th>
+                                        <th style="width: 9%; padding: 4px 6px;">Mfg (MM-YY)</th>
+                                        <th style="width: 9%; padding: 4px 6px;">Exp (MM-YY)</th>
+                                        <th style="width: 8%; padding: 4px 6px;">MRP</th>
+                                        <th style="width: 8%; padding: 4px 6px;">Rate</th>
+                                        <th style="width: 7%; padding: 4px 6px;">Qty</th>
+                                        <th style="width: 6%; padding: 4px 6px;">GST%</th>
+                                        <th style="width: 10%; text-align: right; padding: 4px 12px 4px 6px;">Line Total</th>
                                     </tr>
                                     <!-- INTEGRATED INPUT ROW -->
-                                    <tr style="background: rgba(99, 102, 241, 0.12); position: sticky; top: 32px; z-index: 99;">
+                                    <tr style="background: rgba(99, 102, 241, 0.12); position: sticky; top: 26px; z-index: 99;">
                                         <td style="text-align: center;">
                                             <button type="button" onclick="addPurchaseItem()" title="Add Item (Enter)" style="background: var(--accent); border: none; color: #fff; border-radius: 4px; width: 26px; height: 26px; cursor: pointer; font-size: 1rem; font-weight: 900; line-height: 1;">+</button>
                                         </td>
@@ -2256,13 +2256,13 @@
                                                 <input type="hidden" id="pur-prod-select">
                                             </div>
                                         </td>
-                                        <td><input type="text" id="pur-batch" placeholder="BATCH123" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
-                                        <td style="position: relative;"><input type="text" id="pur-mfg" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.72rem; padding: 4px 22px 4px 4px; background: rgba(0,0,0,0.4); height: 30px; width: 100%;"><span onclick="openMonthYearPicker('pur-mfg')" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.75rem; opacity: 0.7; z-index: 5;">📅</span></td>
-                                        <td style="position: relative;"><input type="text" id="pur-exp" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.72rem; padding: 4px 22px 4px 4px; background: rgba(0,0,0,0.4); height: 30px; width: 100%;"><span onclick="openMonthYearPicker('pur-exp')" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.75rem; opacity: 0.7; z-index: 5;">📅</span></td>
-                                        <td><input type="number" id="pur-mrp" step="0.01" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
-                                        <td><input type="number" id="pur-rate" step="0.01" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
-                                        <td><input type="number" id="pur-qty" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
-                                        <td><input type="number" id="pur-gst-pct" value="12" oninput="calculatePurchaseLineTotal()" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="text" id="pur-batch" placeholder="BATCH123" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px;"></td>
+                                        <td style="position: relative;"><input type="text" id="pur-mfg" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.7rem; padding: 3px 20px 3px 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"><span onclick="openMonthYearPicker('pur-mfg')" style="position: absolute; right: 3px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.7rem; opacity: 0.7; z-index: 5;">📅</span></td>
+                                        <td style="position: relative;"><input type="text" id="pur-exp" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.7rem; padding: 3px 20px 3px 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"><span onclick="openMonthYearPicker('pur-exp')" style="position: absolute; right: 3px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.7rem; opacity: 0.7; z-index: 5;">📅</span></td>
+                                        <td><input type="number" id="pur-mrp" step="0.01" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px;"></td>
+                                        <td><input type="number" id="pur-rate" step="0.01" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px;"></td>
+                                        <td><input type="number" id="pur-qty" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px;"></td>
+                                        <td><input type="number" id="pur-gst-pct" value="12" oninput="calculatePurchaseLineTotal()" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px;"></td>
                                         <td style="text-align: right; padding-right: 12px;">
                                             <div id="pur-line-total" style="font-weight: 800; color: var(--primary); font-size: 0.8rem;">₹0.00</div>
                                         </td>
@@ -2274,7 +2274,7 @@
                     </div>
                     
                     <!-- REMARKS & ACTION -->
-                    <div style="flex: 0 0 auto; background: rgba(255,255,255,0.02); padding: 0.5rem 1.2rem; border-radius: 12px; display: flex; align-items: center; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 0 0 auto; background: rgba(255,255,255,0.02); padding: 0.3rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
                          <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
                              <span style="font-size: 0.65rem; font-weight: 800; color: var(--primary); white-space: nowrap;">REMARKS:</span>
                              <input type="text" id="pur-remarks" placeholder="Add purchase notes..." style="background: transparent; border: none; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 4px 0; width: 100%;">
@@ -2285,7 +2285,7 @@
                     </div>
 
                     <!-- CALCULATION FOOTER (FROZEN) -->
-                    <div id="pur-calc-strip" style="flex: 0 0 auto; background: #0f172a; border-top: 2px solid var(--primary); padding: 0.65rem 1.5rem; display: flex; align-items: center; gap: 2rem; border-radius: 12px;">
+                    <div id="pur-calc-strip" style="flex: 0 0 auto; background: #0f172a; border-top: 2px solid var(--primary); padding: 0.35rem 1.5rem; display: flex; align-items: center; gap: 2rem; border-radius: 10px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">TOTAL ITEMS:</span>
                             <span id="strip-pur-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
@@ -2299,9 +2299,9 @@
                             <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
                             <span id="strip-pur-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
                         </div>
-                        <div style="margin-left: auto; background: var(--primary); padding: 8px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px;">
-                            <span style="font-size: 0.75rem; font-weight: 900; color: #fff; letter-spacing: 1px;">NET PAYABLE:</span>
-                            <span id="strip-pur-total" style="font-size: 1.4rem; font-weight: 900; color: #fff;">₹0.00</span>
+                        <div style="margin-left: auto; background: var(--primary); padding: 5px 16px; border-radius: 10px; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 0.65rem; font-weight: 900; color: #fff; letter-spacing: 1px;">NET PAYABLE:</span>
+                            <span id="strip-pur-total" style="font-size: 1.15rem; font-weight: 900; color: #fff;">₹0.00</span>
                         </div>
                     </div>
                     <div id="pur-party-search-results" class="search-results" style="z-index: 9999;"></div>
