@@ -2502,10 +2502,10 @@ function calculatePurchaseLineTotal() {
     const qty = Number(document.getElementById('pur-qty').value) || 0;
     const rate = Number(document.getElementById('pur-rate').value) || 0;
     const gstPct = Number(document.getElementById('pur-gst-pct').value) || 0;
-    const taxable = qty * rate;
-    const total = taxable + taxable * (gstPct / 100);
+    const taxable = Number((qty * rate).toFixed(2));
+    const total = Number((taxable + taxable * (gstPct / 100)).toFixed(2));
     const el = document.getElementById('pur-line-total');
-    if (el) el.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    if (el) el.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function openPurchaseModal() {
@@ -2553,11 +2553,11 @@ function addPurchaseItem() {
         return;
     }
 
-    const taxable = qty * rate;
-    const gstAmount = taxable * (gstPct / 100);
-    const lineTotal = taxable + gstAmount;
+    const taxable = Number((qty * rate).toFixed(2));
+    const gstAmount = Number((taxable * (gstPct / 100)).toFixed(2));
+    const lineTotal = Number((taxable + gstAmount).toFixed(2));
 
-    const newItem = { productId: prodId, productName: prodName, batch, mfg, exp, mrp, rate, qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
+    const newItem = { productId: prodId, productName: prodName, batch, mfg, exp, mrp: Number(mrp.toFixed(2)), rate: Number(rate.toFixed(2)), qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
     purchaseItems.push(newItem);
     console.log('Item added. Items after:', purchaseItems.length, newItem);
 
@@ -2601,11 +2601,11 @@ function renderPurchaseItems() {
             <td>${item.batch || '-'}</td>
             <td>${item.mfg || '-'}</td>
             <td>${item.exp || '-'}</td>
-            <td>₹${(item.mrp || 0).toFixed(2)}</td>
-            <td>₹${(item.rate || 0).toFixed(2)}</td>
+            <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
+            <td>₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align: center; font-weight: 800; color: var(--primary);">${item.qty}</td>
             <td style="text-align: center;">${item.gstPercent}%</td>
-            <td style="text-align: right; padding-right: 12px; font-weight: 900;">₹${(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td style="text-align: right; padding-right: 12px; font-weight: 900;">₹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
     `).join('');
 
