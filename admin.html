@@ -110,6 +110,16 @@
         input[type=number] {
             -moz-appearance: textfield;
         }
+        
+        /* Fix Calendar Icon for Dark Mode */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            opacity: 0.6;
+            cursor: pointer;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
 
         
         .main-container { display: flex; min-height: calc(100vh - 75px); }
