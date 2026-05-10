@@ -3279,17 +3279,17 @@ function openReturnModal(reason, editData = null) {
     
     if (cfg.isPriceDiff) {
         colgroup.innerHTML = `
-            <col style="width:18%"><!-- Product -->
-            <col style="width:8%"><!-- HSN -->
-            <col style="width:10%"><!-- Batch -->
-            <col style="width:9%"><!-- Exp -->
-            <col style="width:5%"><!-- Qty -->
-            <col style="width:8%"><!-- MRP -->
-            <col style="width:9%"><!-- Old Rate -->
-            <col style="width:9%"><!-- New Rate -->
-            <col style="width:8%"><!-- Diff -->
-            <col style="width:7%"><!-- GST% -->
-            <col style="width:10%"><!-- Total -->
+            <col style="width:16%"><!-- Product -->
+            <col style="width:7%"><!-- HSN -->
+            <col style="width:9%"><!-- Batch -->
+            <col style="width:8%"><!-- Exp -->
+            <col style="width:4%"><!-- Qty -->
+            <col style="width:7%"><!-- MRP -->
+            <col style="width:8%"><!-- Old Rate -->
+            <col style="width:8%"><!-- New Rate -->
+            <col style="width:7%"><!-- Diff -->
+            <col style="width:6%"><!-- GST% -->
+            <col style="width:16%"><!-- Total -->
             <col style="width:4%"><!-- Del -->
         `;
         thead.innerHTML = `
