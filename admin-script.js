@@ -3490,7 +3490,7 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
-                    style="${inputBase}width:46px;text-align:center;color:#fff;font-weight:700;">
+                    style="${inputBase}text-align:center;color:#fff;font-weight:700;">
             </td>
             <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
             <td style="padding:4px 6px;text-align:center;">
