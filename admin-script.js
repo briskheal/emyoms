@@ -3300,11 +3300,11 @@ function openReturnModal(reason, editData = null) {
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Exp (MM-YY)</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Qty</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">MRP</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Inv Rate</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">New Rate</th>
+                <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Inv Rate</th>
+                <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">New Rate</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Diff</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">GST%</th>
-                <th style="padding:7px 8px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Total</th>
+                <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Total</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Act</th>
             </tr>
         `;
@@ -3551,7 +3551,10 @@ function updateReturnRowData(rowId, productId) {
             if (document.getElementById(`return-price-${rowId}`)) document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
         }
 
-        document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 0;
+        const gstVal = p.gstPercent || 0;
+        if (document.getElementById(`return-gst-pct-${rowId}`)) {
+            document.getElementById(`return-gst-pct-${rowId}`).value = gstVal;
+        }
         
         // Populate Batch Datalist
         const batchList = document.getElementById(`batch-list-${rowId}`);
