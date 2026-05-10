@@ -2748,11 +2748,16 @@ function updateSaleProductMeta(prodId) {
     const prod = allProducts.find(p => p._id === prodId);
     if (!prod) return;
 
+    // Set HSN
+    safeSetVal('sale-hsn', prod.hsn || '');
+    safeSetVal('sale-gst-pct', prod.gstPercent || 0);
+
     // Populate Batch Dropdown
     const batchSelect = document.getElementById('sale-batch-select');
     if (batchSelect) {
+        const batches = prod.batches || [];
         batchSelect.innerHTML = '<option value="">-- Select Batch --</option>' +
-            (prod.batches || []).map(b => {
+            batches.map(b => {
                 const info = checkBatchStatus(b.expDate);
                 const isOutOfStock = (b.qtyAvailable || 0) <= 0;
                 const disabled = info.status === 'expired' ? 'disabled' : '';
@@ -2760,10 +2765,19 @@ function updateSaleProductMeta(prodId) {
                 const stockLabel = isOutOfStock ? ' [OUT OF STOCK]' : ` (Qty: ${b.qtyAvailable}${info.label})`;
                 return `<option value="${b.batchNo}" ${disabled} style="color:${color}">${b.batchNo}${stockLabel}</option>`;
             }).join('');
+
+        // Auto-select first non-expired batch with stock
+        if (batches.length > 0) {
+            const bestBatch = batches.find(b => {
+                const info = checkBatchStatus(b.expDate);
+                return info.status !== 'expired' && (b.qtyAvailable || 0) > 0;
+            }) || batches[0];
+            
+            batchSelect.value = bestBatch.batchNo;
+            updateSaleBatchMeta(bestBatch.batchNo);
+        }
     }
 
-    document.getElementById('sale-gst-pct').value = prod.gstPercent || 0;
-    
     // Check for negotiated price
     const partyId = document.getElementById('sale-party').value;
     const party = allStockists.find(s => s._id === partyId);
@@ -2779,6 +2793,15 @@ function updateSaleProductMeta(prodId) {
 }
 
 function updateSaleBatchMeta(batchNo) {
+    const prodId = document.getElementById('sale-prod-select').value;
+    const prod = allProducts.find(p => p._id === prodId);
+    if (prod && batchNo) {
+        const batch = prod.batches.find(b => b.batchNo === batchNo);
+        if (batch) {
+            safeSetVal('sale-exp-dt', batch.expDate || '');
+            // If batch has a specific PTS, we could use it, but keeping logic consistent with product-level/negotiated for now.
+        }
+    }
     calculateSaleLineTotal();
 }
 
@@ -2801,6 +2824,8 @@ function addSaleItem() {
     const qty = Number(document.getElementById('sale-qty').value);
     const rate = Number(document.getElementById('sale-rate').value);
     const gstPct = Number(document.getElementById('sale-gst-pct').value);
+    const hsn = safeGetVal('sale-hsn');
+    const exp = safeGetVal('sale-exp-dt');
 
     if (!prodId || !batchNo || qty <= 0 || rate <= 0) return alert("Please fill all item details correctly");
 
@@ -2809,16 +2834,26 @@ function addSaleItem() {
         product: prodId,
         name: prod.name,
         batch: batchNo,
+        hsn: hsn,
+        expDate: exp,
         qty: qty,
         rate: rate,
         gstPercent: gstPct,
-        hsn: prod.hsn || '',
         totalValue: qty * rate
     });
 
     renderSaleItems();
     // Clear line inputs
     document.getElementById('sale-qty').value = '';
+    document.getElementById('sale-prod-search').value = '';
+    document.getElementById('sale-prod-select').value = '';
+    document.getElementById('sale-batch-select').innerHTML = '';
+    document.getElementById('sale-hsn').value = '';
+    document.getElementById('sale-exp-dt').value = '';
+    document.getElementById('sale-rate').value = '';
+    document.getElementById('sale-gst-pct').value = '';
+    document.getElementById('sale-line-total').innerText = '₹0.00';
+    document.getElementById('sale-prod-search').focus();
 }
 
 function renderSaleItems() {
@@ -2836,13 +2871,19 @@ function renderSaleItems() {
         gstTotal += gst;
 
         return `<tr>
-            <td><strong>${item.name}</strong></td>
-            <td>${item.batch}</td>
-            <td style="text-align:center;">${item.qty}</td>
+            <td>
+                <div style="font-weight:700; color:#fff;">${item.name}</div>
+            </td>
+            <td>
+                <div style="font-weight:600;">${item.batch}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted);">HSN: ${item.hsn || '-'}</div>
+            </td>
+            <td>${item.expDate || '-'}</td>
+            <td style="text-align:center; font-weight:700;">${item.qty}</td>
             <td style="text-align:right;">₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align:center;">${pct}%</td>
-            <td style="text-align:right; font-weight:700;">₹${(val + gst).toFixed(2)}</td>
-            <td><button type="button" onclick="directSaleItems.splice(${index}?); renderSaleItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+            <td style="text-align:right; font-weight:700; color:var(--accent);">₹${(val + gst).toFixed(2)}</td>
+            <td><button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#ef4444; background:rgba(239,68,68,0.1); border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">✖</button></td>
         </tr>`;
     }).join('');
 

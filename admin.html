@@ -2388,7 +2388,7 @@
                 <!-- ITEM ENTRY SECTION -->
                 <div style="background: rgba(16, 185, 129, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(16, 185, 129, 0.1); margin-bottom: 1.5rem;">
                     <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 1rem;">Item Line Entry</h4>
-                    <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+                    <div style="display: grid; grid-template-columns: 2.2fr 1.5fr 0.8fr 1fr 1fr 0.8fr 0.8fr 1.2fr auto; gap: 10px; align-items: end;">
                         <div class="search-container">
                             <label style="font-size: 0.65rem;">Product Search</label>
                             <input type="text" id="sale-prod-search" placeholder="Type Name/HSN/Group..." oninput="handleProductSearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-search-results')">
@@ -2398,6 +2398,14 @@
                         <div>
                             <label style="font-size: 0.65rem;">Select Batch</label>
                             <select id="sale-batch-select" onchange="updateSaleBatchMeta(this.value)"></select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">HSN</label>
+                            <input type="text" id="sale-hsn" readonly style="background: rgba(0,0,0,0.2); opacity: 0.7; font-size: 0.75rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.65rem;">Exp Dt</label>
+                            <input type="text" id="sale-exp-dt" readonly style="background: rgba(0,0,0,0.2); opacity: 0.7; font-size: 0.75rem;">
                         </div>
                         <div>
                             <label style="font-size: 0.65rem;">Rate (Ex. GST)</label>
@@ -2413,18 +2421,19 @@
                         </div>
                         <div>
                             <label style="font-size: 0.65rem; color: var(--accent);">Line Total</label>
-                            <div id="sale-line-total" style="font-weight: 800; color: #fff; font-size: 1rem; padding: 10px 0;">₹0.00</div>
+                            <div id="sale-line-total" style="font-weight: 800; color: #fff; font-size: 0.9rem; padding: 10px 0;">₹0.00</div>
                         </div>
                         <button type="button" class="btn btn-primary" style="padding: 10px 15px; font-size: 0.7rem; background: var(--accent);" onclick="addSaleItem()">ADD ITEM</button>
                     </div>
                 </div>
 
-                <div class="table-container" style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem;">
+                <div class="table-container" style="max-height: 250px; overflow-y: auto; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 12px;">
                     <table style="font-size: 0.75rem;">
-                        <thead style="position: sticky; top: 0; background: var(--bg); z-index: 10;">
+                        <thead style="position: sticky; top: 0; background: #1e293b; z-index: 10;">
                             <tr>
                                 <th>Product Details</th>
-                                <th>Batch</th>
+                                <th>Batch / HSN</th>
+                                <th>Expiry</th>
                                 <th style="text-align: center;">Qty</th>
                                 <th style="text-align: right;">Rate</th>
                                 <th style="text-align: center;">GST %</th>
@@ -2437,24 +2446,22 @@
                 </div>
 
                 <!-- FOOTER SUMMARY -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid var(--glass-border); padding-top: 1.5rem; padding-bottom: 1rem;">
                     <div style="flex: 1;">
-                        <div class="form-group" style="width: 300px;">
+                        <div class="form-group" style="width: 350px;">
                             <label>Sales Remarks / Dispatch Info</label>
-                            <textarea id="sale-remarks" style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                            <textarea id="sale-remarks" style="min-height: 50px; font-size: 0.8rem;" placeholder="Mention any specific notes..."></textarea>
                         </div>
                     </div>
-
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn btn-ghost" onclick="closeSaleModal()">CANCEL</button>
-                    <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; letter-spacing: 1px; background: var(--accent);">✓ CONFIRM & POST DIRECT SALE</button>
+                    <div style="display: flex; gap: 1rem;">
+                         <button type="button" class="btn btn-ghost" onclick="closeSaleModal()">CANCEL</button>
+                         <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-weight: 800; letter-spacing: 1px; background: var(--accent);">✓ CONFIRM & POST DIRECT SALE</button>
+                    </div>
                 </div>
             </form>
 
             <!-- FIXED CALCULATION STRIP -->
-            <div id="sale-calc-strip" style="position: sticky; bottom: 0; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--accent); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
+            <div id="sale-calc-strip" style="position: sticky; bottom: -1rem; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 3px solid var(--accent); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 1rem; box-shadow: 0 -10px 40px rgba(0,0,0,0.6); border-radius: 0 0 20px 20px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 0.6rem; font-weight: 900; color: var(--accent); letter-spacing: 1px;">TOTAL ITEMS:</span>
                     <span id="strip-sale-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
@@ -2472,11 +2479,12 @@
                     <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">ROUND OFF:</span>
                     <span id="strip-sale-roundoff" style="font-size: 1rem; font-weight: 800; color: #fff; opacity: 0.8;">₹0.00</span>
                 </div>
-                <div style="margin-left: auto; background: var(--accent); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.7rem; font-weight: 900; color: #000; letter-spacing: 1px;">NET VALUE:</span>
-                    <span id="strip-sale-total" style="font-size: 1.2rem; font-weight: 900; color: #000;">₹0.00</span>
+                <div style="margin-left: auto; background: var(--accent); padding: 8px 20px; border-radius: 10px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);">
+                    <span style="font-size: 0.7rem; font-weight: 900; color: #000; letter-spacing: 1px;">NET PAYABLE:</span>
+                    <span id="strip-sale-total" style="font-size: 1.3rem; font-weight: 900; color: #000;">₹0.00</span>
                 </div>
             </div>
+
         </div>
     </div>
 
