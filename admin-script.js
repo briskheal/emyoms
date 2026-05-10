@@ -3302,17 +3302,17 @@ function openReturnModal(reason, editData = null) {
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Act</th>
             </tr>
         `;
-    } else {
         colgroup.innerHTML = `
-            <col style="width:24%"><!-- Product -->
-            <col style="width:7%"><!-- HSN -->
+            <col style="width:22%"><!-- Product -->
+            <col style="width:8%"><!-- HSN -->
             <col style="width:10%"><!-- Batch -->
             <col style="width:9%"><!-- Exp MM-YY -->
-            <col style="width:6%"><!-- Qty -->
-            <col style="width:9%"><!-- Price -->
-            <col style="width:5%"><!-- GST% -->
-            <col style="width:10%"><!-- Total -->
-            <col style="width:3%"><!-- Del -->
+            <col style="width:5%"><!-- Qty -->
+            <col style="width:8%"><!-- MRP -->
+            <col style="width:10%"><!-- Price -->
+            <col style="width:6%"><!-- GST% -->
+            <col style="width:17%"><!-- Total -->
+            <col style="width:5%"><!-- Del -->
         `;
         thead.innerHTML = `
             <tr style="background:rgba(99,102,241,0.08);border-bottom:1px solid rgba(99,102,241,0.15);">
