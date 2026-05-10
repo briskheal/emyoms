@@ -2646,15 +2646,12 @@ function openDirectOrderModal() {
 }
 
 function refreshSaleParties(selectedId = null) {
-    const select = document.getElementById('sale-party');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">-- Select Party / Customer --</option>' +
-        '<option value="NEW" style="color:var(--accent); font-weight:bold; background:rgba(16, 185, 129, 0.1);">➕ [NEW] CREATE NEW CUSTOMER</option>' +
-        (allStockists || []).map(s => `<option value="${s._id || s.id}">${s.name} (${s.city || ''})</option>`).join('');
-    
+    // No longer needed as dropdown since we use search, 
+    // but we can use it to set the initial hidden value if needed.
     if (selectedId) {
-        select.value = selectedId;
+        safeSetVal('sale-party', selectedId);
+        const party = allStockists.find(s => (s._id || s.id) == selectedId);
+        if (party) safeSetVal('sale-party-search', party.name);
     }
 }
 
@@ -2692,23 +2689,12 @@ function openDirectSaleModal(type) {
             }
         }
 
-        // Populate Party Dropdown
-        refreshSaleParties();
-        const select = document.getElementById('sale-party');
-        if (select) {
-            select.onchange = (e) => {
-                if (e.target.value === 'NEW') {
-                    openPartyModal();
-                }
-            };
-        }
-
-        // Populate Product Dropdown
-        const prodSelect = document.getElementById('sale-prod-select');
-        if (prodSelect) {
-            prodSelect.innerHTML = '<option value="">-- Select Product --</option>' +
-                (allProducts || []).map(p => `<option value="${p._id || p.id}">${p.name}</option>`).join('');
-        }
+        // Clear search inputs
+        safeSetVal('sale-party-search', '');
+        safeSetVal('sale-party', '');
+        safeSetVal('sale-prod-search', '');
+        safeSetVal('sale-prod-select', '');
+        safeSetVal('sale-batch-select', '');
 
         document.getElementById('directSaleModal').classList.remove('hidden');
     } catch (e) {
@@ -2726,12 +2712,13 @@ function openDirectOrderFromParty() {
     
     // Set the party in the sale modal after it opens
     setTimeout(() => {
-        const select = document.getElementById('sale-party');
-        if (select) {
-            select.value = partyId;
+        const party = allStockists.find(s => (s._id || s.id) == partyId);
+        if (party) {
+            safeSetVal('sale-party', partyId);
+            safeSetVal('sale-party-search', party.companyName || party.name);
             updateSalePartyContext();
         }
-    }, 100);
+    }, 150);
 }
 
 function closeSaleModal() {
