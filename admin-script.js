@@ -3459,9 +3459,10 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
             <td style="padding:4px 6px;text-align:center;">
-                <button type="button" onclick="removeReturnRow('${id}')"
-                    style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
-                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
+                <button type="button" onclick="removeReturnRow('${id}')" title="Delete Row"
+                    style="background:#ef4444; border:none; color:#fff; cursor:pointer; font-size:0.65rem; font-weight:900; width:22px; height:22px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s; box-shadow:0 2px 5px rgba(239,68,68,0.2);"
+                    onmouseover="this.style.background='#dc2626'; this.style.transform='scale(1.1)';" 
+                    onmouseout="this.style.background='#ef4444'; this.style.transform='scale(1)';">✕</button>
             </td>
         `;
     } else {
@@ -3512,9 +3513,10 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
             <td style="padding:4px 6px;text-align:center;">
-                <button type="button" onclick="removeReturnRow('${id}')"
-                    style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem;opacity:0.6;padding:2px 5px;border-radius:4px;transition:opacity 0.2s;"
-                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">✕</button>
+                <button type="button" onclick="removeReturnRow('${id}')" title="Delete Row"
+                    style="background:#ef4444; border:none; color:#fff; cursor:pointer; font-size:0.65rem; font-weight:900; width:22px; height:22px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s; box-shadow:0 2px 5px rgba(239,68,68,0.2);"
+                    onmouseover="this.style.background='#dc2626'; this.style.transform='scale(1.1)';" 
+                    onmouseout="this.style.background='#ef4444'; this.style.transform='scale(1)';">✕</button>
             </td>
         `;
     }
