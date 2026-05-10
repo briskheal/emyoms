@@ -3399,11 +3399,15 @@ function addReturnRow() {
     if (isPD) {
         row.innerHTML = `
             <td style="${cellStyle}padding-left:8px;" class="search-container">
-                <input type="text" id="return-prod-search-${id}" placeholder="Search Product..." 
-                    onfocus="handleProductSearch(this, 'RETURN-${id}')"
-                    oninput="handleProductSearch(this, 'RETURN-${id}')"
-                    onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
-                    style="${inputBase}font-size:0.71rem; border-color:rgba(245,158,11,0.2);">
+                <div style="position:relative; display:flex; align-items:center;">
+                    <input type="text" id="return-prod-search-${id}" placeholder="Search Product..." 
+                        onfocus="handleProductSearch(this, 'RETURN-${id}')"
+                        oninput="handleProductSearch(this, 'RETURN-${id}')"
+                        onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
+                        style="${inputBase}font-size:0.71rem; border-color:rgba(245,158,11,0.2); padding-right:25px;">
+                    <i class="fa fa-list-ul" onclick="document.getElementById('return-prod-search-${id}').focus(); handleProductSearch(document.getElementById('return-prod-search-${id}'), 'RETURN-${id}')" 
+                       style="position:absolute; right:8px; font-size:0.65rem; color:rgba(245,158,11,0.5); cursor:pointer;"></i>
+                </div>
                 <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
                 <div id="return-search-results-${id}" class="search-results"></div>
             </td>
@@ -3444,11 +3448,15 @@ function addReturnRow() {
     } else {
         row.innerHTML = `
             <td style="${cellStyle}padding-left:8px;" class="search-container">
-                <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
-                    onfocus="handleProductSearch(this, 'RETURN-${id}')"
-                    oninput="handleProductSearch(this, 'RETURN-${id}')"
-                    onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
-                    style="${inputBase}font-size:0.71rem;">
+                <div style="position:relative; display:flex; align-items:center;">
+                    <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
+                        onfocus="handleProductSearch(this, 'RETURN-${id}')"
+                        oninput="handleProductSearch(this, 'RETURN-${id}')"
+                        onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
+                        style="${inputBase}font-size:0.71rem; padding-right:25px;">
+                    <i class="fa fa-list-ul" onclick="document.getElementById('return-prod-search-${id}').focus(); handleProductSearch(document.getElementById('return-prod-search-${id}'), 'RETURN-${id}')" 
+                       style="position:absolute; right:8px; font-size:0.65rem; color:var(--primary); cursor:pointer; opacity:0.5;"></i>
+                </div>
                 <input type="hidden" id="return-prod-select-${id}" class="return-prod-select">
                 <div id="return-search-results-${id}" class="search-results"></div>
             </td>
@@ -5238,7 +5246,7 @@ function handleProductSearch(input, context) {
         context === 'PURCHASE' ? 'pur-search-results' : 'note-search-results'
     );
     
-    if (!query || query.length < 1) {
+    if (query.length < 0) { // Changed to allow 0 length for focus results
         resultsDiv.style.display = 'none';
         return;
     }
@@ -5255,13 +5263,12 @@ function handleProductSearch(input, context) {
         ).slice(0, 15);
     }
 
-    if (matches.length === 0) {
-        if (query.length > 0) {
-            resultsDiv.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">No matches found for "${query}"</div>`;
-            resultsDiv.style.display = 'block';
-        } else {
-            resultsDiv.style.display = 'none';
-        }
+    if (matches.length === 0 && query.length > 0) {
+        resultsDiv.innerHTML = `<div style="padding:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">No matches found for "${query}"</div>`;
+        resultsDiv.style.display = 'block';
+        return;
+    } else if (matches.length === 0 && query.length === 0) {
+        resultsDiv.style.display = 'none';
         return;
     }
 
