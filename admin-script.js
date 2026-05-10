@@ -2745,11 +2745,12 @@ function updateSalePartyContext() {
 
 function updateSaleProductMeta(prodId) {
     if (!prodId) return;
-    const prod = allProducts.find(p => p._id === prodId);
+    const prod = allProducts.find(p => (p._id || p.id) == prodId);
     if (!prod) return;
 
-    // Set HSN
+    // Set HSN and default MRP/Rate from product level
     safeSetVal('sale-hsn', prod.hsn || '');
+    safeSetVal('sale-mrp', prod.mrp || 0);
     safeSetVal('sale-gst-pct', prod.gstPercent || 0);
 
     // Populate Batch Dropdown
@@ -2762,7 +2763,7 @@ function updateSaleProductMeta(prodId) {
                 const isOutOfStock = (b.qtyAvailable || 0) <= 0;
                 const disabled = info.status === 'expired' ? 'disabled' : '';
                 const color = info.status === 'expired' ? '#ef4444' : (info.status === 'near' ? '#f59e0b' : (isOutOfStock ? '#6b7280' : ''));
-                const stockLabel = isOutOfStock ? ' [OUT OF STOCK]' : ` (Qty: ${b.qtyAvailable}${info.label})`;
+                const stockLabel = isOutOfStock ? ' [OUT]' : ` (Q:${b.qtyAvailable}${info.label})`;
                 return `<option value="${b.batchNo}" ${disabled} style="color:${color}">${b.batchNo}${stockLabel}</option>`;
             }).join('');
 
@@ -2780,26 +2781,28 @@ function updateSaleProductMeta(prodId) {
 
     // Check for negotiated price
     const partyId = document.getElementById('sale-party').value;
-    const party = allStockists.find(s => s._id === partyId);
+    const party = allStockists.find(s => (s._id || s.id) == partyId);
     let finalRate = parseFloat(prod.pts || 0);
     
     if (party && party.negotiatedPrices) {
-        const neg = party.negotiatedPrices.find(n => n.productId === prodId || n.product === prodId);
+        const neg = party.negotiatedPrices.find(n => (n.productId || n.product) == prodId);
         if (neg) finalRate = parseFloat(neg.lockedRate || neg.price || finalRate);
     }
     
-    document.getElementById('sale-rate').value = finalRate;
+    safeSetVal('sale-rate', finalRate);
     calculateSaleLineTotal();
 }
 
 function updateSaleBatchMeta(batchNo) {
     const prodId = document.getElementById('sale-prod-select').value;
-    const prod = allProducts.find(p => p._id === prodId);
+    const prod = allProducts.find(p => (p._id || p.id) == prodId);
     if (prod && batchNo) {
         const batch = prod.batches.find(b => b.batchNo === batchNo);
         if (batch) {
             safeSetVal('sale-exp-dt', batch.expDate || '');
-            // If batch has a specific PTS, we could use it, but keeping logic consistent with product-level/negotiated for now.
+            if (batch.mrp) safeSetVal('sale-mrp', batch.mrp);
+            // Optional: If batch has specific PTS, update rate
+            if (batch.pts) safeSetVal('sale-rate', batch.pts);
         }
     }
     calculateSaleLineTotal();
@@ -2826,16 +2829,18 @@ function addSaleItem() {
     const gstPct = Number(document.getElementById('sale-gst-pct').value);
     const hsn = safeGetVal('sale-hsn');
     const exp = safeGetVal('sale-exp-dt');
+    const mrp = safeGetVal('sale-mrp');
 
     if (!prodId || !batchNo || qty <= 0 || rate <= 0) return alert("Please fill all item details correctly");
 
-    const prod = allProducts.find(p => p._id === prodId);
+    const prod = allProducts.find(p => (p._id || p.id) == prodId);
     directSaleItems.push({
         product: prodId,
         name: prod.name,
         batch: batchNo,
         hsn: hsn,
         expDate: exp,
+        mrp: mrp,
         qty: qty,
         rate: rate,
         gstPercent: gstPct,
@@ -2850,6 +2855,7 @@ function addSaleItem() {
     document.getElementById('sale-batch-select').innerHTML = '';
     document.getElementById('sale-hsn').value = '';
     document.getElementById('sale-exp-dt').value = '';
+    document.getElementById('sale-mrp').value = '';
     document.getElementById('sale-rate').value = '';
     document.getElementById('sale-gst-pct').value = '';
     document.getElementById('sale-line-total').innerText = '₹0.00';
@@ -2878,7 +2884,10 @@ function renderSaleItems() {
                 <div style="font-weight:600;">${item.batch}</div>
                 <div style="font-size:0.65rem; color:var(--text-muted);">HSN: ${item.hsn || '-'}</div>
             </td>
-            <td>${item.expDate || '-'}</td>
+            <td>
+                <div style="font-weight:600;">${item.expDate || '-'}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted);">MRP: ₹${item.mrp || '0.00'}</div>
+            </td>
             <td style="text-align:center; font-weight:700;">${item.qty}</td>
             <td style="text-align:right;">₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align:center;">${pct}%</td>
