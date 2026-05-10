@@ -2865,7 +2865,7 @@ function renderSaleItems() {
 
         return `<tr>
             <td style="text-align:center;">
-                <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#ef4444; background:none; border:none; cursor:pointer; font-size:0.9rem;">✖</button>
+                <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#fff; background:#ef4444; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.6rem; font-weight:800;">DEL</button>
             </td>
             <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div></td>
             <td><div style="font-weight:600;">${item.batch}</div></td>
@@ -5295,6 +5295,15 @@ function handleProductSearch(input, context) {
         context === 'PURCHASE' ? 'pur-search-results' : 'note-search-results'
     );
     
+    if (resultsDiv && context === 'SALE') {
+        const rect = input.getBoundingClientRect();
+        resultsDiv.style.position = 'fixed';
+        resultsDiv.style.top = (rect.bottom + 5) + 'px';
+        resultsDiv.style.left = rect.left + 'px';
+        resultsDiv.style.width = '700px';
+        resultsDiv.style.display = 'block';
+    }
+    
     if (query.length < 0) { // Changed to allow 0 length for focus results
         resultsDiv.style.display = 'none';
         return;
@@ -5394,6 +5403,15 @@ function handlePartySearch(input, context) {
         context === 'SALE' ? 'sale-party-search-results' : 
         context === 'PURCHASE' ? 'pur-party-search-results' : 'return-party-search-results'
     );
+    
+    if (resultsDiv && context === 'SALE') {
+        const rect = input.getBoundingClientRect();
+        resultsDiv.style.position = 'fixed';
+        resultsDiv.style.top = (rect.bottom + 5) + 'px';
+        resultsDiv.style.left = rect.left + 'px';
+        resultsDiv.style.width = rect.width + 'px';
+        resultsDiv.style.display = 'block';
+    }
     
     let matches = [];
     if (query.length === 0) {
