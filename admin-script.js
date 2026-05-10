@@ -44,6 +44,8 @@ function formatMMYY(el) {
 
 let currentPickerTarget = null;
 let currentPickerYear = new Date().getFullYear();
+let _pickerOutsideClickListener = null; // Track listener to prevent accumulation
+
 function openMonthYearPicker(targetId) {
     currentPickerTarget = targetId;
     const modal = document.getElementById('monthYearPickerModal');
@@ -59,34 +61,40 @@ function openMonthYearPicker(targetId) {
         currentPickerYear = new Date().getFullYear();
     }
     
-    // Position Picker near Input
+    // Position Picker near Input (use fixed positioning to match viewport coords)
     if (input) {
         const rect = input.getBoundingClientRect();
-        const pickerHeight = 280; // Approximate
+        const pickerHeight = 280;
         const spaceBelow = window.innerHeight - rect.bottom;
         
         if (spaceBelow < pickerHeight) {
-            modal.style.top = (rect.top + window.scrollY - pickerHeight - 10) + 'px';
+            modal.style.top = (rect.top - pickerHeight - 10) + 'px';
         } else {
-            modal.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+            modal.style.top = (rect.bottom + 5) + 'px';
         }
-        modal.style.left = Math.min(rect.left + window.scrollX, window.innerWidth - 300) + 'px';
+        modal.style.left = Math.min(rect.left, window.innerWidth - 300) + 'px';
+        modal.style.position = 'fixed';
     }
 
     display.textContent = currentPickerYear;
     renderPickerMonths();
     modal.classList.remove('hidden');
 
-    // Global Click Outside Listener
+    // Remove any stale listener before adding a new one
+    if (_pickerOutsideClickListener) {
+        document.removeEventListener('click', _pickerOutsideClickListener);
+        _pickerOutsideClickListener = null;
+    }
+
+    // Add fresh outside-click listener after a tick
     setTimeout(() => {
-        const closeOnOutsideClick = (e) => {
-            if (!modal.contains(e.target) && e.target.id !== targetId) {
+        _pickerOutsideClickListener = (e) => {
+            if (!modal.contains(e.target) && e.target !== input) {
                 closeMonthYearPicker();
-                document.removeEventListener('click', closeOnOutsideClick);
             }
         };
-        document.addEventListener('click', closeOnOutsideClick);
-    }, 10);
+        document.addEventListener('click', _pickerOutsideClickListener);
+    }, 50);
 }
 
 function renderPickerMonths() {
@@ -123,6 +131,11 @@ function changePickerYear(delta) {
 
 function closeMonthYearPicker() {
     document.getElementById('monthYearPickerModal').classList.add('hidden');
+    // Clean up the outside-click listener
+    if (_pickerOutsideClickListener) {
+        document.removeEventListener('click', _pickerOutsideClickListener);
+        _pickerOutsideClickListener = null;
+    }
 }
 
 function confirmMonthYearSelection(month) {
@@ -2599,42 +2612,57 @@ function renderPurchaseItems() {
     // Update footer strip
     const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
     const gstTotal = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
-    const grandTotal = subTotal + gstTotal;
+    const rawTotal = subTotal + gstTotal;
+    const grandTotal = Math.round(rawTotal);
+    const roundOff = grandTotal - rawTotal;
     const safeEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
     safeEl('strip-pur-count', purchaseItems.length);
     safeEl('strip-pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
     safeEl('strip-pur-gst', '₹' + gstTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+    safeEl('strip-pur-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
     safeEl('strip-pur-total', '₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
 }
 
 async function savePurchaseEntry(event) {
     if (event) event.preventDefault();
-    if (!purchaseItems.length) return alert('Please add at least one item');
+    if (!purchaseItems.length) return alert('⚠️ Please add at least one item to the purchase list.');
 
     const supplier = document.getElementById('pur-supplier').value;
-    if (!supplier) return alert('Please select a supplier');
+    if (!supplier) return alert('⚠️ Please select a Supplier first.');
 
-    const btn = event?.submitter || (event?.target?.tagName === 'BUTTON' ? event.target : null);
+    const billNo = document.getElementById('pur-bill-no').value;
+    if (!billNo) return alert('⚠️ Purchase Bill No is missing. Please wait for auto-generation or enter manually.');
+
+    const billDate = document.getElementById('pur-date').value;
+    if (!billDate) return alert('⚠️ Please select a Purchase Date.');
+
+    // Detect the button that triggered the POST (works for both form submit and onclick)
+    const btn = event?.submitter || (event?.currentTarget?.tagName === 'BUTTON' ? event.currentTarget : (event?.target?.tagName === 'BUTTON' ? event.target : null));
     const originalText = btn ? btn.innerText : '';
-    if (btn) { btn.disabled = true; btn.innerText = 'POSTING...'; }
+    if (btn) { btn.disabled = true; btn.innerText = '⏳ POSTING...'; }
 
     try {
         const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
         const gstAmount = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
-        const grandTotal = subTotal + gstAmount;
+        const rawTotal = subTotal + gstAmount;
+        const grandTotal = Math.round(rawTotal);
+        const roundOff = Number((grandTotal - rawTotal).toFixed(2));
 
         const payload = {
             supplierId: supplier,
-            billNo: document.getElementById('pur-bill-no').value,
-            date: document.getElementById('pur-date').value,
+            billNo,
+            date: billDate,
             paymentMode: document.getElementById('pur-payment-mode').value,
-            warehouse: (document.getElementById('pur-warehouse') || {}).value || 'MAIN',
+            warehouse: document.getElementById('pur-warehouse')?.value || 'MAIN',
             remarks: document.getElementById('pur-remarks').value,
             items: purchaseItems,
             subTotal: Number(subTotal.toFixed(2)),
             gstAmount: Number(gstAmount.toFixed(2)),
-            grandTotal: Math.round(grandTotal)
+            roundOff,
+            grandTotal
         };
+
+        console.log('POSTing purchase payload:', payload);
 
         const res = await fetch(`${API_BASE}/admin/purchase-entries`, {
             method: 'POST',
@@ -2642,19 +2670,20 @@ async function savePurchaseEntry(event) {
             body: JSON.stringify(payload)
         });
         const result = await res.json();
+        console.log('Purchase POST result:', result);
 
         if (result.success) {
-            const billNo = result.entry?.billNo || payload.billNo;
-            alert(`✅ Purchase Inward Posted!\nBill No: ${billNo}`);
+            const savedBillNo = result.entry?.billNo || payload.billNo;
+            alert(`✅ Purchase Inward Posted!\nBill No: ${savedBillNo}`);
             openPurchaseModal(); // Reset for next entry
             loadPurchaseEntries();
             loadProducts();
         } else {
-            alert('Error: ' + (result.error || 'Unknown error'));
+            alert('Error saving purchase: ' + (result.error || result.message || 'Unknown server error'));
         }
     } catch (e) {
         console.error('Save Purchase Fail:', e);
-        alert('Failed to save purchase entry');
+        alert('Failed to save purchase entry: ' + e.message);
     } finally {
         if (btn) { btn.disabled = false; btn.innerText = originalText; }
     }
