@@ -3291,15 +3291,15 @@ function openReturnModal(reason, editData = null) {
         `;
         thead.innerHTML = `
             <tr style="background:rgba(245,158,11,0.1); border-bottom:1px solid rgba(245,158,11,0.25);">
-                <th style="padding:7px 8px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Product</th>
-                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Batch No</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Qty</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Inv Rate</th>
-                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">New Rate</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Diff</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">GST%</th>
-                <th style="padding:7px 8px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Total</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Act</th>
+                <th style="padding:7px 8px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Product</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Batch No</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Qty</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Inv Rate</th>
+                <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">New Rate</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Diff</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">GST%</th>
+                <th style="padding:7px 8px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Total</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Act</th>
             </tr>
         `;
         colgroup.innerHTML = `
@@ -3316,16 +3316,16 @@ function openReturnModal(reason, editData = null) {
         `;
         thead.innerHTML = `
             <tr style="background:rgba(99,102,241,0.08);border-bottom:1px solid rgba(99,102,241,0.15);">
-                <th style="padding:7px 8px;text-align:left;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Product</th>
-                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">HSN</th>
-                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Batch No</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Exp (MM-YY)</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Qty</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">MRP</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Price</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">GST%</th>
-                <th style="padding:7px 8px;text-align:right;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Total</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#cbd5e1;">Act</th>
+                <th style="padding:7px 8px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Product</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">HSN</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Batch No</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Exp (MM-YY)</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Qty</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">MRP</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Price</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">GST%</th>
+                <th style="padding:7px 8px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Total</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Act</th>
             </tr>
         `;
     }
@@ -3429,7 +3429,7 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-mrp-${id}" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; opacity:0.7;">
+                    style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" readonly
@@ -3463,7 +3463,7 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="text" id="return-hsn-${id}" readonly
-                    style="${inputBase}background:transparent;border-color:transparent;color:#64748b;font-size:0.68rem;text-align:center;">
+                    style="${inputBase}background:transparent;border-color:transparent;color:#e2e8f0;font-size:0.68rem;text-align:center;">
             </td>
             <td style="${cellStyle}">
                 <input type="text" id="return-batch-${id}" placeholder="Select Batch" list="batch-list-${id}"
@@ -3482,7 +3482,7 @@ function addReturnRow() {
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-mrp-${id}" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8; opacity:0.7;">
+                    style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
