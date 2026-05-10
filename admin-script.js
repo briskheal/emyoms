@@ -3279,18 +3279,16 @@ function openReturnModal(reason, editData = null) {
     
     if (cfg.isPriceDiff) {
         colgroup.innerHTML = `
-            <col style="width:16%"><!-- Product -->
-            <col style="width:7%"><!-- HSN -->
-            <col style="width:9%"><!-- Batch -->
-            <col style="width:8%"><!-- Exp -->
-            <col style="width:4%"><!-- Qty -->
-            <col style="width:7%"><!-- MRP -->
-            <col style="width:8%"><!-- Old Rate -->
-            <col style="width:8%"><!-- New Rate -->
-            <col style="width:7%"><!-- Diff -->
+            <col style="width:22%"><!-- Product -->
+            <col style="width:8%"><!-- HSN -->
+            <col style="width:10%"><!-- Batch -->
+            <col style="width:9%"><!-- Exp -->
+            <col style="width:5%"><!-- Qty -->
+            <col style="width:8%"><!-- MRP -->
+            <col style="width:10%"><!-- Diff Rate -->
             <col style="width:6%"><!-- GST% -->
-            <col style="width:16%"><!-- Total -->
-            <col style="width:4%"><!-- Del -->
+            <col style="width:17%"><!-- Total -->
+            <col style="width:5%"><!-- Del -->
         `;
         thead.innerHTML = `
             <tr style="background:rgba(245,158,11,0.1); border-bottom:1px solid rgba(245,158,11,0.25);">
@@ -3300,9 +3298,7 @@ function openReturnModal(reason, editData = null) {
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Exp (MM-YY)</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Qty</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">MRP</th>
-                <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Inv Rate</th>
-                <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">New Rate</th>
-                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Diff</th>
+                <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Diff Rate</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">GST%</th>
                 <th style="padding:7px 12px 7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Total</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Act</th>
@@ -3442,16 +3438,8 @@ function addReturnRow() {
                     style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-old-rate-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="Old"
-                    style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8;">
-            </td>
-            <td style="${cellStyle}">
-                <input type="number" id="return-new-rate-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="New"
-                    style="${inputBase}text-align:right; font-family:monospace; border-color:rgba(245,158,11,0.3);">
-            </td>
-            <td style="${cellStyle}">
-                <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; color:var(--accent); font-weight:800; opacity:0.9;">
+                <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="Rate"
+                    style="${inputBase}text-align:right; font-family:monospace; color:#fff; font-weight:700; border-color:rgba(245,158,11,0.3);">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5"
@@ -3538,7 +3526,7 @@ function updateReturnRowData(rowId, productId) {
         const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
 
         if (isPD) {
-            if (document.getElementById(`return-old-rate-${rowId}`)) document.getElementById(`return-old-rate-${rowId}`).value = p.pts || 0;
+            if (document.getElementById(`return-price-${rowId}`)) document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
             if (document.getElementById(`return-mrp-${rowId}`)) document.getElementById(`return-mrp-${rowId}`).value = p.mrp || 0;
             if (document.getElementById(`return-hsn-${rowId}`)) document.getElementById(`return-hsn-${rowId}`).value = p.hsn || '';
             if (document.getElementById(`return-exp-${rowId}`)) {
@@ -3595,7 +3583,7 @@ function updateBatchDetails(rowId) {
                 }
             } else {
                 if (b.mrp) document.getElementById(`return-mrp-${rowId}`).value = b.mrp;
-                if (b.pts) document.getElementById(`return-old-rate-${rowId}`).value = b.pts;
+                if (b.pts) document.getElementById(`return-price-${rowId}`).value = b.pts;
                 if (b.expDate) {
                     const el = document.getElementById(`return-exp-${rowId}`);
                     if (el) el.value = b.expDate.replace('/', '-');
@@ -3614,17 +3602,8 @@ function calculateReturnTotals() {
     const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
 
     returnItems.forEach(id => {
-        const qty = Number(document.getElementById(`return-qty-${id}`).value) || 0;
-        let price = Number(document.getElementById(`return-price-${id}`).value) || 0;
-        
-        if (isPD) {
-            const oldR = Number(document.getElementById(`return-old-rate-${id}`).value) || 0;
-            const newR = Number(document.getElementById(`return-new-rate-${id}`).value) || 0;
-            // Difference is what we bill
-            price = Math.abs(oldR - newR); 
-            document.getElementById(`return-price-${id}`).value = price.toFixed(2);
-        }
-
+        const qty   = Number(document.getElementById(`return-qty-${id}`).value) || 0;
+        const price = Number(document.getElementById(`return-price-${id}`).value) || 0;
         const gstPct = Number(document.getElementById(`return-gst-pct-${id}`).value) || 0;
         
         const taxable = Number((qty * price).toFixed(2));
