@@ -2614,7 +2614,7 @@ async function savePurchaseEntry(event) {
     const supplier = document.getElementById('pur-supplier').value;
     if (!supplier) return alert('Please select a supplier');
 
-    const btn = event?.submitter;
+    const btn = event?.submitter || (event?.target?.tagName === 'BUTTON' ? event.target : null);
     const originalText = btn ? btn.innerText : '';
     if (btn) { btn.disabled = true; btn.innerText = 'POSTING...'; }
 
