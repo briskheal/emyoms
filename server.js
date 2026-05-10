@@ -77,6 +77,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Request Logger
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 app.use(express.static(__dirname));
 
 // --- CLOUD HEALTH CHECK ---
@@ -102,6 +109,24 @@ app.get('/api/admin/db-stats', async (req, res) => {
             counters: (await db.Company.findOne())?.documentCounters || {}
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+async function peekNextDocNo(type) {
+    let company = await db.Company.findOne();
+    if (!company) return (type.toUpperCase().slice(0, 3) + '-0001');
+    
+    const counters = JSON.parse(JSON.stringify(company.documentCounters || {}));
+    const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 0 };
+    
+    const nextNum = (Number(config.nextNumber) || 0) + 1;
+    return `${config.prefix}${nextNum.toString().padStart(4, '0')}`;
+}
+
+app.get('/api/admin/next-number/:type', async (req, res) => {
+    try {
+        const docNo = await peekNextDocNo(req.params.type);
+        res.json({ success: true, nextNumber: docNo });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 async function getNextDocNo(type) {
@@ -1154,23 +1179,42 @@ app.post('/api/admin/invoices/bulk', async (req, res) => {
 
 app.post('/api/admin/direct-sale', async (req, res) => {
     try {
-        const { party, items, subTotal, gstAmount, grandTotal } = req.body;
+        const { party, items, subTotal, gstAmount, grandTotal, channel, paymentMode, remarks, date } = req.body;
         
         const invoiceNo = await getNextDocNo('invoice');
-        const stockist = await db.Stockist.findByPk(parseInt(party));
+        const orderNo = await getNextDocNo('order');
+        const stockistId = parseInt(party);
+        const stockist = await db.Stockist.findByPk(stockistId);
 
         const numSubTotal = Number(subTotal) || 0;
         const numGstAmount = Number(gstAmount) || 0;
         const numGrandTotal = Number(grandTotal) || 0;
 
+        // 1. Create Order
+        const newOrder = await db.Order.create({
+            orderNo,
+            stockistId,
+            subTotal: numSubTotal,
+            gstAmount: numGstAmount,
+            grandTotal: numGrandTotal,
+            status: 'invoiced',
+            channel: channel || 'DIRECT',
+            paymentMode: paymentMode || 'CASH',
+            remarks: remarks || '',
+            createdAt: date ? new Date(date) : new Date()
+        });
+
+        // 2. Create Invoice
         const newInvoice = await db.Invoice.create({
             invoiceNo,
-            stockistId: parseInt(party),
+            orderId: newOrder.id,
+            stockistId,
             subTotal: numSubTotal,
             gstAmount: numGstAmount,
             grandTotal: numGrandTotal,
             outstandingAmount: numGrandTotal,
-            status: 'approved'
+            status: 'approved',
+            createdAt: date ? new Date(date) : new Date()
         });
 
 
@@ -1182,6 +1226,14 @@ app.post('/api/admin/direct-sale', async (req, res) => {
                 const batch = await db.Batch.findOne({ where: { productId, batchNo: item.batch } });
                 if (batch) await batch.decrement('qtyAvailable', { by: item.qty });
 
+                // Create Order Item
+                await db.OrderItem.create({
+                    ...item,
+                    productId,
+                    orderId: newOrder.id
+                });
+
+                // Create Invoice Item
                 await db.InvoiceItem.create({
                     ...item,
                     productId,
@@ -1191,11 +1243,14 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         }
 
         if (stockist) {
-            await stockist.increment('outstandingBalance', { by: grandTotal });
+            await stockist.increment('outstandingBalance', { by: numGrandTotal });
         }
 
-        res.json({ success: true, invoice: newInvoice });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        res.json({ success: true, order: newOrder, invoice: newInvoice });
+    } catch (err) { 
+        console.error("Direct Sale Error:", err);
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 // --- PURCHASE ENTRY ---
@@ -1212,45 +1267,57 @@ app.get('/api/admin/purchase-entries', async (req, res) => {
 
 app.post('/api/admin/purchase-entries', async (req, res) => {
     try {
-        const { supplierId, items } = req.body;
+        const { supplierId, billNo, date, paymentMode, warehouse, remarks, items } = req.body;
         const subTotal = Number(req.body.subTotal) || 0;
         const gstAmount = Number(req.body.gstAmount) || 0;
         const grandTotal = Number(req.body.grandTotal) || 0;
-        const purchaseNo = await getNextDocNo('purchase');
+
+        // Use provided bill no or auto-generate
+        const finalBillNo = billNo || await getNextDocNo('purchase');
 
         const entry = await db.PurchaseEntry.create({
-            ...req.body,
+            supplierId: supplierId || null,
+            supplierInvoiceNo: finalBillNo,
+            invoiceDate: date ? new Date(date) : new Date(),
+            paymentMode: paymentMode || 'CREDIT',
+            remarks: remarks || '',
             subTotal,
             gstAmount,
             grandTotal
         });
 
-        for (const item of items) {
+        for (const item of (items || [])) {
             const pId = item.productId || item.product;
-            const bNo = item.batchNo || item.batch;
+            const bNo = item.batch || item.batchNo || 'N/A';
             const product = await db.Product.findByPk(pId);
             if (product) {
                 await product.increment('qtyAvailable', { by: item.qty });
                 let [batch] = await db.Batch.findOrCreate({
                     where: { productId: pId, batchNo: bNo },
-                    defaults: { 
+                    defaults: {
                         productId: pId,
                         batchNo: bNo,
-                        mfgDate: item.mfgDate,
-                        expDate: item.expDate,
+                        mfgDate: item.mfg || item.mfgDate || null,
+                        expDate: item.exp || item.expDate || null,
                         mrp: item.mrp || product.mrp,
                         pts: item.pts || product.pts,
                         ptr: item.ptr || product.ptr,
-                        qtyAvailable: 0 
+                        qtyAvailable: 0
                     }
                 });
                 await batch.increment('qtyAvailable', { by: item.qty });
-                
+
                 await db.PurchaseItem.create({
-                    ...item,
                     productId: pId,
+                    purchaseEntryId: entry.id,
+                    qty: item.qty,
+                    purchaseRate: item.rate || item.purchaseRate || 0,
+                    mrp: item.mrp || 0,
                     batch: bNo,
-                    purchaseEntryId: entry.id
+                    mfgDate: item.mfg || item.mfgDate || null,
+                    expDate: item.exp || item.expDate || null,
+                    gstPercent: item.gstPercent || 0,
+                    totalValue: item.taxable || (item.qty * (item.rate || 0))
                 });
             }
         }
@@ -1260,8 +1327,12 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
             if (stockist) await stockist.decrement('outstandingBalance', { by: grandTotal });
         }
 
-        res.json({ success: true, entry });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        // Return with billNo for the frontend success message
+        res.json({ success: true, entry: { ...entry.toJSON(), billNo: finalBillNo } });
+    } catch (e) {
+        console.error("Purchase Entry Error:", e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // --- FINANCIAL NOTES (CN/DN) ---

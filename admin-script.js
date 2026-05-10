@@ -11,6 +11,10 @@ const safeSetVal = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.value = (val !== undefined && val !== null) ? val : '';
 };
+const safeSetHTML = (id, html) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = (html !== undefined && html !== null) ? String(html) : '';
+};
 
 function toggleSidebar() {
     if (!window.matchMedia('(max-width: 1024px)').matches) return; 
@@ -2470,7 +2474,7 @@ function renderPurchaseEntries() {
             <td style="font-weight:600;">${p.supplierName}</td>
             <td>${p.supplierInvoiceNo}</td>
             <td>${new Date(p.invoiceDate).toLocaleDateString('en-GB')}</td>
-            <td style="text-align:center;">${p.items.length}</td>
+                <td style="text-align:center;">${p.items.length}</td>
             <td style="text-align:right; font-weight:800; color:var(--primary);">₹${Number(p.grandTotal || 0).toLocaleString('en-IN')}</td>
 
             <td style="text-align:right; white-space:nowrap;">
@@ -2481,18 +2485,37 @@ function renderPurchaseEntries() {
     `).join('');
 }
 
-function openPurchaseModal() {
-    document.getElementById('purchaseForm').reset();
-    document.getElementById('pur-id').value = ''; // Reset ID
-    purchaseItems = [];
-    renderPurchaseItems();
-    
-    // Supplier Search initialization
-    document.getElementById('pur-supplier-search').value = '';
-    document.getElementById('pur-supplier').value = '';
-    document.getElementById('supplier-compliance-box').innerHTML = 'Select a supplier to view compliance data.';
+function calculatePurchaseLineTotal() {
+    const qty = Number(document.getElementById('pur-qty').value) || 0;
+    const rate = Number(document.getElementById('pur-rate').value) || 0;
+    const gstPct = Number(document.getElementById('pur-gst-pct').value) || 0;
+    const taxable = qty * rate;
+    const total = taxable + taxable * (gstPct / 100);
+    const el = document.getElementById('pur-line-total');
+    if (el) el.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+}
 
-    document.getElementById('purchaseModal').classList.remove('hidden');
+function openPurchaseModal() {
+    try {
+        const form = document.getElementById('purchaseForm');
+        if (form) form.reset();
+        safeSetVal('pur-party-search', '');
+        safeSetVal('pur-supplier', '');
+        safeSetVal('pur-prod-search', '');
+        safeSetVal('pur-prod-select', '');
+        // Set Today's Date
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        safeSetVal('pur-date', today);
+        // Fetch next purchase bill number
+        fetch(`${API_BASE}/admin/next-number/purchase`)
+            .then(res => res.json())
+            .then(data => { if (data.success) safeSetVal('pur-bill-no', data.nextNumber); })
+            .catch(e => console.warn('Next purchase number fetch failed', e));
+        purchaseItems = [];
+        renderPurchaseItems();
+        document.getElementById('purchaseModal').classList.remove('hidden');
+    } catch (e) { console.error('Error opening purchase modal', e); }
 }
 
 function closePurchaseModal() {
@@ -2501,138 +2524,126 @@ function closePurchaseModal() {
 
 function addPurchaseItem() {
     const prodId = document.getElementById('pur-prod-select').value;
-    const qty = Number(document.getElementById('pur-qty').value);
-    const rate = Number(document.getElementById('pur-rate').value);
-    const manfName = document.getElementById('pur-manf-name').value;
+    const prodName = document.getElementById('pur-prod-search').value;
     const batch = document.getElementById('pur-batch').value;
     const mfg = document.getElementById('pur-mfg').value;
     const exp = document.getElementById('pur-exp').value;
-    const gstPct = Number(document.getElementById('pur-gst-pct').value);
-    
-    if(!prodId || qty <= 0 || rate <= 0) return alert("Please fill item details");
-    
-    const prod = allProducts.find(p => p._id === prodId);
-    purchaseItems.push({
-        productId: prodId,
-        product: prodId, // Backward compatibility
-        name: prod.name,
-        manufacturer: manfName || prod.manufacturer || 'N/A',
-        qty: qty,
-        bonusQty: 0,
-        purchaseRate: rate,
-        batch: batch || 'N/A',
-        batchNo: batch || 'N/A', // Forward compatibility
-        mfgDate: mfg || 'N/A',
-        expDate: exp || 'N/A',
-        gstPercent: gstPct || 0,
-        hsn: prod.hsn || '',
-        totalValue: qty * rate
-    });
-    
+    const mrp = Number(document.getElementById('pur-mrp').value) || 0;
+    const rate = Number(document.getElementById('pur-rate').value) || 0;
+    const qty = Number(document.getElementById('pur-qty').value) || 0;
+    const gstPct = Number(document.getElementById('pur-gst-pct').value) || 12;
+
+    if (!prodId || !qty || qty <= 0) {
+        alert('Please select a product and enter valid quantity');
+        document.getElementById('pur-prod-search').focus();
+        return;
+    }
+
+    const taxable = qty * rate;
+    const gstAmount = taxable * (gstPct / 100);
+    const lineTotal = taxable + gstAmount;
+
+    purchaseItems.push({ productId: prodId, productName: prodName, batch, mfg, exp, mrp, rate, qty, gstPercent: gstPct, taxable, gstAmount, lineTotal });
+
+    // Clear row inputs
+    safeSetVal('pur-prod-search', '');
+    safeSetVal('pur-prod-select', '');
+    safeSetVal('pur-batch', '');
+    safeSetVal('pur-mfg', '');
+    safeSetVal('pur-exp', '');
+    safeSetVal('pur-mrp', '');
+    safeSetVal('pur-rate', '');
+    safeSetVal('pur-qty', '');
+    const lt = document.getElementById('pur-line-total');
+    if (lt) lt.innerText = '₹0.00';
+
     renderPurchaseItems();
-    // Clear line inputs
-    document.getElementById('pur-qty').value = '';
-    document.getElementById('pur-manf-name').value = '';
-    document.getElementById('pur-batch').value = '';
-    document.getElementById('pur-mfg').value = '';
-    document.getElementById('pur-exp').value = '';
+    document.getElementById('pur-prod-search').focus();
 }
 
 function renderPurchaseItems() {
     const tbody = document.getElementById('purchase-items-body');
-    if(!tbody) return;
-    
-    let subTotal = 0;
-    let gstTotal = 0;
+    if (!tbody) return;
 
-    tbody.innerHTML = purchaseItems.map((item, index) => {
-        const val = Number(item.totalValue) || 0;
-        const pct = Number(item.gstPercent) || 0;
-        const gst = (val * pct) / 100;
-        subTotal += val;
-        gstTotal += gst;
-        
-        return `<tr>
-            <td>
-                <strong>${item.name}</strong><br>
-                <small style="color:var(--text-muted)">Mfg: ${item.manufacturer || '-'} | HSN: ${item.hsn || '-'}</small>
+    tbody.innerHTML = purchaseItems.map((item, index) => `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="text-align: center;">
+                <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.85rem;">✕</button>
             </td>
-            <td>${item.batch}</td>
-            <td>${item.expDate}</td>
-            <td style="text-align:center;">${item.qty}</td>
-            <td style="text-align:right;">₹${Number(item.purchaseRate || 0).toFixed(2)}</td>
-            <td style="text-align:center;">${pct}%</td>
-            <td style="text-align:right; font-weight:700;">₹${(val + gst).toFixed(2)}</td>
-            <td><button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
-        </tr>`;
-    }).join('');
+            <td style="font-weight: 700;">${item.productName}</td>
+            <td>${item.batch || '-'}</td>
+            <td>${item.mfg || '-'}</td>
+            <td>${item.exp || '-'}</td>
+            <td>₹${(item.mrp || 0).toFixed(2)}</td>
+            <td>₹${(item.rate || 0).toFixed(2)}</td>
+            <td style="text-align: center; font-weight: 800; color: var(--primary);">${item.qty}</td>
+            <td style="text-align: center;">${item.gstPercent}%</td>
+            <td style="text-align: right; padding-right: 12px; font-weight: 900;">₹${(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>
+    `).join('');
 
-
-    const total = subTotal + gstTotal;
-    const rounded = Math.round(total);
-    const roundOff = rounded - total;
-
-    // Safety checks for element existence
-    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
-    
-    setVal('pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
-    setVal('pur-gst-total', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
-    setVal('pur-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:2}));
-    
-    const roEl = document.getElementById('pur-roundoff');
-    if (roEl) roEl.innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
-
-    // Update Strip if exists
-    setVal('strip-pur-count', purchaseItems.length);
-    setVal('strip-pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
-    setVal('strip-pur-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2}));
-    setVal('strip-pur-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits:2}));
+    // Update footer strip
+    const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
+    const gstTotal = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+    const grandTotal = subTotal + gstTotal;
+    const safeEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    safeEl('strip-pur-count', purchaseItems.length);
+    safeEl('strip-pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+    safeEl('strip-pur-gst', '₹' + gstTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+    safeEl('strip-pur-total', '₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
 }
 
-async function savePurchaseEntry(e) {
-    e.preventDefault();
-    if(!purchaseItems.length) return alert("Add at least one item");
+async function savePurchaseEntry(event) {
+    if (event) event.preventDefault();
+    if (!purchaseItems.length) return alert('Please add at least one item');
 
-    const supplierId = document.getElementById('pur-supplier').value;
-    const supplier = allStockists.find(s => s._id === supplierId);
+    const supplier = document.getElementById('pur-supplier').value;
+    if (!supplier) return alert('Please select a supplier');
 
-    const data = {
-        supplier: supplierId,
-        supplierName: supplier ? supplier.name : 'Unknown',
-        supplierInvoiceNo: document.getElementById('pur-inv-no').value,
-        invoiceDate: document.getElementById('pur-inv-date').value,
-        lrNo: document.getElementById('pur-lr-no').value,
-        lrDate: document.getElementById('pur-lr-date').value,
-        transport: document.getElementById('pur-transport').value,
-        paymentMode: document.getElementById('pur-payment-type').value,
-        remarks: document.getElementById('pur-remarks').value,
-        items: purchaseItems,
-        subTotal: Number(purchaseItems.reduce((s, i) => s + (Number(i.totalValue) || 0), 0).toFixed(2)),
-        gstAmount: Number(purchaseItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (Number(i.gstPercent) || 0) / 100), 0).toFixed(2)),
-        grandTotal: Math.round(purchaseItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (1 + (Number(i.gstPercent) || 0) / 100)), 0))
-    };
-
-
-    const purId = document.getElementById('pur-id').value;
-    const method = purId ? 'PUT' : 'POST';
-    const url = purId ? `/api/admin/purchase-entries/${purId}` : '/api/admin/purchase-entries';
+    const btn = event?.submitter;
+    const originalText = btn ? btn.innerText : '';
+    if (btn) { btn.disabled = true; btn.innerText = 'POSTING...'; }
 
     try {
-        const res = await fetch(url, {
-            method: method,
+        const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
+        const gstAmount = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+        const grandTotal = subTotal + gstAmount;
+
+        const payload = {
+            supplierId: supplier,
+            billNo: document.getElementById('pur-bill-no').value,
+            date: document.getElementById('pur-date').value,
+            paymentMode: document.getElementById('pur-payment-mode').value,
+            warehouse: (document.getElementById('pur-warehouse') || {}).value || 'MAIN',
+            remarks: document.getElementById('pur-remarks').value,
+            items: purchaseItems,
+            subTotal: Number(subTotal.toFixed(2)),
+            gstAmount: Number(gstAmount.toFixed(2)),
+            grandTotal: Math.round(grandTotal)
+        };
+
+        const res = await fetch(`${API_BASE}/admin/purchase-entries`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
         const result = await res.json();
+
         if (result.success) {
-            alert("✅ Purchase Entry Recorded & Stock Updated!");
-            await loadPurchaseEntries();
-            await loadProducts();
-            await loadStockists();
-            renderPurchaseEntries();
-            closePurchaseModal();
+            const billNo = result.entry?.billNo || payload.billNo;
+            alert(`✅ Purchase Inward Posted!\nBill No: ${billNo}`);
+            openPurchaseModal(); // Reset for next entry
+            loadPurchaseEntries();
+            loadProducts();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
         }
-    } catch (e) { alert("Failed to save purchase"); }
+    } catch (e) {
+        console.error('Save Purchase Fail:', e);
+        alert('Failed to save purchase entry');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = originalText; }
+    }
 }
 
 
@@ -2660,9 +2671,35 @@ function openDirectSaleModal(type) {
         const form = document.getElementById('saleForm');
         if (form) form.reset();
         
+        // Explicitly clear non-standard fields
+        safeSetVal('sale-party-search', '');
+        safeSetVal('sale-party', '');
+        
+        // Set Today's Date (Robust YYYY-MM-DD)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${year}-${month}-${day}`;
+        safeSetVal('sale-date', today);
+        console.log("Prepopulating Sale Date:", today);
+        
         const typeInput = document.getElementById('sale-type-input');
         if (typeInput) typeInput.value = type;
         
+        // Fetch next invoice number
+        const url = `${API_BASE}/admin/next-number/invoice`;
+        console.log("Fetching next invoice number from:", url);
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Setting next invoice number:", data.nextNumber);
+                    safeSetVal('sale-ref-no', data.nextNumber);
+                }
+            })
+            .catch(e => console.error("Could not fetch next number", e));
+
         directSaleItems = [];
         renderSaleItems();
 
@@ -2953,9 +2990,12 @@ async function saveDirectSale(e) {
             if (btn) { btn.disabled = false; btn.innerText = originalText; }
             
             alert(`✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`);
-            closeSaleModal();
             
-            // Reload in background
+            // RESET EVERYTHING for the next invoice
+            const currentType = document.getElementById('sale-type-input').value;
+            openDirectSaleModal(currentType); 
+            
+            // Reload tables in background
             loadOrders();
             loadInvoices();
             refreshDashboard();
@@ -4052,11 +4092,15 @@ function updateSupplierDetailsDisplay(id) {
 }
 
 function updateProductEntryMeta(id) {
-    const p = allProducts.find(x => x._id == id);
+    const p = allProducts.find(x => x._id == id || x.id == id);
     if (!p) return;
-    document.getElementById('pur-rate').value = p.pts || 0;
-    document.getElementById('pur-gst-pct').value = p.gstPercent || p.gst || 12;
-    document.getElementById('pur-manf-name').value = p.manufacturer || '';
+    // Auto-fill purchase rate (PTS), GST%, and MRP from product master
+    safeSetVal('pur-rate', p.pts || 0);
+    safeSetVal('pur-mrp', p.mrp || 0);
+    safeSetVal('pur-gst-pct', p.gstPercent || p.gst || 12);
+    // Focus qty for fast entry
+    const qtyEl = document.getElementById('pur-qty');
+    if (qtyEl) { qtyEl.focus(); qtyEl.select(); }
 }
 
 
@@ -5295,13 +5339,14 @@ function handleProductSearch(input, context) {
         context === 'PURCHASE' ? 'pur-search-results' : 'note-search-results'
     );
     
-    if (resultsDiv && context === 'SALE') {
+    if (resultsDiv && (context === 'SALE' || context === 'PURCHASE')) {
         const rect = input.getBoundingClientRect();
         resultsDiv.style.position = 'fixed';
         resultsDiv.style.top = (rect.bottom + 5) + 'px';
         resultsDiv.style.left = rect.left + 'px';
-        resultsDiv.style.width = '700px';
+        resultsDiv.style.width = context === 'SALE' ? '700px' : '650px';
         resultsDiv.style.display = 'block';
+        resultsDiv.style.zIndex = '99999';
     }
     
     if (query.length < 0) { // Changed to allow 0 length for focus results
@@ -5351,7 +5396,7 @@ function handleProductSearch(input, context) {
         const stockClass = stock > 50 ? 'stock-ok' : (stock > 0 ? 'stock-low' : 'stock-out');
         const stockLabel = stock > 0 ? stock : 'OUT';
 
-        html += `<tr onclick="selectProduct('${p._id}', '${context}')" style="white-space: nowrap;">
+        html += `<tr onmousedown="event.preventDefault(); selectProduct('${p._id || p.id}', '${context}')" style="white-space: nowrap; cursor: pointer;">
             <td style="min-width: 200px;">
                 <div style="font-weight:700; color:#fff;">${p.name}</div>
                 <div style="font-size:0.65rem; color:var(--text-muted);">${p.hsn || '-'} | ${p.group || 'GENERAL'}</div>
@@ -5404,13 +5449,14 @@ function handlePartySearch(input, context) {
         context === 'PURCHASE' ? 'pur-party-search-results' : 'return-party-search-results'
     );
     
-    if (resultsDiv && context === 'SALE') {
+    if (resultsDiv && (context === 'SALE' || context === 'PURCHASE')) {
         const rect = input.getBoundingClientRect();
         resultsDiv.style.position = 'fixed';
         resultsDiv.style.top = (rect.bottom + 5) + 'px';
         resultsDiv.style.left = rect.left + 'px';
         resultsDiv.style.width = rect.width + 'px';
         resultsDiv.style.display = 'block';
+        resultsDiv.style.zIndex = '99999';
     }
     
     let matches = [];
@@ -5456,7 +5502,7 @@ function handlePartySearch(input, context) {
         <tbody>`;
 
     matches.forEach(s => {
-        html += `<tr onclick="selectParty('${s._id}', '${context}')">
+        html += `<tr onmousedown="event.preventDefault(); selectParty('${s._id || s.id}', '${context}')" style="cursor: pointer;">
             <td>
                 <div style="font-weight:700; color:#fff;">${s.name}</div>
                 <div style="font-size:0.6rem; color:var(--text-muted);">${s.gst || 'No GST'}</div>
@@ -5481,10 +5527,15 @@ function selectParty(id, context) {
         document.getElementById('sale-party-search-results').style.display = 'none';
         updateSalePartyContext();
     } else if (context === 'PURCHASE') {
-        document.getElementById('pur-supplier-search').value = s.name;
-        document.getElementById('pur-supplier').value = id;
+        // Fix: use correct field ID pur-party-search (not old pur-supplier-search)
+        const searchEl = document.getElementById('pur-party-search');
+        const hiddenEl = document.getElementById('pur-supplier');
+        if (searchEl) searchEl.value = s.name;
+        if (hiddenEl) hiddenEl.value = s._id || s.id;
         document.getElementById('pur-party-search-results').style.display = 'none';
-        updateSupplierDetailsDisplay(id);
+        // Show supplier details if box exists
+        const box = document.getElementById('supplier-compliance-box');
+        if (box) updateSupplierDetailsDisplay(s._id || s.id);
     } else if (context === 'RETURN') {
         document.getElementById('return-party-search').value = s.name;
         document.getElementById('return-party').value = id;

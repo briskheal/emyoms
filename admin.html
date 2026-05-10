@@ -2172,163 +2172,133 @@
 
 
     <!-- MODAL (Purchase Entry) -->
+    <!-- MODAL (Purchase Entry) -->
     <div id="purchaseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.94); backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 1250px; max-height: 95vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary); border-radius: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
-                <div>
-                    <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:2px;opacity:0.9;">PROCUREMENT MODULE</div>
-                    <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Detailed Purchase Entry (Stock-In)</div>
+        <div class="glass-card" style="width: 1250px; height: 95vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--primary); border-radius: 20px; position: relative;">
+            
+            <!-- FIXED HEADER -->
+            <div style="padding: 1.2rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); flex: 0 0 auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);margin-bottom:2px;opacity:0.9;">INVENTORY MANAGEMENT</div>
+                        <div style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Purchase Inward Entry</div>
+                    </div>
+                    <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
             </div>
             
-            <form id="purchaseForm" onsubmit="savePurchaseEntry(event)">
-                <input type="hidden" id="pur-id">
-                <!-- SUPPLIER & HEADER INFO -->
-                <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 16px;">
-                    <div class="form-group search-container">
-                        <label>Select Supplier</label>
-                        <input type="text" id="pur-supplier-search" placeholder="Type Supplier Name/City..." oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')">
-                        <input type="hidden" id="pur-supplier" required>
-                        <div id="pur-party-search-results" class="search-results"></div>
-                        <div id="supplier-compliance-box" style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted); line-height: 1.4;">
-                            <!-- Dynamic Details -->
-                            Select a supplier to view compliance data.
+            <!-- SCROLLABLE CONTENT -->
+            <div style="flex: 1 1 auto; overflow-y: auto; padding: 0.8rem 1.5rem;">
+                <form id="purchaseForm" onsubmit="savePurchaseEntry(event)" style="height: 100%; display: flex; flex-direction: column;">
+                    
+                    <!-- SUPPLIER & HEADER INFO -->
+                    <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
+                        <div class="form-group search-container">
+                            <label style="font-size: 0.6rem; opacity: 0.7;">Select Supplier</label>
+                            <input type="text" id="pur-party-search" placeholder="Type Supplier Name..." onfocus="handlePartySearch(this, 'PURCHASE')" oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')" style="font-size: 0.8rem; height: 32px;">
+                            <input type="hidden" id="pur-supplier" required>
                         </div>
-                    </div>
-                    <div>
                         <div class="form-group">
-                            <label>Supplier Inv No</label>
-                            <input type="text" id="pur-inv-no" required placeholder="INV/001">
+                            <label style="font-size: 0.6rem; opacity: 0.7;">Purchase Bill No</label>
+                            <input type="text" id="pur-bill-no" required placeholder="Generating..." style="font-size: 0.8rem; height: 32px;">
                         </div>
-                        <div class="form-group" style="margin-top: 10px;">
-                            <label>Invoice Date</label>
-                            <input type="date" id="pur-inv-date" required>
-                        </div>
-                    </div>
-                    <div>
                         <div class="form-group">
-                            <label>LR Number</label>
-                            <input type="text" id="pur-lr-no" placeholder="LR-7728">
+                            <label style="font-size: 0.6rem; opacity: 0.7;">Purchase Date</label>
+                            <input type="date" id="pur-date" required style="font-size: 0.8rem; height: 32px;">
                         </div>
-                        <div class="form-group" style="margin-top: 10px;">
-                            <label>LR Date</label>
-                            <input type="date" id="pur-lr-date">
-                        </div>
-                    </div>
-                    <div>
                         <div class="form-group">
-                            <label>Payment Mode</label>
-                            <select id="pur-payment-type">
-                                <option value="CREDIT">CREDIT (Pay Later)</option>
-                                <option value="CASH">CASH (Paid Now)</option>
+                            <label style="font-size: 0.6rem; opacity: 0.7;">Payment Mode</label>
+                            <select id="pur-payment-mode" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
+                                <option value="CASH">CASH</option>
+                                <option value="UPI">UPI</option>
+                                <option value="CREDIT">CREDIT</option>
                             </select>
                         </div>
-                        <div class="form-group" style="margin-top: 10px;">
-                            <label>Transport Name</label>
-                            <input type="text" id="pur-transport" placeholder="Transporter Name">
+                        <div class="form-group">
+                            <label style="font-size: 0.6rem; opacity: 0.7;">Warehouse</label>
+                            <select id="pur-warehouse" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
+                                <option value="MAIN">Main Warehouse</option>
+                            </select>
                         </div>
                     </div>
-                </div>
-                
-                <!-- ITEM ENTRY SECTION -->
-                <div style="background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.1); margin-bottom: 1.5rem;">
-                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); margin-bottom: 1rem;">Item Line Entry</h4>
-                    <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
-                        <div class="search-container">
-                            <label style="font-size: 0.65rem;">Product Search</label>
-                            <input type="text" id="pur-prod-search" placeholder="Type Product Name/HSN..." oninput="handleProductSearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-search-results')">
-                            <input type="hidden" id="pur-prod-select">
-                            <div id="pur-search-results" class="search-results"></div>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem;">Manufacturer</label>
-                            <input type="text" id="pur-manf-name" placeholder="Mfg Name">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem;">Batch No</label>
-                            <input type="text" id="pur-batch" placeholder="B-123">
-                        </div>
-                        <div style="position: relative;">
-                            <label style="font-size: 0.65rem;">Mfg Date</label>
-                            <input type="text" id="pur-mfg" placeholder="MM-YY" oninput="formatMMYY(this)" maxlength="5" style="padding-right: 30px;">
-                            <span onclick="openMonthYearPicker('pur-mfg')" style="position: absolute; right: 8px; bottom: 8px; cursor: pointer; font-size: 0.8rem; opacity: 0.6;">📝</span>
-                        </div>
-                        <div style="position: relative;">
-                            <label style="font-size: 0.65rem;">Exp Date</label>
-                            <input type="text" id="pur-exp" placeholder="MM-YY" oninput="formatMMYY(this)" maxlength="5" style="padding-right: 30px;">
-                            <span onclick="openMonthYearPicker('pur-exp')" style="position: absolute; right: 8px; bottom: 8px; cursor: pointer; font-size: 0.8rem; opacity: 0.6;">📝</span>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem;">Qty</label>
-                            <input type="number" id="pur-qty" placeholder="0">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem;">Rate (Ex. GST)</label>
-                            <input type="number" id="pur-rate" step="0.01" placeholder="0.00">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.65rem;">GST %</label>
-                            <input type="number" id="pur-gst-pct" value="12">
-                        </div>
-                        <button type="button" class="btn btn-primary" style="padding: 10px 15px; font-size: 0.7rem;" onclick="addPurchaseItem()">ADD ITEM</button>
-                    </div>
-                </div>
-
-                <div class="table-container" style="max-height: 300px; overflow-y: auto; margin-bottom: 1.5rem;">
-                    <table style="font-size: 0.75rem;">
-                        <thead style="position: sticky; top: 0; background: var(--bg); z-index: 10;">
-                            <tr>
-                                <th>Product Details</th>
-                                <th>Batch</th>
-                                <th>Exp</th>
-                                <th style="text-align: center;">Qty</th>
-                                <th style="text-align: right;">Rate</th>
-                                <th style="text-align: center;">GST %</th>
-                                <th style="text-align: right;">Final Value</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="purchase-items-body"></tbody>
-                    </table>
-                </div>
-
-                <!-- FOOTER SUMMARY -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
-                    <div style="flex: 1;">
-                        <div class="form-group" style="width: 300px;">
-                            <label>General Remarks / Notes</label>
-                            <textarea id="pur-remarks" style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                    
+                    <!-- CONSOLIDATED GRID ENTRY TABLE -->
+                    <div style="flex: 1; min-height: 400px; display: flex; flex-direction: column; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <div class="table-container" style="flex: 1; overflow-y: auto;">
+                            <table style="font-size: 0.72rem; table-layout: fixed; border-collapse: separate; border-spacing: 0;">
+                                <thead style="position: sticky; top: 0; background: #0f172a; z-index: 100;">
+                                    <tr>
+                                        <th style="width: 45px; text-align: center;">ACT</th>
+                                        <th style="width: 25%;">Product Details</th>
+                                        <th style="width: 14%;">Batch No</th>
+                                        <th style="width: 9%;">Mfg (MM-YY)</th>
+                                        <th style="width: 9%;">Exp (MM-YY)</th>
+                                        <th style="width: 8%;">MRP</th>
+                                        <th style="width: 8%;">Rate</th>
+                                        <th style="width: 7%;">Qty</th>
+                                        <th style="width: 6%;">GST%</th>
+                                        <th style="width: 10%; text-align: right; padding-right: 12px;">Line Total</th>
+                                    </tr>
+                                    <!-- INTEGRATED INPUT ROW -->
+                                    <tr style="background: rgba(99, 102, 241, 0.12); position: sticky; top: 32px; z-index: 99;">
+                                        <td style="text-align: center;">⚡</td>
+                                        <td style="overflow: visible;">
+                                            <div class="search-container" style="position: relative;">
+                                                <input type="text" id="pur-prod-search" placeholder="Type name..." onfocus="handleProductSearch(this, 'PURCHASE')" oninput="handleProductSearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-search-results')" style="font-size: 0.75rem; padding: 4px 8px; background: rgba(0,0,0,0.4); height: 30px;">
+                                                <input type="hidden" id="pur-prod-select">
+                                            </div>
+                                        </td>
+                                        <td><input type="text" id="pur-batch" placeholder="BATCH123" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="text" id="pur-mfg" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="text" id="pur-exp" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="number" id="pur-mrp" step="0.01" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="number" id="pur-rate" step="0.01" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter' || event.key==='ArrowDown') addPurchaseItem()" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="number" id="pur-qty" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter' || event.key==='ArrowDown') addPurchaseItem()" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td><input type="number" id="pur-gst-pct" value="12" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px;"></td>
+                                        <td style="text-align: right; padding-right: 12px;">
+                                            <div id="pur-line-total" style="font-weight: 800; color: var(--primary); font-size: 0.8rem;">₹0.00</div>
+                                        </td>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchase-items-body"></tbody>
+                            </table>
                         </div>
                     </div>
+                    
+                    <!-- REMARKS & ACTION -->
+                    <div style="background: rgba(255,255,255,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
+                         <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+                             <span style="font-size: 0.65rem; font-weight: 800; color: var(--primary); white-space: nowrap;">REMARKS:</span>
+                             <input type="text" id="pur-remarks" placeholder="Add purchase notes..." style="background: transparent; border: none; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 4px 0; width: 100%;">
+                         </div>
+                         <div style="display: flex; gap: 10px;">
+                              <button type="submit" class="btn btn-primary" style="padding: 10px 40px; font-weight: 900; font-size: 0.8rem; background: var(--primary); color: #fff; box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);">✓ POST PURCHASE INWARD</button>
+                         </div>
+                    </div>
 
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()">CANCEL</button>
-                    <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; letter-spacing: 1px;">✓ CONFIRM & POST PURCHASE</button>
-                </div>
-            </form>
-
-            <!-- FIXED CALCULATION STRIP (Similarity Fix) -->
-            <div id="pur-calc-strip" style="position: sticky; bottom: 0; left: -2rem; right: -2rem; width: calc(100% + 4rem); background: #0f172a; border-top: 2px solid var(--primary); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 2rem; z-index: 100; margin-top: 2rem; box-shadow: 0 -10px 30px rgba(0,0,0,0.5);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">TOTAL ITEMS:</span>
-                    <span id="strip-pur-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
-                </div>
-                <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">TAXABLE:</span>
-                    <span id="strip-pur-subtotal" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
-                    <span id="strip-pur-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
-                </div>
-                <div style="margin-left: auto; background: var(--primary); padding: 5px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.7rem; font-weight: 900; color: #fff; letter-spacing: 1px;">NET PURCHASE:</span>
-                    <span id="strip-pur-total" style="font-size: 1.2rem; font-weight: 900; color: #fff;">₹0.00</span>
-                </div>
+                    <!-- CALCULATION FOOTER (FROZEN) -->
+                    <div id="pur-calc-strip" style="background: #0f172a; border-top: 2px solid var(--primary); padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 2rem; border-radius: 0 0 20px 20px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1px;">TOTAL ITEMS:</span>
+                            <span id="strip-pur-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
+                        </div>
+                        <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">TAXABLE:</span>
+                            <span id="strip-pur-subtotal" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
+                            <span id="strip-pur-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
+                        </div>
+                        <div style="margin-left: auto; background: var(--primary); padding: 8px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px;">
+                            <span style="font-size: 0.75rem; font-weight: 900; color: #fff; letter-spacing: 1px;">NET PAYABLE:</span>
+                            <span id="strip-pur-total" style="font-size: 1.4rem; font-weight: 900; color: #fff;">₹0.00</span>
+                        </div>
+                    </div>
+                    <div id="pur-party-search-results" class="search-results" style="z-index: 9999;"></div>
+                    <div id="pur-search-results" class="search-results" style="z-index: 9999;"></div>
+                </form>
             </div>
         </div>
     </div>
