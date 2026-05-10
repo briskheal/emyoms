@@ -3438,16 +3438,16 @@ function addReturnRow() {
                     style="${inputBase}width:100%;text-align:center;">
             </td>
             <td style="${cellStyle}">
+                <input type="number" id="return-mrp-${id}" readonly
+                    style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
+            </td>
+            <td style="${cellStyle}">
                 <input type="number" id="return-old-rate-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="Old"
                     style="${inputBase}text-align:right; font-family:monospace; color:#94a3b8;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-new-rate-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="New"
                     style="${inputBase}text-align:right; font-family:monospace; border-color:rgba(245,158,11,0.3);">
-            </td>
-            <td style="${cellStyle}">
-                <input type="number" id="return-mrp-${id}" readonly
-                    style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" readonly
@@ -3584,6 +3584,13 @@ function updateBatchDetails(rowId) {
             if (!isPD) {
                 if (b.mrp) document.getElementById(`return-mrp-${rowId}`).value = b.mrp;
                 if (b.pts) document.getElementById(`return-price-${rowId}`).value = b.pts;
+                if (b.expDate) {
+                    const el = document.getElementById(`return-exp-${rowId}`);
+                    if (el) el.value = b.expDate.replace('/', '-');
+                }
+            } else {
+                if (b.mrp) document.getElementById(`return-mrp-${rowId}`).value = b.mrp;
+                if (b.pts) document.getElementById(`return-old-rate-${rowId}`).value = b.pts;
                 if (b.expDate) {
                     const el = document.getElementById(`return-exp-${rowId}`);
                     if (el) el.value = b.expDate.replace('/', '-');
