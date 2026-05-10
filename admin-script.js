@@ -2523,6 +2523,7 @@ function closePurchaseModal() {
 }
 
 function addPurchaseItem() {
+    console.log('addPurchaseItem called. Items before:', purchaseItems.length);
     const prodId = document.getElementById('pur-prod-select').value;
     const prodName = document.getElementById('pur-prod-search').value;
     const batch = document.getElementById('pur-batch').value;
@@ -2534,7 +2535,7 @@ function addPurchaseItem() {
     const gstPct = Number(document.getElementById('pur-gst-pct').value) || 12;
 
     if (!prodId || !qty || qty <= 0) {
-        alert('Please select a product and enter valid quantity');
+        alert('⚠️ Please select a product and enter valid quantity');
         document.getElementById('pur-prod-search').focus();
         return;
     }
@@ -2543,7 +2544,9 @@ function addPurchaseItem() {
     const gstAmount = taxable * (gstPct / 100);
     const lineTotal = taxable + gstAmount;
 
-    purchaseItems.push({ productId: prodId, productName: prodName, batch, mfg, exp, mrp, rate, qty, gstPercent: gstPct, taxable, gstAmount, lineTotal });
+    const newItem = { productId: prodId, productName: prodName, batch, mfg, exp, mrp, rate, qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
+    purchaseItems.push(newItem);
+    console.log('Item added. Items after:', purchaseItems.length, newItem);
 
     // Clear row inputs
     safeSetVal('pur-prod-search', '');
@@ -2554,11 +2557,22 @@ function addPurchaseItem() {
     safeSetVal('pur-mrp', '');
     safeSetVal('pur-rate', '');
     safeSetVal('pur-qty', '');
+    
     const lt = document.getElementById('pur-line-total');
     if (lt) lt.innerText = '₹0.00';
 
     renderPurchaseItems();
-    document.getElementById('pur-prod-search').focus();
+    
+    // Auto-focus back to search for next item
+    setTimeout(() => {
+        const searchInput = document.getElementById('pur-prod-search');
+        if (searchInput) {
+            searchInput.focus();
+            // Close any leftover search results
+            const resultsDiv = document.getElementById('pur-search-results');
+            if (resultsDiv) resultsDiv.style.display = 'none';
+        }
+    }, 50);
 }
 
 function renderPurchaseItems() {
