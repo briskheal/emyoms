@@ -2864,22 +2864,18 @@ function renderSaleItems() {
         gstTotal += gst;
 
         return `<tr>
-            <td>
-                <div style="font-weight:700; color:#fff;">${item.name}</div>
+            <td style="text-align:center;">
+                <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#ef4444; background:none; border:none; cursor:pointer; font-size:0.9rem;">✖</button>
             </td>
-            <td>
-                <div style="font-weight:600;">${item.batch}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted);">HSN: ${item.hsn || '-'}</div>
-            </td>
-            <td>
-                <div style="font-weight:600;">${item.expDate || '-'}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted);">MRP: ₹${item.mrp || '0.00'}</div>
-            </td>
+            <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div></td>
+            <td><div style="font-weight:600;">${item.batch}</div></td>
+            <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
+            <td><div style="font-weight:600;">${item.expDate || '-'}</div></td>
+            <td>₹${item.mrp || '0.00'}</td>
+            <td>₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align:center; font-weight:700;">${item.qty}</td>
-            <td style="text-align:right;">₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align:center;">${pct}%</td>
-            <td style="text-align:right; font-weight:700; color:var(--accent);">₹${(val + gst).toFixed(2)}</td>
-            <td><button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#ef4444; background:rgba(239,68,68,0.1); border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">✖</button></td>
+            <td style="text-align:right; font-weight:700; color:var(--accent); padding-right:10px;">₹${(val + gst).toFixed(2)}</td>
         </tr>`;
     }).join('');
 
@@ -5400,14 +5396,19 @@ function handlePartySearch(input, context) {
     );
     
     let matches = [];
-    if (query.length === 0 && context === 'RETURN') {
-        // Show all stockists for the "Selection Menu" feel
-        matches = allStockists.filter(s => (s.partyType || 'STOCKIST') === 'STOCKIST').slice(0, 15);
-    } else if (query.length >= 1) {
+    if (query.length === 0) {
+        // Show all relevant parties for the context (Stockists for Sale/Return, Suppliers for Purchase)
+        const typeFilter = (context === 'PURCHASE') ? 'SUPPLIER' : 'STOCKIST';
+        matches = allStockists.filter(s => {
+            const type = s.partyType || 'STOCKIST';
+            return type === typeFilter;
+        }).slice(0, 15);
+    } else {
         matches = allStockists.filter(s => {
             const nameMatch = s.name.toLowerCase().includes(query);
             const cityMatch = (s.city || '').toLowerCase().includes(query);
-            const typeMatch = (context === 'PURCHASE') ? s.partyType === 'SUPPLIER' : (s.partyType || 'STOCKIST') === 'STOCKIST';
+            const typeFilter = (context === 'PURCHASE') ? 'SUPPLIER' : 'STOCKIST';
+            const typeMatch = (s.partyType || 'STOCKIST') === typeFilter;
             return (nameMatch || cityMatch) && typeMatch;
         }).slice(0, 15);
     }
