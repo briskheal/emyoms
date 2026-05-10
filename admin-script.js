@@ -3279,21 +3279,27 @@ function openReturnModal(reason, editData = null) {
     
     if (cfg.isPriceDiff) {
         colgroup.innerHTML = `
-            <col style="width:23%"><!-- Product -->
+            <col style="width:18%"><!-- Product -->
+            <col style="width:8%"><!-- HSN -->
             <col style="width:10%"><!-- Batch -->
-            <col style="width:7%"><!-- Qty -->
-            <col style="width:10%"><!-- Old Rate -->
-            <col style="width:10%"><!-- New Rate -->
-            <col style="width:10%"><!-- Diff -->
+            <col style="width:9%"><!-- Exp -->
+            <col style="width:5%"><!-- Qty -->
+            <col style="width:8%"><!-- MRP -->
+            <col style="width:9%"><!-- Old Rate -->
+            <col style="width:9%"><!-- New Rate -->
+            <col style="width:8%"><!-- Diff -->
             <col style="width:7%"><!-- GST% -->
-            <col style="width:12%"><!-- Total -->
+            <col style="width:10%"><!-- Total -->
             <col style="width:4%"><!-- Del -->
         `;
         thead.innerHTML = `
             <tr style="background:rgba(245,158,11,0.1); border-bottom:1px solid rgba(245,158,11,0.25);">
                 <th style="padding:7px 8px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Product</th>
+                <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">HSN</th>
                 <th style="padding:7px 5px;text-align:left;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Batch No</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Exp (MM-YY)</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Qty</th>
+                <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">MRP</th>
                 <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Inv Rate</th>
                 <th style="padding:7px 5px;text-align:right;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">New Rate</th>
                 <th style="padding:7px 5px;text-align:center;font-size:0.65rem;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#ffffff;">Diff</th>
@@ -3413,7 +3419,19 @@ function addReturnRow() {
                 <div id="return-search-results-${id}" class="search-results"></div>
             </td>
             <td style="${cellStyle}">
-                <input type="text" id="return-batch-${id}" placeholder="Batch" style="${inputBase}">
+                <input type="text" id="return-hsn-${id}" readonly
+                    style="${inputBase}background:transparent;border-color:transparent;color:#e2e8f0;font-size:0.68rem;text-align:center;">
+            </td>
+            <td style="${cellStyle}">
+                <input type="text" id="return-batch-${id}" placeholder="Batch" list="batch-list-${id}"
+                    onchange="updateBatchDetails('${id}')"
+                    style="${inputBase}">
+                <datalist id="batch-list-${id}"></datalist>
+            </td>
+            <td style="${cellStyle}">
+                <input type="text" id="return-exp-${id}" placeholder="MM-YY" readonly
+                    onclick="openMonthYearPicker('return-exp-${id}')"
+                    style="${inputBase}text-align:center; cursor:pointer; background:rgba(99,102,241,0.1); border-color:rgba(99,102,241,0.3);">
             </td>
             <td style="${cellStyle}">
                 <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
@@ -3518,11 +3536,17 @@ function updateReturnRowData(rowId, productId) {
         const isPD = (RETURN_MODULE_CONFIG[reason] || {}).isPriceDiff;
 
         if (isPD) {
-            document.getElementById(`return-old-rate-${rowId}`).value = p.pts || 0;
+            if (document.getElementById(`return-old-rate-${rowId}`)) document.getElementById(`return-old-rate-${rowId}`).value = p.pts || 0;
+            if (document.getElementById(`return-mrp-${rowId}`)) document.getElementById(`return-mrp-${rowId}`).value = p.mrp || 0;
+            if (document.getElementById(`return-hsn-${rowId}`)) document.getElementById(`return-hsn-${rowId}`).value = p.hsn || '';
+            if (document.getElementById(`return-exp-${rowId}`)) {
+                const b = (p.batches || [])[0];
+                if (b && b.expDate) document.getElementById(`return-exp-${rowId}`).value = b.expDate.replace('/', '-');
+            }
         } else {
-            document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
-            document.getElementById(`return-mrp-${rowId}`).value   = p.mrp || 0;
-            document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
+            if (document.getElementById(`return-hsn-${rowId}`)) document.getElementById(`return-hsn-${rowId}`).value   = p.hsn || '';
+            if (document.getElementById(`return-mrp-${rowId}`)) document.getElementById(`return-mrp-${rowId}`).value   = p.mrp || 0;
+            if (document.getElementById(`return-price-${rowId}`)) document.getElementById(`return-price-${rowId}`).value = p.pts || 0;
         }
 
         document.getElementById(`return-gst-pct-${rowId}`).value = p.gstPercent || 0;
