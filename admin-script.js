@@ -2514,10 +2514,11 @@ function calculatePurchaseLineTotal() {
     if (el) el.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function openPurchaseModal() {
+function openPurchaseModal(id = null) {
     try {
         const form = document.getElementById('purchaseForm');
         if (form) form.reset();
+        safeSetVal('pur-id', id || '');
         safeSetVal('pur-party-search', '');
         safeSetVal('pur-supplier', '');
         safeSetVal('pur-prod-search', '');
@@ -2527,11 +2528,15 @@ function openPurchaseModal() {
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         safeSetVal('pur-date', today);
-        // Fetch next purchase bill number
-        fetch(`${API_BASE}/admin/next-number/purchase`)
-            .then(res => res.json())
-            .then(data => { if (data.success) safeSetVal('pur-bill-no', data.nextNumber); })
-            .catch(e => console.warn('Next purchase number fetch failed', e));
+        
+        if (!id) {
+            // Fetch next purchase bill number for NEW entries
+            fetch(`${API_BASE}/admin/next-number/purchase`)
+                .then(res => res.json())
+                .then(data => { if (data.success) safeSetVal('pur-bill-no', data.nextNumber); })
+                .catch(e => console.warn('Next purchase number fetch failed', e));
+        }
+
         purchaseItems = [];
         renderPurchaseItems();
         document.getElementById('purchaseModal').classList.remove('hidden');
@@ -2672,8 +2677,12 @@ async function savePurchaseEntry(event) {
 
         console.log('POSTing purchase payload:', payload);
 
-        const res = await fetch(`${API_BASE}/admin/purchase-entries`, {
-            method: 'POST',
+        const purchaseId = document.getElementById('pur-id')?.value;
+        const url = purchaseId ? `${API_BASE}/admin/purchase-entries/${purchaseId}` : `${API_BASE}/admin/purchase-entries`;
+        const method = purchaseId ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
@@ -4096,7 +4105,7 @@ function editPurchaseEntry(id) {
     const p = allPurchaseEntries.find(x => x._id == id);
     if (!p) return alert('Purchase record not found.');
 
-    openPurchaseModal();
+    openPurchaseModal(id);
 
     // Use setTimeout to allow the modal reset to complete first
     setTimeout(() => {

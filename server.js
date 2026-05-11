@@ -1338,9 +1338,96 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
         }
 
         // Return with billNo for the frontend success message
-        res.json({ success: true, entry: { ...entry.toJSON(), billNo: finalBillNo } });
+        res.json({ success: true, entry: { ...entry.toJSON(), billNo: finalPurchaseNo } });
     } catch (e) {
         console.error("Purchase Entry Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/admin/purchase-entries/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { supplierId, date, paymentMode, remarks, items, subTotal, gstAmount, grandTotal, supplierInvoiceNo } = req.body;
+
+        const entry = await db.PurchaseEntry.findByPk(id, { include: [{ model: db.PurchaseItem, as: 'items' }] });
+        if (!entry) return res.status(404).json({ success: false, message: 'Purchase record not found' });
+
+        // 1. Reverse stock for old items
+        for (const oldItem of (entry.items || [])) {
+            const product = await db.Product.findByPk(oldItem.productId);
+            if (product) await product.decrement('qtyAvailable', { by: oldItem.qty });
+            const batch = await db.Batch.findOne({ where: { productId: oldItem.productId, batchNo: oldItem.batch } });
+            if (batch) await batch.decrement('qtyAvailable', { by: oldItem.qty });
+        }
+        
+        // 2. Reverse outstanding balance
+        if (entry.supplierId) {
+            const oldStockist = await db.Stockist.findByPk(entry.supplierId);
+            if (oldStockist) await oldStockist.increment('outstandingBalance', { by: entry.grandTotal });
+        }
+
+        // 3. Update entry header
+        await entry.update({
+            supplierId: supplierId || null,
+            supplierInvoiceNo: supplierInvoiceNo || entry.supplierInvoiceNo,
+            invoiceDate: date ? new Date(date) : entry.invoiceDate,
+            paymentMode: paymentMode || entry.paymentMode,
+            remarks: remarks || entry.remarks,
+            subTotal: Number(subTotal) || 0,
+            gstAmount: Number(gstAmount) || 0,
+            grandTotal: Number(grandTotal) || 0
+        });
+
+        // 4. Delete old items
+        await db.PurchaseItem.destroy({ where: { purchaseEntryId: id } });
+
+        // 5. Add new items and update stock
+        for (const item of (items || [])) {
+            const pId = item.productId || item.product;
+            const bNo = item.batch || item.batchNo || 'N/A';
+            const product = await db.Product.findByPk(pId);
+            if (product) {
+                await product.increment('qtyAvailable', { by: item.qty });
+                let [batch] = await db.Batch.findOrCreate({
+                    where: { productId: pId, batchNo: bNo },
+                    defaults: {
+                        productId: pId,
+                        batchNo: bNo,
+                        mfgDate: item.mfg || item.mfgDate || null,
+                        expDate: item.exp || item.expDate || null,
+                        mrp: item.mrp || product.mrp,
+                        pts: item.pts || product.pts,
+                        ptr: item.ptr || product.ptr,
+                        qtyAvailable: 0
+                    }
+                });
+                await batch.increment('qtyAvailable', { by: item.qty });
+
+                await db.PurchaseItem.create({
+                    productId: pId,
+                    purchaseEntryId: entry.id,
+                    qty: item.qty,
+                    purchaseRate: item.rate || item.purchaseRate || 0,
+                    mrp: item.mrp || 0,
+                    batch: bNo,
+                    mfgDate: item.mfg || item.mfgDate || null,
+                    expDate: item.exp || item.expDate || null,
+                    gstPercent: item.gstPercent || 0,
+                    totalValue: item.taxable || (item.qty * (item.rate || 0))
+                });
+            }
+        }
+
+        // 6. Update new outstanding balance
+        if (supplierId) {
+            const newStockist = await db.Stockist.findByPk(supplierId);
+            if (newStockist) await newStockist.decrement('outstandingBalance', { by: grandTotal });
+        }
+
+        res.json({ success: true, entry: { ...entry.toJSON(), billNo: entry.purchaseNo } });
+    } catch (e) {
+        console.error("Purchase Update Error:", e);
         res.status(500).json({ error: e.message });
     }
 });
