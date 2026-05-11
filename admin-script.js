@@ -723,9 +723,15 @@ async function loadInvoices() {
 async function loadPurchaseEntries() {
     try {
         const res = await fetch(`${API_BASE}/admin/purchase-entries`);
-        allPurchaseEntries = await res.json();
+        const data = await res.json();
+        // Add aliases for UI compatibility
+        allPurchaseEntries = data.map(p => ({
+            ...p,
+            _id: p.id,
+            supplierName: p.Supplier?.name || p.supplierName || 'N/A'
+        }));
         renderPurchaseEntries();
-    } catch (e) { console.error("Load purchase entries fail"); }
+    } catch (e) { console.error("Load purchase entries fail", e); }
 }
 
 function renderCharts(currentMonthOrders, totalOrders) {
@@ -2483,12 +2489,12 @@ function renderPurchaseEntries() {
 
     tbody.innerHTML = allPurchaseEntries.map(p => `
         <tr>
-            <td style="font-family:monospace; font-weight:700;">${p.purchaseNo}</td>
+            <td style="font-family:monospace; font-weight:700; color:var(--primary);">${p.purchaseNo || 'N/A'}</td>
             <td style="font-weight:600;">${p.supplierName}</td>
-            <td>${p.supplierInvoiceNo}</td>
+            <td>${p.supplierInvoiceNo || '-'}</td>
             <td>${new Date(p.invoiceDate).toLocaleDateString('en-GB')}</td>
-                <td style="text-align:center;">${p.items.length}</td>
-            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${Number(p.grandTotal || 0).toLocaleString('en-IN')}</td>
+            <td style="text-align:center;">${p.items?.length || 0}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
 
             <td style="text-align:right; white-space:nowrap;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">VIEW</button>
