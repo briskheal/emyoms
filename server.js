@@ -1432,6 +1432,37 @@ app.put('/api/admin/purchase-entries/:id', async (req, res) => {
     }
 });
 
+app.delete('/api/admin/purchase-entries/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const entry = await db.PurchaseEntry.findByPk(id, { include: [{ model: db.PurchaseItem, as: 'items' }] });
+        if (!entry) return res.status(404).json({ success: false, message: 'Purchase record not found' });
+
+        // 1. Reverse stock
+        for (const oldItem of (entry.items || [])) {
+            const product = await db.Product.findByPk(oldItem.productId);
+            if (product) await product.decrement('qtyAvailable', { by: oldItem.qty });
+            const batch = await db.Batch.findOne({ where: { productId: oldItem.productId, batchNo: oldItem.batch } });
+            if (batch) await batch.decrement('qtyAvailable', { by: oldItem.qty });
+        }
+        
+        // 2. Reverse outstanding balance
+        if (entry.supplierId) {
+            const stockist = await db.Stockist.findByPk(entry.supplierId);
+            if (stockist) await stockist.increment('outstandingBalance', { by: entry.grandTotal });
+        }
+
+        // 3. Delete items and entry
+        await db.PurchaseItem.destroy({ where: { purchaseEntryId: id } });
+        await entry.destroy();
+
+        res.json({ success: true, message: 'Purchase entry deleted and stock/balance reversed.' });
+    } catch (e) {
+        console.error("Purchase Delete Error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- FINANCIAL NOTES (CN/DN) ---
 
 app.get('/api/admin/financial-notes', async (req, res) => {

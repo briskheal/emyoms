@@ -728,6 +728,7 @@ async function loadPurchaseEntries() {
         allPurchaseEntries = data.map(p => ({
             ...p,
             _id: p.id,
+            supplier: p.supplierId, // Add alias for edit mode compatibility
             supplierName: p.Supplier?.name || p.supplierName || 'N/A'
         }));
         renderPurchaseEntries();
@@ -2500,6 +2501,7 @@ function renderPurchaseEntries() {
                 <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">INFO</button>
                 <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem; color:var(--accent);" onclick="viewPurchasePDF('${p._id}')">PDF</button>
                 <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')">EDIT</button>
+                <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem; color:#ef4444;" onclick="deletePurchaseEntry('${p._id}')">DEL</button>
             </td>
         </tr>
     `).join('');
@@ -4205,6 +4207,23 @@ function editPurchaseEntry(id) {
         renderPurchaseItems();
         console.log('Edit mode loaded for purchase:', p.purchaseNo, 'Items:', purchaseItems.length);
     }, 150);
+}
+
+function deletePurchaseEntry(id) {
+    if (!confirm('⚠️ Are you sure you want to DELETE this purchase entry?\nThis will REVERSE all stock increments and adjust the supplier balance!')) return;
+
+    fetch(`${API_BASE}/admin/purchase-entries/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                alert('✅ Purchase entry deleted successfully!');
+                loadPurchaseEntries();
+                loadProducts(); // Refresh stock counts
+            } else {
+                alert('Error: ' + result.message);
+            }
+        })
+        .catch(e => alert('Delete failed: ' + e.message));
 }
 
 function setInvoiceStyle(style) {
