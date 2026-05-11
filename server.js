@@ -1267,7 +1267,14 @@ app.post('/api/admin/direct-sale', async (req, res) => {
 app.get('/api/admin/purchase-entries', async (req, res) => {
     try {
         const entries = await db.PurchaseEntry.findAll({ 
-            include: [{ model: db.PurchaseItem, as: 'items' }, { model: db.Stockist, as: 'Supplier' }],
+            include: [
+                { 
+                    model: db.PurchaseItem, 
+                    as: 'items',
+                    include: [{ model: db.Product }]
+                }, 
+                { model: db.Stockist, as: 'Supplier' }
+            ],
             order: [['createdAt', 'DESC']] 
         });
         res.json(entries);
@@ -1320,6 +1327,8 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
                 await db.PurchaseItem.create({
                     productId: pId,
                     purchaseEntryId: entry.id,
+                    name: product.name,
+                    manufacturer: product.manufacturer,
                     qty: item.qty,
                     purchaseRate: item.rate || item.purchaseRate || 0,
                     mrp: item.mrp || 0,
@@ -1407,6 +1416,8 @@ app.put('/api/admin/purchase-entries/:id', async (req, res) => {
                 await db.PurchaseItem.create({
                     productId: pId,
                     purchaseEntryId: entry.id,
+                    name: product.name,
+                    manufacturer: product.manufacturer,
                     qty: item.qty,
                     purchaseRate: item.rate || item.purchaseRate || 0,
                     mrp: item.mrp || 0,

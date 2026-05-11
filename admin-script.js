@@ -2597,7 +2597,6 @@ function addPurchaseItem() {
             searchInput.focus();
             // Close any leftover search results
             const resultsDiv = document.getElementById('pur-search-results');
-            if (resultsDiv) resultsDiv.style.display = 'none';
         }
     }, 50);
 }
@@ -2608,10 +2607,11 @@ function renderPurchaseItems() {
 
     tbody.innerHTML = purchaseItems.map((item, index) => `
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-            <td style="text-align: center;">
+            <td style="text-align: center; white-space: nowrap;">
+                <button type="button" onclick="editPurchaseLineItem(${index})" style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 0.85rem; margin-right: 8px;">✎</button>
                 <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.85rem;">✕</button>
             </td>
-            <td style="font-weight: 700;">${item.productName}</td>
+            <td style="font-weight: 700;">${item.productName || 'N/A'}</td>
             <td>${item.batch || '-'}</td>
             <td>${item.mfg || '-'}</td>
             <td>${item.exp || '-'}</td>
@@ -2622,6 +2622,32 @@ function renderPurchaseItems() {
             <td style="text-align: right; padding-right: 12px; font-weight: 900;">₹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
     `).join('');
+}
+
+function editPurchaseLineItem(index) {
+    const item = purchaseItems[index];
+    if (!item) return;
+
+    // Load into top row for editing
+    safeSetVal('pur-prod-search', item.productName);
+    safeSetVal('pur-prod-select', item.productId);
+    safeSetVal('pur-batch', item.batch);
+    safeSetVal('pur-mfg', item.mfg);
+    safeSetVal('pur-exp', item.exp);
+    safeSetVal('pur-mrp', item.mrp);
+    safeSetVal('pur-rate', item.rate);
+    safeSetVal('pur-qty', item.qty);
+    
+    const lt = document.getElementById('pur-line-total');
+    if (lt) lt.innerText = `₹${Number(item.lineTotal || 0).toFixed(2)}`;
+
+    // Remove from list so it can be re-added after editing
+    purchaseItems.splice(index, 1);
+    renderPurchaseItems();
+    
+    // Set focus to Qty for quick correction
+    setTimeout(() => document.getElementById('pur-qty')?.focus(), 50);
+}
 
     // Update footer strip
     const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
@@ -4190,20 +4216,23 @@ function editPurchaseEntry(id) {
         }
 
         // --- Items ---
-        purchaseItems = (p.items || []).map(i => ({
-            productId: i.product || i.productId || '',
-            productName: i.productName || i.name || '',
-            batch: i.batch || '',
-            mfg: i.mfg || i.mfgDate || '',
-            exp: i.exp || i.expDate || '',
-            mrp: Number(i.mrp || 0).toFixed(2) * 1,
-            rate: Number(i.rate || i.purchaseRate || 0),
-            qty: Number(i.qty || 0),
-            gstPercent: Number(i.gstPercent || 12),
-            taxable: Number(i.taxable || ((i.qty || 0) * (i.rate || i.purchaseRate || 0))).toFixed(2) * 1,
-            gstAmount: Number(i.gstAmount || 0),
-            lineTotal: Number(i.lineTotal || i.totalValue || 0)
-        }));
+        purchaseItems = (p.items || []).map(i => {
+            const product = allProducts.find(pr => (pr._id || pr.id) == i.productId) || i.Product || {};
+            return {
+                productId: i.productId || i.product || '',
+                productName: product.name || i.name || i.productName || 'Unknown Product',
+                batch: i.batch || '',
+                mfg: i.mfg || i.mfgDate || '',
+                exp: i.exp || i.expDate || '',
+                mrp: Number(i.mrp || 0).toFixed(2) * 1,
+                rate: Number(i.rate || i.purchaseRate || 0),
+                qty: Number(i.qty || 0),
+                gstPercent: Number(i.gstPercent || 12),
+                taxable: Number(i.taxable || ((i.qty || 0) * (i.rate || i.purchaseRate || 0))).toFixed(2) * 1,
+                gstAmount: Number(i.gstAmount || 0),
+                lineTotal: Number(i.lineTotal || i.totalValue || 0)
+            };
+        });
 
         renderPurchaseItems();
         console.log('Edit mode loaded for purchase:', p.purchaseNo, 'Items:', purchaseItems.length);
@@ -5448,6 +5477,7 @@ async function generateSampleMatchedPDF({
     if (filename) {
         doc.save(filename);
     }
+    return doc;
 }
 // --- KEYBOARD NAVIGATION FOR SEARCH ---
 let currentSearchFocus = -1;

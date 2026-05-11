@@ -91,6 +91,7 @@ db.Expense.belongsTo(db.ExpenseCategory, { foreignKey: 'categoryId' });
 
 db.PurchaseEntry.hasMany(db.PurchaseItem, { as: 'items', foreignKey: 'purchaseEntryId' });
 db.PurchaseItem.belongsTo(db.PurchaseEntry, { foreignKey: 'purchaseEntryId' });
+db.PurchaseItem.belongsTo(db.Product, { foreignKey: 'productId' });
 
 db.FinancialNote.hasMany(db.NoteItem, { as: 'items', foreignKey: 'financialNoteId' });
 db.NoteItem.belongsTo(db.FinancialNote, { foreignKey: 'financialNoteId' });
