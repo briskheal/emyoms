@@ -2497,8 +2497,9 @@ function renderPurchaseEntries() {
             <td style="text-align:right; font-weight:800; color:var(--primary);">₹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
 
             <td style="text-align:right; white-space:nowrap;">
-                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">VIEW</button>
-                <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')">EDIT</button>
+                <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">INFO</button>
+                <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem; color:var(--accent);" onclick="viewPurchasePDF('${p._id}')">PDF</button>
+                <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem; color:var(--primary);" onclick="editPurchaseEntry('${p._id}')">EDIT</button>
             </td>
         </tr>
     `).join('');
@@ -3984,6 +3985,7 @@ async function generateStandardPDF({
     if (filename) {
         doc.save(filename);
     }
+    return doc;
 }
 
 // Duplicate generateSampleMatchedPDF removed (replaced by the one at line 4711 area)
@@ -4073,7 +4075,8 @@ function viewPurchaseDetails(id) {
     const items = Array.isArray(p.items) ? p.items : [];
     
     const itemLines = items.map((i, idx) => {
-        const name = i.productName || i.name || 'Unknown';
+        const product = allProducts.find(pr => (pr._id || pr.id) == i.productId) || {};
+        const name = product.name || i.productName || 'Unknown';
         const batch = i.batch || 'N/A';
         const qty = i.qty || 0;
         const rate = Number(i.rate || i.purchaseRate || 0).toFixed(2);
@@ -4099,6 +4102,59 @@ function viewPurchaseDetails(id) {
         `Round Off : ${p.roundOff >= 0 ? '+' : ''}₹${Number(p.roundOff || 0).toFixed(2)}\n` +
         `GRAND TOTAL: ₹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`
     );
+}
+
+async function viewPurchasePDF(id) {
+    try {
+        const p = allPurchaseEntries.find(x => x._id == id);
+        if (!p) return alert("Purchase record not found.");
+        
+        const supplierData = allStockists.find(s => (s._id || s.id) == (p.supplierId || p.supplier)) || {};
+        
+        const PDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || window.jspdf);
+        if (!PDFLib) throw new Error("PDF Library (jsPDF) not loaded properly.");
+        
+        const doc = new PDFLib('p', 'mm', 'a4');
+        
+        // Map items for PDF
+        const pdfItems = (p.items || []).map(it => {
+            const product = allProducts.find(pr => (pr._id || pr.id) == it.productId) || {};
+            return {
+                name: product.name || it.productName || 'Unknown Product',
+                hsn: product.hsn || it.hsn || '',
+                batch: it.batch || '-',
+                exp: it.expDate || it.exp || '-',
+                mrp: it.mrp || 0,
+                qty: it.qty || 0,
+                price: it.purchaseRate || it.rate || 0,
+                gstPercent: it.gstPercent || 0
+            };
+        });
+
+        const gdoc = await generateStandardPDF({
+            doc, 
+            title: "PURCHASE INWARD INVOICE", 
+            docNo: p.purchaseNo || p.billNo || 'N/A', 
+            docTypeLabel: "Internal No",
+            date: new Date(p.invoiceDate).toLocaleDateString('en-GB'),
+            party: { 
+                name: supplierData.name || p.supplierName || 'N/A', 
+                address: supplierData.address || '', 
+                gst: supplierData.gstNo || '' 
+            },
+            items: pdfItems,
+            grandTotal: p.grandTotal,
+            extraFields: [
+                { label: 'Supplier Inv No', value: p.supplierInvoiceNo || 'N/A' },
+                { label: 'Payment Mode', value: p.paymentMode || 'CREDIT' }
+            ]
+        });
+
+        window.open(gdoc.output('bloburl'), '_blank');
+    } catch (e) {
+        console.error("PDF Gen Fail:", e);
+        alert("Failed to generate Purchase PDF: " + e.message);
+    }
 }
 
 function editPurchaseEntry(id) {
