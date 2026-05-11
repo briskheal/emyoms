@@ -2632,7 +2632,7 @@ async function savePurchaseEntry(event) {
     if (!supplier) return alert('⚠️ Please select a Supplier first.');
 
     const billNo = document.getElementById('pur-bill-no').value;
-    if (!billNo) return alert('⚠️ Purchase Bill No is missing. Please wait for auto-generation or enter manually.');
+    if (!billNo) return alert('⚠️ Internal Bill No is missing. Please close and reopen the form — the number is auto-generated from the server.');
 
     const billDate = document.getElementById('pur-date').value;
     if (!billDate) return alert('⚠️ Please select a Purchase Date.');
@@ -4051,48 +4051,89 @@ function previewInvoiceStyle(style) {
 
 function viewPurchaseDetails(id) {
     const p = allPurchaseEntries.find(x => x._id == id);
-    if (!p) return;
+    if (!p) return alert('Purchase record not found.');
     
-    let itemSummary = p.items.map(i => `${i.name} [Batch: ${i.batch || 'N/A'}] - Qty: ${i.qty}`).join('\n');
-    alert(`🛒 PURCHASE RECORD: ${p.purchaseNo}\n----------------------------------\nSupplier: ${p.supplierName}\nInv No: ${p.supplierInvoiceNo}\nDate: ${new Date(p.invoiceDate).toLocaleDateString('en-GB')}\nLR No: ${p.lrNo || 'N/A'}\n\nITEMS:\n${itemSummary}\n----------------------------------\ Grand Total: ₹${p.grandTotal.toLocaleString('en-IN')}`);
+    const dateStr = p.date || p.invoiceDate || p.createdAt;
+    const formattedDate = dateStr ? new Date(dateStr).toLocaleDateString('en-GB') : 'N/A';
+    const items = Array.isArray(p.items) ? p.items : [];
+    
+    const itemLines = items.map((i, idx) => {
+        const name = i.productName || i.name || 'Unknown';
+        const batch = i.batch || 'N/A';
+        const qty = i.qty || 0;
+        const rate = Number(i.rate || i.purchaseRate || 0).toFixed(2);
+        const gst = i.gstPercent || 0;
+        const total = Number(i.lineTotal || i.totalValue || 0).toFixed(2);
+        return `  ${idx+1}. ${name}\n     Batch: ${batch} | Qty: ${qty} | Rate: ₹${rate} | GST: ${gst}% | Total: ₹${total}`;
+    }).join('\n');
+    
+    alert(
+        `📋 PURCHASE RECORD DETAILS\n` +
+        `${'─'.repeat(44)}\n` +
+        `Internal Bill No : ${p.purchaseNo || p.billNo || 'N/A'}\n` +
+        `Supplier Inv No  : ${p.supplierInvoiceNo || 'N/A'}\n` +
+        `Supplier         : ${p.supplierName || 'N/A'}\n` +
+        `Date             : ${formattedDate}\n` +
+        `Payment Mode     : ${p.paymentMode || 'N/A'}\n` +
+        `Remarks          : ${p.remarks || '-'}\n` +
+        `${'─'.repeat(44)}\n` +
+        `ITEMS (${items.length}):\n${itemLines}\n` +
+        `${'─'.repeat(44)}\n` +
+        `Taxable   : ₹${Number(p.subTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}\n` +
+        `GST       : ₹${Number(p.gstAmount || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}\n` +
+        `Round Off : ${p.roundOff >= 0 ? '+' : ''}₹${Number(p.roundOff || 0).toFixed(2)}\n` +
+        `GRAND TOTAL: ₹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`
+    );
 }
 
 function editPurchaseEntry(id) {
     const p = allPurchaseEntries.find(x => x._id == id);
-    if (!p) return;
+    if (!p) return alert('Purchase record not found.');
 
     openPurchaseModal();
-    document.getElementById('pur-id').value = p._id; // Set ID
-    // Fill Header
-    document.getElementById('pur-supplier').value = p.supplier;
-    document.getElementById('pur-inv-no').value = p.supplierInvoiceNo;
-    document.getElementById('pur-inv-date').value = p.invoiceDate ? p.invoiceDate.split('T')[0] : '';
-    document.getElementById('pur-lr-no').value = p.lrNo || '';
-    document.getElementById('pur-lr-date').value = p.lrDate ? p.lrDate.split('T')[0] : '';
-    document.getElementById('pur-payment-type').value = p.paymentMode || 'CREDIT';
-    document.getElementById('pur-transport').value = p.transport || '';
-    document.getElementById('pur-remarks').value = p.remarks || '';
-    
-    // Fill Items
-    purchaseItems = p.items.map(i => ({
-        product: i.product,
-        name: i.name,
-        qty: i.qty,
-        bonusQty: i.bonusQty || 0,
-        purchaseRate: i.purchaseRate,
-        batch: i.batch || 'N/A',
-        mfgDate: i.mfgDate || 'N/A',
-        expDate: i.expDate || 'N/A',
-        gstPercent: i.gstPercent || 12,
-        totalValue: i.totalValue
-    }));
-    
-    renderPurchaseItems();
-    const supplier = allStockists.find(s => s._id == p.supplier);
-    if (supplier) {
-        document.getElementById('pur-supplier-search').value = supplier.name;
-        updateSupplierDetailsDisplay(p.supplier);
-    }
+
+    // Use setTimeout to allow the modal reset to complete first
+    setTimeout(() => {
+        // --- Header Fields ---
+        safeSetVal('pur-bill-no', p.purchaseNo || p.billNo || '');
+        safeSetVal('pur-supplier-inv-no', p.supplierInvoiceNo || '');
+        
+        const dateStr = p.date || p.invoiceDate;
+        if (dateStr) safeSetVal('pur-date', dateStr.split('T')[0]);
+        
+        safeSetVal('pur-payment-mode', p.paymentMode || 'CREDIT');
+        safeSetVal('pur-remarks', p.remarks || '');
+
+        // --- Supplier Search ---
+        const supplier = allStockists.find(s => (s._id || s.id) == p.supplier);
+        if (supplier) {
+            safeSetVal('pur-party-search', supplier.name);
+            safeSetVal('pur-supplier', p.supplier);
+        } else if (p.supplierName) {
+            // fallback: show name even if not found in local list
+            safeSetVal('pur-party-search', p.supplierName);
+            safeSetVal('pur-supplier', p.supplier || '');
+        }
+
+        // --- Items ---
+        purchaseItems = (p.items || []).map(i => ({
+            productId: i.product || i.productId || '',
+            productName: i.productName || i.name || '',
+            batch: i.batch || '',
+            mfg: i.mfg || i.mfgDate || '',
+            exp: i.exp || i.expDate || '',
+            mrp: Number(i.mrp || 0).toFixed(2) * 1,
+            rate: Number(i.rate || i.purchaseRate || 0),
+            qty: Number(i.qty || 0),
+            gstPercent: Number(i.gstPercent || 12),
+            taxable: Number(i.taxable || ((i.qty || 0) * (i.rate || i.purchaseRate || 0))).toFixed(2) * 1,
+            gstAmount: Number(i.gstAmount || 0),
+            lineTotal: Number(i.lineTotal || i.totalValue || 0)
+        }));
+
+        renderPurchaseItems();
+        console.log('Edit mode loaded for purchase:', p.purchaseNo, 'Items:', purchaseItems.length);
+    }, 150);
 }
 
 function setInvoiceStyle(style) {

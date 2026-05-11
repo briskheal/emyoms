@@ -111,15 +111,43 @@ app.get('/api/admin/db-stats', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+async function findNextUniqueNo(config, type) {
+    let docNo = '';
+    let exists = true;
+    let attempts = 0;
+    let tempNumber = Number(config.nextNumber) || 0;
+
+    while (exists && attempts < 100) {
+        attempts++;
+        tempNumber++;
+        docNo = `${config.prefix}${tempNumber.toString().padStart(4, '0')}`;
+        
+        // Check for collisions in FinancialNote
+        const collision = await db.FinancialNote.findOne({ where: { noteNo: docNo } });
+        if (!collision) {
+            if (type === 'invoice') {
+                const invCollision = await db.Invoice.findOne({ where: { invoiceNo: docNo } });
+                if (!invCollision) exists = false;
+            } else if (type === 'purchase') {
+                const purCollision = await db.PurchaseEntry.findOne({ where: { purchaseNo: docNo } });
+                if (!purCollision) exists = false;
+            } else {
+                exists = false;
+            }
+        }
+    }
+    return { docNo, nextNumber: tempNumber };
+}
+
 async function peekNextDocNo(type) {
     let company = await db.Company.findOne();
-    if (!company) return (type.toUpperCase().slice(0, 3) + '-0001');
+    if (!company) company = { documentCounters: {} };
     
     const counters = JSON.parse(JSON.stringify(company.documentCounters || {}));
     const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 0 };
     
-    const nextNum = (Number(config.nextNumber) || 0) + 1;
-    return `${config.prefix}${nextNum.toString().padStart(4, '0')}`;
+    const result = await findNextUniqueNo(config, type);
+    return result.docNo;
 }
 
 app.get('/api/admin/next-number/:type', async (req, res) => {
@@ -136,33 +164,14 @@ async function getNextDocNo(type) {
     const counters = JSON.parse(JSON.stringify(company.documentCounters || {}));
     const config = counters[type] || { prefix: type.toUpperCase().slice(0, 3) + '-', nextNumber: 0 };
     
-    let docNo = '';
-    let exists = true;
-    let attempts = 0;
-
-    while (exists && attempts < 100) {
-        attempts++;
-        config.nextNumber = (Number(config.nextNumber) || 0) + 1;
-        docNo = `${config.prefix}${config.nextNumber.toString().padStart(4, '0')}`;
-        
-        // Check for collisions in FinancialNote (since PDCN/CN/DN live there)
-        const collision = await db.FinancialNote.findOne({ where: { noteNo: docNo } });
-        if (!collision) {
-            // Also check Invoice if type is 'invoice'
-            if (type === 'invoice') {
-                const invCollision = await db.Invoice.findOne({ where: { invoiceNo: docNo } });
-                if (!invCollision) exists = false;
-            } else {
-                exists = false;
-            }
-        }
-    }
+    const result = await findNextUniqueNo(config, type);
     
+    config.nextNumber = result.nextNumber;
     counters[type] = config;
     company.documentCounters = counters;
     company.changed('documentCounters', true);
     await company.save();
-    return docNo;
+    return result.docNo;
 }
 
 
@@ -1272,12 +1281,13 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
         const gstAmount = Number(req.body.gstAmount) || 0;
         const grandTotal = Number(req.body.grandTotal) || 0;
 
-        // Use provided bill no or auto-generate
-        const finalBillNo = billNo || await getNextDocNo('purchase');
+        // Internal Bill No is strictly auto-generated on server to ensure counter increments and no duplicates
+        const finalPurchaseNo = await getNextDocNo('purchase');
 
         const entry = await db.PurchaseEntry.create({
+            purchaseNo: finalPurchaseNo,
             supplierId: supplierId || null,
-            supplierInvoiceNo: finalBillNo,
+            supplierInvoiceNo: req.body.supplierInvoiceNo || '',
             invoiceDate: date ? new Date(date) : new Date(),
             paymentMode: paymentMode || 'CREDIT',
             remarks: remarks || '',

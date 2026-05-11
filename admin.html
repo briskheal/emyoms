@@ -2205,8 +2205,8 @@
                             <input type="hidden" id="pur-supplier" required>
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.55rem; opacity: 0.7; color: var(--primary);">Internal Bill No</label>
-                            <input type="text" id="pur-bill-no" required placeholder="Auto..." style="font-size: 0.75rem; height: 30px; font-family: monospace; font-weight: 700; color: var(--primary);">
+                            <label style="font-size: 0.55rem; opacity: 0.7; color: var(--primary);">🔒 Internal Bill No</label>
+                            <input type="text" id="pur-bill-no" required readonly placeholder="Auto-generating..." title="Auto-generated — not editable" style="font-size: 0.75rem; height: 30px; font-family: monospace; font-weight: 700; color: var(--primary); background: rgba(99,102,241,0.07); cursor: not-allowed; opacity: 0.85; font-style: italic;">
                         </div>
                         <div class="form-group">
                             <label style="font-size: 0.55rem; opacity: 0.7; color: var(--accent);">Supplier Invoice No ★</label>
@@ -2811,7 +2811,7 @@
     <datalist id="hsn-list"></datalist>
     <datalist id="gst-rate-list"></datalist>
 
-    <script src="admin-script.js?v=2.2"></script>
+    <script src="admin-script.js?v=2.3"></script>
 
     <audio id="bgMusic" loop preload="auto"></audio>
 </body>
