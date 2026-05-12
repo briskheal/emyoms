@@ -384,7 +384,14 @@ function renderSettings() {
     if (s.signatureImage) {
         const sigPreview = document.getElementById('sig-preview');
         if (sigPreview) { sigPreview.src = s.signatureImage; sigPreview.style.display = 'block'; }
+        safeSetVal('set-signature-b64', s.signatureImage);
     }
+    if (s.qrImage) {
+        const qrPreview = document.getElementById('qr-preview');
+        if (qrPreview) { qrPreview.src = s.qrImage; qrPreview.style.display = 'block'; }
+        safeSetVal('set-qr-b64', s.qrImage);
+    }
+    safeSetVal('set-theme-color', s.themeColor || '#6366f1');
     
     if (s.referenceInvoiceUrl) {
         const designLink = document.getElementById('design-preview-link');
@@ -450,6 +457,8 @@ async function saveSettings(e) {
         defaultPlaceOfSupply: safeGetVal('set-default-supply'),
         signatureImage: safeGetVal('set-signature-b64'),
         logoImage: safeGetVal('set-logo-b64'),
+        qrImage: safeGetVal('set-qr-b64'),
+        themeColor: safeGetVal('set-theme-color'),
         documentCounters: counters,
         musicUrl: safeGetVal('set-music-url'),
         videoUrl: safeGetVal('set-video-url'),
@@ -1635,6 +1644,30 @@ async function deleteFromMedia(id) {
 
 
 
+
+function convertLogoToBase64(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('set-logo-b64').value = e.target.result;
+            document.getElementById('logo-preview').src = e.target.result;
+            document.getElementById('logo-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function convertQRToBase64(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('set-qr-b64').value = e.target.result;
+            document.getElementById('qr-preview').src = e.target.result;
+            document.getElementById('qr-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 
 // --- PARTY MASTER LOGIC ---
 
@@ -4259,9 +4292,9 @@ async function generateStandardPDF({
 }) {
     const PDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || window.jspdf);
     const doc = passedDoc || new PDFLib('p', 'mm', 'a4');
-    const style = (companyProfile && companyProfile.invoiceStyle) || 'classic';
+    const style = (companyProfile && companyProfile.invoiceStyle) || 'sample';
 
-    if (style === 'sample') {
+    if (style === 'sample' || style === 'classic') {
         // Use the comprehensive version defined later in the file
         return await generateSampleMatchedPDF({ 
             doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
@@ -5616,71 +5649,94 @@ async function saveExpense(e) {
     }
 }
 
-/**
- * AI-DRIVEN COORDINATE ENGINE
- * This function replicates the layout from the uploaded Sample Blueprint.
- */
 async function generateSampleMatchedPDF({ 
     doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
 }) {
-    // --- 1. SETTINGS & BORDER ---
+    // --- 1. SETTINGS & COLORS ---
     const pageH = 297; const pageW = 210;
-    doc.setDrawColor(0); doc.setLineWidth(0.3);
-    doc.rect(10, 10, 190, 277); // Outer Main Border
-
-    // --- 2. HEADER SECTION ---
-    doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.setTextColor(0);
-    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 105, 18, { align: 'center' });
+    const themeHex = (companyProfile && companyProfile.themeColor) || "#6366f1";
     
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    // Helper to convert Hex to RGB
+    const hexToRgb = (hex) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return [r, g, b];
+    };
+    const themeRgb = hexToRgb(themeHex);
+
+    doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]); 
+    doc.setLineWidth(0.5);
+    doc.rect(10, 10, 190, 277); // Outer Main Theme Border
+
+    // --- 2. HEADER SECTION (LOGO + COMPANY) ---
+    let headerY = 15;
+    if (companyProfile && companyProfile.logoImage) {
+        try {
+            doc.addImage(companyProfile.logoImage, 'PNG', 15, headerY, 20, 20);
+        } catch(e) { console.warn("Logo add failed", e); }
+    }
+
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
+    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 40, headerY + 5);
+    
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(60);
     const coAddr = (companyProfile && companyProfile.address) || "Office Address Loading...";
-    const addrLines = doc.splitTextToSize(coAddr, 160);
-    doc.text(addrLines, 105, 23, { align: 'center' });
+    const addrLines = doc.splitTextToSize(coAddr, 140);
+    doc.text(addrLines, 40, headerY + 10);
     
-    let nextY = 23 + (addrLines.length * 3.5);
-    doc.setFont("helvetica", "bold");
-    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 105, nextY, { align: 'center' });
+    let infoY = headerY + 10 + (addrLines.length * 4);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(0);
+    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 40, infoY);
     doc.setFont("helvetica", "normal");
-    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 105, nextY + 4, { align: 'center' });
+    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 40, infoY + 4);
 
-    doc.line(10, nextY + 8, 200, nextY + 8); // Header Separator
-    
-    // --- 3. INVOICE INFO & PARTY ---
-    let partyY = nextY + 14;
-    doc.setFontSize(11); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), 105, nextY + 13, { align: 'center' });
-    
-    doc.line(10, nextY + 16, 200, nextY + 16); // Title Separator
-    doc.line(135, nextY + 16, 135, partyY + 30); // Vertical middle separator for header info
+    // TAX INVOICE BOX
+    doc.setFillColor(themeRgb[0], themeRgb[1], themeRgb[2]);
+    doc.rect(pageW - 60, infoY - 5, 50, 8, 'F');
+    doc.setTextColor(255); doc.setFontSize(10); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), pageW - 35, infoY + 0.5, { align: 'center' });
+    doc.setTextColor(0);
 
-    doc.setFontSize(8.5); doc.setFont("helvetica", "normal");
-    doc.text("M/s:", 12, partyY); 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
-    doc.text(party.name || 'N/A', 20, partyY);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-    const pAddrLines = doc.splitTextToSize(party.address || 'N/A', 110);
-    doc.text(pAddrLines, 20, partyY + 4);
-    
-    let partyInfoY = partyY + 4 + (pAddrLines.length * 3.5);
-    doc.setFont("helvetica", "bold");
-    doc.text(`GSTIN: ${party.gst || 'N/A'}`, 20, partyInfoY + 2);
-    doc.text(`DL No: ${party.dl || 'N/A'}`, 20, partyInfoY + 6);
+    let nextY = infoY + 8;
+    doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]);
+    doc.line(10, nextY, 200, nextY); // Header Separator
 
-    // Right Side Info (Invoice No, Date etc)
-    doc.setFontSize(8); doc.setFont("helvetica", "normal");
-    doc.text(`${docTypeLabel}:`, 138, partyY); doc.setFont("helvetica", "bold"); doc.text(docNo, 165, partyY);
-    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 138, partyY + 5); doc.setFont("helvetica", "bold"); doc.text(date, 165, partyY + 5);
+    // --- 3. METADATA BOX (PARTY & INVOICE DETAILS) ---
+    let boxY = nextY + 5;
+    let boxH = 35;
+    doc.setDrawColor(200); doc.setLineWidth(0.2);
+    doc.rect(12, boxY, 186, boxH); // Metadata Outer Box
+    doc.line(120, boxY, 120, boxY + boxH); // Vertical Split
+
+    // LEFT: PARTY INFO
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
+    doc.text("BILL TO (PARTY DETAILS):", 15, boxY + 5);
+    doc.setFontSize(10); doc.setTextColor(0);
+    doc.text(party.name || 'N/A', 15, boxY + 10);
+    doc.setFontSize(7.5); doc.setFont("helvetica", "normal");
+    const pAddrLines = doc.splitTextToSize(party.address || 'N/A', 100);
+    doc.text(pAddrLines, 15, boxY + 14);
+    
+    let partySubY = boxY + 14 + (pAddrLines.length * 3.5);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7);
+    doc.text(`GSTIN: ${party.gst || 'N/A'} | DL: ${party.dl || 'N/A'}`, 15, partySubY + 2);
+
+    // RIGHT: INVOICE INFO
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
+    doc.text("DOCUMENT DETAILS:", 123, boxY + 5);
+    doc.setFontSize(8); doc.setTextColor(0); doc.setFont("helvetica", "normal");
+    doc.text(`${docTypeLabel}:`, 123, boxY + 10); doc.setFont("helvetica", "bold"); doc.text(docNo, 155, boxY + 10);
+    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 123, boxY + 15); doc.setFont("helvetica", "bold"); doc.text(date, 155, boxY + 15);
     
     extraFields.forEach((f, i) => {
-        doc.setFont("helvetica", "normal"); doc.text(`${f.label}:`, 138, partyY + 10 + (i * 5));
-        doc.setFont("helvetica", "bold"); doc.text(f.value, 165, partyY + 10 + (i * 5));
+        doc.setFont("helvetica", "normal"); doc.text(`${f.label}:`, 123, boxY + 20 + (i * 5));
+        doc.setFont("helvetica", "bold"); doc.text(f.value || '-', 155, boxY + 20 + (i * 5));
     });
 
-    doc.line(10, partyY + 30, 200, partyY + 30); // Party Separator
-
-    // --- 4. ITEMS TABLE (Custom Grid) ---
+    // --- 4. ITEMS TABLE ---
     doc.autoTable({
-        startY: partyY + 30,
+        startY: boxY + boxH + 5,
         head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'PTR', 'PTS', 'Qty', 'Free', 'GST%', 'Amount']],
         body: items.map((it, idx) => {
             const mrp = Number(it.mrp || 0);
@@ -5696,35 +5752,29 @@ async function generateSampleMatchedPDF({
             ];
         }),
         theme: 'grid',
-        headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
+        headStyles: { fillColor: themeRgb, textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
         styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1 },
         columnStyles: {
             0: { cellWidth: 8, halign: 'center' },
-            1: { cellWidth: 15, halign: 'center' },
             2: { cellWidth: 'auto' },
             5: { halign: 'right' },
-            6: { halign: 'center' },
-            7: { halign: 'center' },
-            8: { halign: 'right' },
-            9: { halign: 'center' },
-            10: { halign: 'right', fontStyle: 'bold' }
+            10: { halign: 'right' },
+            11: { halign: 'right', fontStyle: 'bold' }
         },
-        margin: { left: 10, right: 10 },
-        tableLineColor: [0, 0, 0],
-        tableLineWidth: 0.1
+        margin: { left: 10, right: 10 }
     });
 
     let tableFinalY = doc.lastAutoTable.finalY;
 
     // --- 5. TAX SUMMARY & TOTALS ---
     const summaryY = tableFinalY + 5;
-    if (summaryY > 240) doc.addPage(); // Prevent overlap with footer
+    if (summaryY > 230) doc.addPage(); 
     
     const taxMap = {};
     let totalTaxable = 0; let totalGST = 0;
     items.forEach(it => {
         const rate = parseFloat(it.gstPercent) || 0;
-        const price = Number(it.price || 0);
+        const price = Number(it.price || it.pts || 0);
         const qty = Number(it.qty || 0);
         const taxable = qty * price;
         const gst = (taxable * rate) / 100;
@@ -5736,35 +5786,23 @@ async function generateSampleMatchedPDF({
 
     const supplyField = extraFields.find(f => f.label === 'Place of Supply');
     const supplyState = (supplyField ? supplyField.value : '').toLowerCase();
-    
-    // Logic: Intra-state if (State Code matches) OR (State name is Telangana)
-    const coStateCode = (companyProfile.gstNo || '').substring(0, 2);
-    const partyStateCode = (party.gst || '').substring(0, 2);
-    
-    const isIntra = (coStateCode && partyStateCode && coStateCode === partyStateCode) || 
-                    (supplyState.includes('telangana')) || 
-                    (supplyState === '' && coStateCode === '36'); // Default to Intra if we are in 36 and no supply specified
-    
+    const isIntra = (companyProfile.gstNo?.substring(0,2) === party.gst?.substring(0,2)) || supplyState.includes('telangana');
     const isInter = !isIntra;
     const taxHeader = isInter ? [['GST%', 'Taxable', 'IGST', 'Total Tax']] : [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']];
     let taxBody = [];
     Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
         const rate = parseFloat(r); const d = taxMap[r];
         if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), d.tax.toFixed(2), d.tax.toFixed(2)]); }
-        else {
-            const hT = (d.tax / 2).toFixed(2);
-            taxBody.push([`${rate}%`, d.taxable.toFixed(2), hT, hT, d.tax.toFixed(2)]);
-        }
+        else { taxBody.push([`${rate}%`, d.taxable.toFixed(2), (d.tax/2).toFixed(2), (d.tax/2).toFixed(2), d.tax.toFixed(2)]); }
     });
 
-    // Tax Table
     doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.text("GST TAX SUMMARY", 12, summaryY);
     doc.autoTable({
         startY: summaryY + 2,
         head: taxHeader,
         body: taxBody,
         theme: 'grid',
-        headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6.5, halign: 'center' },
+        headStyles: { fillColor: [245, 245, 245], textColor: 0, fontSize: 6.5, halign: 'center' },
         styles: { fontSize: 6.5, halign: 'right', cellPadding: 1.5 },
         margin: { left: 10 },
         tableWidth: isInter ? 65 : 85
@@ -5775,41 +5813,48 @@ async function generateSampleMatchedPDF({
     doc.setFontSize(8.5); doc.setFont("helvetica", "normal");
     doc.text("Total Taxable Amt:", tX, summaryY + 5); doc.text(`Rs. ${totalTaxable.toFixed(2)}`, 198, summaryY + 5, { align: 'right' });
     doc.text("Total GST Amt:", tX, summaryY + 10); doc.text(`Rs. ${totalGST.toFixed(2)}`, 198, summaryY + 10, { align: 'right' });
-    
-    const unrounded = totalTaxable + totalGST;
-    const roundOff = (grandTotal - unrounded).toFixed(2);
+    const roundOff = (grandTotal - (totalTaxable + totalGST)).toFixed(2);
     doc.text("Round Off Adj:", tX, summaryY + 15); doc.text(`Rs. ${roundOff}`, 198, summaryY + 15, { align: 'right' });
-    
-    doc.setDrawColor(0); doc.line(tX - 2, summaryY + 18, 200, summaryY + 18);
-    doc.setFont("helvetica", "black"); doc.setFontSize(11);
+    doc.line(tX - 2, summaryY + 18, 200, summaryY + 18);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
     doc.text("GRAND TOTAL:", tX, summaryY + 24); doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 198, summaryY + 24, { align: 'right' });
-    doc.line(tX - 2, summaryY + 27, 200, summaryY + 27);
+    doc.setTextColor(0);
 
-    // Words
-    doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(50);
-    doc.text(`Amount in Words: ${numberToWords(grandTotal)}`, 12, summaryY + 45);
+    doc.setFontSize(7.5); doc.setFont("helvetica", "italic");
+    doc.text(`Amount in Words: ${numberToWords(grandTotal)}`, 12, doc.lastAutoTable.finalY + 10);
 
-    // --- 6. FOOTER (BANK & SIGN) ---
-    const footerY = 255;
-    doc.setDrawColor(0); doc.line(10, footerY - 5, 200, footerY - 5);
+    // --- 6. FOOTER (BANK, TERMS, SIGN, QR) ---
+    const footerY = 250;
+    doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]); doc.line(10, footerY - 2, 200, footerY - 2);
     
-    doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-    doc.text("BANK DETAILS:", 12, footerY);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7);
-    const bankLines = (companyProfile && companyProfile.bankDetails) ? companyProfile.bankDetails.split('\n') : [];
-    bankLines.forEach((l, i) => doc.text(l.trim(), 12, footerY + 5 + (i * 3.5)));
+    // Bank Details
+    doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.text("BANK DETAILS:", 12, footerY + 2);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
+    const bankLines = (companyProfile.bankDetails || "").split('\n');
+    bankLines.forEach((l, i) => doc.text(l.trim(), 12, footerY + 6 + (i * 3)));
 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
-    doc.text(`For ${(companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 198, footerY + 5, { align: 'right' });
-    
-    if (companyProfile && companyProfile.signatureImage) {
-        try { doc.addImage(companyProfile.signatureImage, 'JPEG', 160, footerY + 8, 35, 12); } catch(e){}
+    // QR Code
+    if (companyProfile.qrImage) {
+        try { doc.addImage(companyProfile.qrImage, 'PNG', 95, footerY, 20, 20); } catch(e){}
+        doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+    }
+
+    // Terms & Conditions
+    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TERMS & CONDITIONS:", 12, footerY + 18);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(6);
+    const termsText = terms || companyProfile.invoiceTerms || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged for delayed payment.";
+    const termsLines = doc.splitTextToSize(termsText, 80);
+    doc.text(termsLines, 12, footerY + 22);
+
+    // Signatory
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+    doc.text(`For ${(companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 198, footerY + 2, { align: 'right' });
+    if (companyProfile.signatureImage) {
+        try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, footerY + 5, 30, 10); } catch(e){}
     }
     doc.text("Authorised Signatory", 198, footerY + 25, { align: 'right' });
 
-    if (filename) {
-        doc.save(filename);
-    }
+    if (filename) doc.save(filename);
     return doc;
 }
 // --- KEYBOARD NAVIGATION FOR SEARCH ---

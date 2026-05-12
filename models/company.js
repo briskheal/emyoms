@@ -30,6 +30,8 @@ module.exports = (sequelize, DataTypes) => {
         dnBankVisible: { type: DataTypes.BOOLEAN, defaultValue: false },
         signatureImage: { type: DataTypes.TEXT, defaultValue: "" },
         logoImage: { type: DataTypes.TEXT, defaultValue: "" },
+        qrImage: { type: DataTypes.TEXT, defaultValue: "" },
+        themeColor: { type: DataTypes.STRING, defaultValue: "#6366f1" },
         scrollingMessage: { type: DataTypes.JSONB, defaultValue: {} },
         invoiceStyle: { type: DataTypes.STRING, defaultValue: 'classic' },
         documentCounters: { type: DataTypes.JSONB, defaultValue: {} },

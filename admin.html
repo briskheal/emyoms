@@ -1374,7 +1374,7 @@
                                 </div>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                                 <div class="form-group">
                                     <label>Company Logo</label>
                                     <input type="file" id="set-logo" accept="image/*" onchange="convertLogoToBase64(this)">
@@ -1386,6 +1386,20 @@
                                     <input type="file" id="set-signature" accept="image/*" onchange="convertSignatureToBase64(this)">
                                     <input type="hidden" id="set-signature-b64">
                                     <img id="sig-preview" src="" style="max-height: 40px; margin-top: 5px; display: none; border: 1px dashed var(--glass-border);">
+                                </div>
+                                <div class="form-group">
+                                    <label>Payment QR Code</label>
+                                    <input type="file" id="set-qr" accept="image/*" onchange="convertQRToBase64(this)">
+                                    <input type="hidden" id="set-qr-b64">
+                                    <img id="qr-preview" src="" style="max-height: 40px; margin-top: 5px; display: none; border: 1px dashed var(--glass-border);">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 1rem;">
+                                <label>Invoice Theme Color</label>
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <input type="color" id="set-theme-color" style="height: 35px; width: 60px; cursor: pointer; border:none; background:none;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted);">This color will be used for Invoice borders and headers.</span>
                                 </div>
                             </div>
                         </div>
