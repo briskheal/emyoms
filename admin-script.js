@@ -2956,8 +2956,22 @@ function closeSaleModal() {
 }
 
 function updateSalePartyContext() {
+    const partyId = document.getElementById('sale-party').value;
+    const party = allStockists.find(s => (s._id || s.id) == partyId);
+    
+    if (party) {
+        const supplyEl = document.getElementById('sale-supply');
+        if (supplyEl) {
+            // Priority: Party State -> Party City -> Company Default
+            const state = party.state || party.city || (companyProfile ? companyProfile.defaultPlaceOfSupply : '');
+            supplyEl.value = state;
+        }
+    }
+
     const prodId = document.getElementById('sale-prod-select').value;
     if (prodId) updateSaleProductMeta(prodId);
+    
+    renderSaleItems(); // Force re-render to update GST split labels
 }
 
 function updateSaleProductMeta(prodId) {
@@ -3190,6 +3204,31 @@ function renderSaleItems() {
     // Update Strip
     setVal('strip-sale-count', directSaleItems.length);
     setVal('strip-sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    // GST Split Monitoring (Telangana Compliance)
+    const supplyState = (document.getElementById('sale-supply')?.value || '').toLowerCase();
+    const partyId = document.getElementById('sale-party').value;
+    const party = allStockists.find(s => (s._id || s.id) == partyId);
+    const partyGst = (party?.gst || party?.gstNo || '').substring(0, 2);
+    
+    // Intra if state is Telangana (36) or Supply contains 'telangana'
+    const isIntra = (partyGst === '36') || (supplyState.includes('telangana'));
+    
+    const labelEl = document.getElementById('label-sale-gst');
+    const splitEl = document.getElementById('strip-sale-gst-split');
+    
+    if (gstTotal > 0) {
+        if (isIntra) {
+            if (labelEl) labelEl.innerText = "CGST+SGST:";
+            if (splitEl) splitEl.innerText = `(C:${(gstTotal/2).toFixed(2)}|S:${(gstTotal/2).toFixed(2)})`;
+        } else {
+            if (labelEl) labelEl.innerText = "IGST:";
+            if (splitEl) splitEl.innerText = `(INTER-STATE)`;
+        }
+    } else {
+        if (labelEl) labelEl.innerText = "GST:";
+        if (splitEl) splitEl.innerText = "";
+    }
+
     setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
     setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
     setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
@@ -5607,7 +5646,18 @@ async function generateSampleMatchedPDF({
         totalTaxable += taxable; totalGST += gst;
     });
 
-    const isInter = party.gst && companyProfile.gstNo && companyProfile.gstNo.substring(0,2) !== party.gst.substring(0,2);
+    const supplyField = extraFields.find(f => f.label === 'Place of Supply');
+    const supplyState = (supplyField ? supplyField.value : '').toLowerCase();
+    
+    // Logic: Intra-state if (State Code matches) OR (State name is Telangana)
+    const coStateCode = (companyProfile.gstNo || '').substring(0, 2);
+    const partyStateCode = (party.gst || '').substring(0, 2);
+    
+    const isIntra = (coStateCode && partyStateCode && coStateCode === partyStateCode) || 
+                    (supplyState.includes('telangana')) || 
+                    (supplyState === '' && coStateCode === '36'); // Default to Intra if we are in 36 and no supply specified
+    
+    const isInter = !isIntra;
     let taxBody = [];
     Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
         const rate = parseFloat(r); const d = taxMap[r];

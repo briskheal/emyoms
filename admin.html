@@ -2367,7 +2367,7 @@
                     <input type="hidden" id="sale-type-input">
                     
                     <!-- PARTY & HEADER INFO -->
-                    <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Select Party / Customer</label>
                             <input type="text" id="sale-party-search" placeholder="Type Name/City..." onfocus="handlePartySearch(this, 'SALE')" oninput="handlePartySearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-party-search-results')" style="font-size: 0.8rem; height: 32px;">
@@ -2380,6 +2380,10 @@
                         <div class="form-group">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Sale Date</label>
                             <input type="date" id="sale-date" required style="font-size: 0.8rem; height: 32px;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 0.6rem; opacity: 0.7;">Place of Supply</label>
+                            <input type="text" id="sale-supply" placeholder="e.g. Telangana" oninput="renderSaleItems()" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: var(--accent); font-weight: 700; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
                         </div>
                         <div class="form-group">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Channel</label>
@@ -2474,8 +2478,9 @@
                     <span id="strip-sale-subtotal" style="font-size: 0.95rem; font-weight: 800; color: #fff;">₹0.00</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;">GST:</span>
+                    <span id="label-sale-gst" style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;">GST:</span>
                     <span id="strip-sale-gst" style="font-size: 0.95rem; font-weight: 800; color: #fff;">₹0.00</span>
+                    <span id="strip-sale-gst-split" style="font-size: 0.65rem; color: var(--accent); font-weight: 800; margin-left: 5px;"></span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;">Round:</span>
