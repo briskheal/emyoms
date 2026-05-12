@@ -2883,6 +2883,7 @@ function updateSaleProductMeta(prodId) {
     // Set HSN and default MRP/Rate from product level
     safeSetVal('sale-hsn', prod.hsn || '');
     safeSetVal('sale-mrp', prod.mrp || 0);
+    safeSetVal('sale-ptr', prod.ptr || 0);
     safeSetVal('sale-gst-pct', prod.gstPercent || 0);
 
     // Populate Batch Dropdown
@@ -2933,6 +2934,7 @@ function updateSaleBatchMeta(batchNo) {
         if (batch) {
             safeSetVal('sale-exp-dt', batch.expDate || '');
             if (batch.mrp) safeSetVal('sale-mrp', batch.mrp);
+            if (batch.ptr) safeSetVal('sale-ptr', batch.ptr);
             // Optional: If batch has specific PTS, update rate
             if (batch.pts) safeSetVal('sale-rate', batch.pts);
         }
@@ -2957,7 +2959,9 @@ function addSaleItem() {
     const prodId = document.getElementById('sale-prod-select').value;
     const batchNo = document.getElementById('sale-batch-select').value;
     const qty = Number(document.getElementById('sale-qty').value);
+    const free = Number(document.getElementById('sale-free').value || 0);
     const rate = Number(document.getElementById('sale-rate').value);
+    const ptr = Number(document.getElementById('sale-ptr').value || 0);
     const gstPct = Number(document.getElementById('sale-gst-pct').value);
     const hsn = safeGetVal('sale-hsn');
     const exp = safeGetVal('sale-exp-dt');
@@ -2973,7 +2977,9 @@ function addSaleItem() {
         hsn: hsn,
         expDate: exp,
         mrp: mrp,
+        ptr: ptr,
         qty: qty,
+        free: free,
         rate: rate,
         gstPercent: gstPct,
         totalValue: qty * rate
@@ -2982,12 +2988,14 @@ function addSaleItem() {
     renderSaleItems();
     // Clear line inputs
     document.getElementById('sale-qty').value = '';
+    document.getElementById('sale-free').value = '0';
     document.getElementById('sale-prod-search').value = '';
     document.getElementById('sale-prod-select').value = '';
     document.getElementById('sale-batch-select').innerHTML = '';
     document.getElementById('sale-hsn').value = '';
     document.getElementById('sale-exp-dt').value = '';
     document.getElementById('sale-mrp').value = '';
+    document.getElementById('sale-ptr').value = '';
     document.getElementById('sale-rate').value = '';
     document.getElementById('sale-gst-pct').value = '';
     document.getElementById('sale-line-total').innerText = '₹0.00';
@@ -3016,9 +3024,11 @@ function renderSaleItems() {
             <td><div style="font-weight:600;">${item.batch}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
             <td><div style="font-weight:600;">${item.expDate || '-'}</div></td>
-            <td>₹${item.mrp || '0.00'}</td>
+            <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
+            <td>₹${Number(item.ptr || 0).toFixed(2)}</td>
             <td>₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align:center; font-weight:700;">${item.qty}</td>
+            <td style="text-align:center; font-weight:700; color:var(--accent);">${item.free || 0}</td>
             <td style="text-align:center;">${pct}%</td>
             <td style="text-align:right; font-weight:700; color:var(--accent); padding-right:10px;">₹${(val + gst).toFixed(2)}</td>
         </tr>`;
@@ -4007,16 +4017,19 @@ async function generateStandardPDF({
     // Table
     doc.autoTable({
         startY: 65,
-        head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'Qty', 'Price', 'GST%', 'Total']],
+        head: [['S.No', 'Description', 'HSN', 'Batch', 'Exp', 'MRP', 'PTR', 'PTS', 'Qty', 'Free', 'GST%', 'Total']],
         body: items.map((it, idx) => {
             const price = Number(it.price) || 0;
+            const pts = Number(it.pts || price) || 0;
+            const ptr = Number(it.ptr) || 0;
+            const bonus = Number(it.bonusQty || 0);
             const rate = Number(it.gstPercent) || 0;
             const taxable = Number(it.qty) * price;
             const total = taxable + (taxable * rate / 100);
             return [
                 idx + 1, it.name, it.hsn || '-', it.batch || '-', it.exp || '-', 
-                (Number(it.mrp) || 0).toFixed(2), it.qty, price.toFixed(2), 
-                rate + '%', total.toFixed(2)
+                (Number(it.mrp) || 0).toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
+                it.qty, bonus, rate + '%', total.toFixed(2)
             ];
         }),
         theme: 'grid', headStyles: { fillColor: [99, 102, 241] }, styles: { fontSize: 7 }
@@ -5397,17 +5410,18 @@ async function generateSampleMatchedPDF({
     // --- 4. ITEMS TABLE (Custom Grid) ---
     doc.autoTable({
         startY: partyY + 30,
-        head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
+        head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'PTR', 'PTS', 'Qty', 'Free', 'GST%', 'Amount']],
         body: items.map((it, idx) => {
             const mrp = Number(it.mrp || 0);
-            const price = Number(it.price || 0);
+            const pts = Number(it.pts || it.price || 0);
+            const ptr = Number(it.ptr || 0);
             const qty = Number(it.qty || 0);
             const bonus = Number(it.bonusQty || 0);
             return [
                 idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
-                mrp.toFixed(2), qty, bonus, 
-                price.toFixed(2), (it.gstPercent || 0) + '%', 
-                (qty * price).toFixed(2)
+                mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
+                qty, bonus, (it.gstPercent || 0) + '%', 
+                (qty * pts).toFixed(2)
             ];
         }),
         theme: 'grid',

@@ -11,7 +11,9 @@ module.exports = (sequelize, DataTypes) => {
         mrp: { type: DataTypes.DECIMAL(15, 2) },
         totalValue: { type: DataTypes.DECIMAL(15, 2) },
         gstPercent: { type: DataTypes.DECIMAL(5, 2) },
-        hsn: { type: DataTypes.STRING }
+        hsn: { type: DataTypes.STRING },
+        pts: { type: DataTypes.DECIMAL(15, 2) },
+        ptr: { type: DataTypes.DECIMAL(15, 2) }
     });
     return InvoiceItem;
 };
