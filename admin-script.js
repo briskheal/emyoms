@@ -2553,13 +2553,16 @@ function addPurchaseItem() {
     console.log('addPurchaseItem called. Items before:', purchaseItems.length);
     const prodId = document.getElementById('pur-prod-select').value;
     const prodName = document.getElementById('pur-prod-search').value;
+    const pack = document.getElementById('pur-pack').value;
     const batch = document.getElementById('pur-batch').value;
     const mfg = document.getElementById('pur-mfg').value;
     const exp = document.getElementById('pur-exp').value;
     const mrp = Number(document.getElementById('pur-mrp').value) || 0;
+    const ptr = Number(document.getElementById('pur-ptr').value) || 0;
+    const pts = Number(document.getElementById('pur-pts').value) || 0;
     const rate = Number(document.getElementById('pur-rate').value) || 0;
     const qty = Number(document.getElementById('pur-qty').value) || 0;
-    const gstPct = Number(document.getElementById('pur-gst-pct').value) || 12;
+    const gstPct = Number(document.getElementById('pur-gst-pct').value) || (window.companyProfile ? window.companyProfile.gstRate : 5);
 
     if (!prodId || !qty || qty <= 0) {
         alert('⚠️ Please select a product and enter valid quantity');
@@ -2571,19 +2574,23 @@ function addPurchaseItem() {
     const gstAmount = Number((taxable * (gstPct / 100)).toFixed(2));
     const lineTotal = Number((taxable + gstAmount).toFixed(2));
 
-    const newItem = { productId: prodId, productName: prodName, batch, mfg, exp, mrp: Number(mrp.toFixed(2)), rate: Number(rate.toFixed(2)), qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
+    const newItem = { productId: prodId, productName: prodName, pack, batch, mfg, exp, mrp: Number(mrp.toFixed(2)), ptr: Number(ptr.toFixed(2)), pts: Number(pts.toFixed(2)), rate: Number(rate.toFixed(2)), qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
     purchaseItems.push(newItem);
     console.log('Item added. Items after:', purchaseItems.length, newItem);
 
     // Clear row inputs
     safeSetVal('pur-prod-search', '');
     safeSetVal('pur-prod-select', '');
+    safeSetVal('pur-pack', '');
     safeSetVal('pur-batch', '');
     safeSetVal('pur-mfg', '');
     safeSetVal('pur-exp', '');
     safeSetVal('pur-mrp', '');
+    safeSetVal('pur-ptr', '');
+    safeSetVal('pur-pts', '');
     safeSetVal('pur-rate', '');
     safeSetVal('pur-qty', '');
+    safeSetVal('pur-gst-pct', (window.companyProfile ? window.companyProfile.gstRate : 5));
     
     const lt = document.getElementById('pur-line-total');
     if (lt) lt.innerText = '₹0.00';
@@ -2612,16 +2619,20 @@ function renderPurchaseItems() {
                 <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.85rem;">✕</button>
             </td>
             <td style="font-weight: 700;">${item.productName || 'N/A'}</td>
+            <td>${item.pack || '-'}</td>
             <td>${item.batch || '-'}</td>
             <td>${item.mfg || '-'}</td>
             <td>${item.exp || '-'}</td>
             <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
+            <td>₹${Number(item.ptr || 0).toFixed(2)}</td>
+            <td>₹${Number(item.pts || 0).toFixed(2)}</td>
             <td>₹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align: center; font-weight: 800; color: var(--primary);">${item.qty}</td>
             <td style="text-align: center;">${item.gstPercent}%</td>
             <td style="text-align: right; padding-right: 12px; font-weight: 900;">₹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
     `).join('');
+    updatePurchaseFooter();
 }
 
 function editPurchaseLineItem(index) {
@@ -2631,12 +2642,16 @@ function editPurchaseLineItem(index) {
     // Load into top row for editing
     safeSetVal('pur-prod-search', item.productName);
     safeSetVal('pur-prod-select', item.productId);
-    safeSetVal('pur-batch', item.batch);
-    safeSetVal('pur-mfg', item.mfg);
-    safeSetVal('pur-exp', item.exp);
-    safeSetVal('pur-mrp', item.mrp);
-    safeSetVal('pur-rate', item.rate);
-    safeSetVal('pur-qty', item.qty);
+    safeSetVal('pur-pack', item.pack || '');
+    safeSetVal('pur-batch', item.batch || '');
+    safeSetVal('pur-mfg', item.mfg || '');
+    safeSetVal('pur-exp', item.exp || '');
+    safeSetVal('pur-mrp', item.mrp || '');
+    safeSetVal('pur-ptr', item.ptr || '');
+    safeSetVal('pur-pts', item.pts || '');
+    safeSetVal('pur-rate', item.rate || '');
+    safeSetVal('pur-qty', item.qty || '');
+    safeSetVal('pur-gst-pct', item.gstPercent || (window.companyProfile ? window.companyProfile.gstRate : 5));
     
     const lt = document.getElementById('pur-line-total');
     if (lt) lt.innerText = `₹${Number(item.lineTotal || 0).toFixed(2)}`;
@@ -4286,9 +4301,12 @@ function updateProductEntryMeta(id) {
     const p = allProducts.find(x => x._id == id || x.id == id);
     if (!p) return;
     // Auto-fill purchase rate (PTS), GST%, and MRP from product master
+    safeSetVal('pur-pack', p.packing || p.pack || '');
+    safeSetVal('pur-ptr', p.ptr || 0);
+    safeSetVal('pur-pts', p.pts || 0);
     safeSetVal('pur-rate', p.pts || 0);
     safeSetVal('pur-mrp', p.mrp || 0);
-    safeSetVal('pur-gst-pct', p.gstPercent || p.gst || 12);
+    safeSetVal('pur-gst-pct', p.gstPercent || p.gst || (window.companyProfile ? window.companyProfile.gstRate : 5));
     // Focus qty for fast entry
     const qtyEl = document.getElementById('pur-qty');
     if (qtyEl) { qtyEl.focus(); qtyEl.select(); }

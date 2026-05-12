@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
         emails: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
         superDistributorEmail: { type: DataTypes.STRING, defaultValue: "" },
         adminEmail: { type: DataTypes.STRING, defaultValue: "" },
-        gstRate: { type: DataTypes.FLOAT, defaultValue: 12 },
+        gstRate: { type: DataTypes.FLOAT, defaultValue: 5 },
         state: { type: DataTypes.STRING, defaultValue: "TELANGANA" },
         gstNo: { type: DataTypes.STRING, defaultValue: "" },
         panNo: { type: DataTypes.STRING, defaultValue: "" },

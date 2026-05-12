@@ -1309,6 +1309,14 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
             const product = await db.Product.findByPk(pId);
             if (product) {
                 await product.increment('qtyAvailable', { by: item.qty });
+                
+                // Update product master with new values from purchase entry
+                product.packing = item.pack || product.packing;
+                product.mrp = item.mrp || product.mrp;
+                product.ptr = item.ptr || product.ptr;
+                product.pts = item.pts || product.pts;
+                await product.save();
+
                 let [batch] = await db.Batch.findOrCreate({
                     where: { productId: pId, batchNo: bNo },
                     defaults: {
@@ -1398,6 +1406,14 @@ app.put('/api/admin/purchase-entries/:id', async (req, res) => {
             const product = await db.Product.findByPk(pId);
             if (product) {
                 await product.increment('qtyAvailable', { by: item.qty });
+                
+                // Update product master with new values from purchase entry
+                product.packing = item.pack || product.packing;
+                product.mrp = item.mrp || product.mrp;
+                product.ptr = item.ptr || product.ptr;
+                product.pts = item.pts || product.pts;
+                await product.save();
+
                 let [batch] = await db.Batch.findOrCreate({
                     where: { productId: pId, batchNo: bNo },
                     defaults: {
