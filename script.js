@@ -1403,13 +1403,13 @@ async function generateSampleMatchedPDF(inv) {
     if (companySettings?.logoImage) {
         try {
             const format = companySettings.logoImage.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-            // Wider logo as requested (35x20), moved slightly left
-            doc.addImage(companySettings.logoImage, format, 12, headerY - 2, 35, 20);
+            // Wider logo as requested (40x22), moved slightly left
+            doc.addImage(companySettings.logoImage, format, 12, headerY - 3, 40, 22);
         } catch(e){}
     }
 
     // Company Name & Details - Shifted Right to accommodate wider logo
-    const headerX = 52; 
+    const headerX = 58; 
     doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
     doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", headerX, headerY + 5);
     
@@ -1425,7 +1425,7 @@ async function generateSampleMatchedPDF(inv) {
 
     doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
     
-    doc.setFontSize(10); doc.setFont("helvetica", "bold"); // Smaller Tax Invoice label
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); // Smaller Tax Invoice label
     doc.text("TAX INVOICE", 105, infoY + 14, { align: 'center' });
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
@@ -1558,7 +1558,7 @@ async function generateSampleMatchedPDF(inv) {
     });
 
     // Terms & Conditions
-    const termsY = Math.max(footerY + 24, bankLastY + 10);
+    const termsY = Math.max(footerY + 20, bankLastY + 6);
     doc.setFont("helvetica", "bold"); doc.setFontSize(7);
     doc.text("TERMS & CONDITIONS:", 10, termsY);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6);

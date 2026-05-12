@@ -5685,13 +5685,13 @@ async function generateSampleMatchedPDF({
         try { 
             const imgData = companyProfile.logoImage;
             const format = imgData.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-            // Wider logo as requested (35x20), moved slightly left
-            doc.addImage(imgData, format, 12, headerY - 2, 35, 20);
+            // Wider logo as requested (40x22), moved slightly left
+            doc.addImage(imgData, format, 12, headerY - 3, 40, 22);
         } catch(e) { console.warn("Logo add failed", e); }
     }
 
     // Company Name & Details - Shifted Right to accommodate wider logo
-    const headerX = 52; 
+    const headerX = 58; 
     doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
     doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", headerX, headerY + 5);
     
@@ -5706,11 +5706,11 @@ async function generateSampleMatchedPDF({
     doc.setFont("helvetica", "normal");
     doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, headerX, infoY + 4);
 
-    // TAX INVOICE BOX - Little smaller as requested
+    // TAX INVOICE BOX - Even smaller as requested
     doc.setFillColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.rect(pageW - 55, infoY - 5, 45, 7, 'F'); 
-    doc.setTextColor(255); doc.setFontSize(8); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), pageW - 32.5, infoY - 0.5, { align: 'center' });
+    doc.rect(pageW - 55, infoY - 5, 45, 6, 'F'); 
+    doc.setTextColor(255); doc.setFontSize(7); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), pageW - 32.5, infoY - 1, { align: 'center' });
     doc.setTextColor(0);
 
     let nextY = infoY + 8;
@@ -5894,8 +5894,8 @@ async function generateSampleMatchedPDF({
         } catch(e){}
     }
 
-    // Terms & Conditions - Moved down to ensure no overlap and better readability
-    const termsY = Math.max(footerY + 26, bankLastY + 12); 
+    // Terms & Conditions - Shifted UP to prevent bottom border overflow
+    const termsY = Math.max(footerY + 22, bankLastY + 8); 
     doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TERMS & CONDITIONS:", 12, termsY);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6);
     const termsText = terms || companyProfile.invoiceTerms || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged for delayed payment.";
