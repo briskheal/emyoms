@@ -410,17 +410,17 @@ async function saveSettings(e) {
     if (btn) { btn.disabled = true; btn.innerHTML = "⏳ SAVING TO CLOUD..."; }
 
     const counters = {
-        invoice: { prefix: safeGetVal('cnt-inv-pre'), nextNumber: Number(safeGetVal('cnt-inv-next')) || 1 },
-        purchase: { prefix: safeGetVal('cnt-pur-pre'), nextNumber: Number(safeGetVal('cnt-pur-next')) || 1 },
-        scn: { prefix: safeGetVal('cnt-scn-pre'), nextNumber: Number(safeGetVal('cnt-scn-next')) || 1 },
-        pdn: { prefix: safeGetVal('cnt-pdn-pre'), nextNumber: Number(safeGetVal('cnt-pdn-next')) || 1 },
-        pdcn: { prefix: safeGetVal('cnt-pdcn-pre'), nextNumber: Number(safeGetVal('cnt-pdcn-next')) || 1 },
-        pddn: { prefix: safeGetVal('cnt-pddn-pre'), nextNumber: Number(safeGetVal('cnt-pddn-next')) || 1 },
-        ldn: { prefix: safeGetVal('cnt-ldn-pre'), nextNumber: Number(safeGetVal('cnt-ldn-next')) || 1 },
-        lcn: { prefix: safeGetVal('cnt-lcn-pre'), nextNumber: Number(safeGetVal('cnt-lcn-next')) || 1 },
-        payin: { prefix: safeGetVal('cnt-payin-pre'), nextNumber: Number(safeGetVal('cnt-payin-next')) || 1 },
-        payout: { prefix: safeGetVal('cnt-payout-pre'), nextNumber: Number(safeGetVal('cnt-payout-next')) || 1 },
-        expense: { prefix: safeGetVal('cnt-exp-pre'), nextNumber: Number(safeGetVal('cnt-exp-next')) || 1 }
+        invoice: { prefix: safeGetVal('cnt-inv-pre'), nextNumber: Number(safeGetVal('cnt-inv-next')) || 0 },
+        purchase: { prefix: safeGetVal('cnt-pur-pre'), nextNumber: Number(safeGetVal('cnt-pur-next')) || 0 },
+        scn: { prefix: safeGetVal('cnt-scn-pre'), nextNumber: Number(safeGetVal('cnt-scn-next')) || 0 },
+        pdn: { prefix: safeGetVal('cnt-pdn-pre'), nextNumber: Number(safeGetVal('cnt-pdn-next')) || 0 },
+        pdcn: { prefix: safeGetVal('cnt-pdcn-pre'), nextNumber: Number(safeGetVal('cnt-pdcn-next')) || 0 },
+        pddn: { prefix: safeGetVal('cnt-pddn-pre'), nextNumber: Number(safeGetVal('cnt-pddn-next')) || 0 },
+        ldn: { prefix: safeGetVal('cnt-ldn-pre'), nextNumber: Number(safeGetVal('cnt-ldn-next')) || 0 },
+        lcn: { prefix: safeGetVal('cnt-lcn-pre'), nextNumber: Number(safeGetVal('cnt-lcn-next')) || 0 },
+        payin: { prefix: safeGetVal('cnt-payin-pre'), nextNumber: Number(safeGetVal('cnt-payin-next')) || 0 },
+        payout: { prefix: safeGetVal('cnt-payout-pre'), nextNumber: Number(safeGetVal('cnt-payout-next')) || 0 },
+        expense: { prefix: safeGetVal('cnt-exp-pre'), nextNumber: Number(safeGetVal('cnt-exp-next')) || 0 }
     };
 
     const data = {
