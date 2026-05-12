@@ -115,7 +115,7 @@ async function findNextUniqueNo(config, type) {
     let docNo = '';
     let exists = true;
     let attempts = 0;
-    let tempNumber = Number(config.nextNumber) || 0;
+    let tempNumber = 0; // Start from 0 to fill any gaps in the numbering system
 
     while (exists && attempts < 100) {
         attempts++;
@@ -1306,6 +1306,49 @@ app.post('/api/admin/direct-sale', async (req, res) => {
 });
 
 // --- EDIT INVOICED SALE (Reverse & Reapply Logic) ---
+// Cancel Invoice: Restore Inventory + Mark Cancelled
+app.put('/api/admin/invoices/:id/cancel', async (req, res) => {
+    const t = await db.sequelize.transaction();
+    try {
+        const inv = await db.Invoice.findByPk(req.params.id, {
+            include: [{ model: db.InvoiceItem, as: 'items' }]
+        });
+        if (!inv) throw new Error("Invoice not found");
+        if (inv.status === 'cancelled') throw new Error("Invoice already cancelled");
+
+        // 1. Restore Inventory
+        for (const item of inv.items) {
+            const product = await db.Product.findByPk(item.productId);
+            if (product) {
+                const totalQty = (Number(item.qty) || 0) + (Number(item.bonusQty) || 0);
+                await product.increment('qtyAvailable', { by: totalQty, transaction: t });
+                const batch = await db.Batch.findOne({ where: { productId: item.productId, batchNo: item.batch } });
+                if (batch) await batch.increment('qtyAvailable', { by: totalQty, transaction: t });
+            }
+        }
+
+        // 2. Mark Cancelled
+        await inv.update({ status: 'cancelled', outstandingAmount: 0 }, { transaction: t });
+        
+        // 3. Update Order if linked
+        if (inv.orderId) {
+            await db.Order.update({ status: 'cancelled' }, { where: { id: inv.orderId }, transaction: t });
+        }
+
+        // 4. Update Stockist Balance
+        const stockist = await db.Stockist.findByPk(inv.stockistId);
+        if (stockist) {
+            await stockist.decrement('outstandingBalance', { by: inv.grandTotal, transaction: t });
+        }
+
+        await t.commit();
+        res.json({ success: true });
+    } catch (err) {
+        await t.rollback();
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.put('/api/admin/invoices/:id', async (req, res) => {
     try {
         const { id } = req.params;

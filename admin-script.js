@@ -2151,9 +2151,10 @@ function viewOrderDetails(id) {
         editBtn.style.display = 'none';
     }
 
+    deleteBtn.innerText = 'CANCEL RECORD';
     deleteBtn.onclick = () => {
-        if (confirm(`⚠️  CRITICAL: Are you sure you want to PERMANENTLY DELETE Order #${o.orderNo}?\n\nThis will also remove it from the Stockist's view.`)) {
-            deleteOrder(o._id);
+        if (confirm(`⚠️ POLICY: Are you sure you want to CANCEL this record? Inventory will be restored, but the document number will be preserved for audit.`)) {
+            cancelInvoice(o._id);
             closeOrderModal();
         }
     };
@@ -2362,16 +2363,24 @@ async function approveOrder(id) {
         }
     } catch (e) { alert("Approval failed."); }
 }
-
-async function deleteOrder(id) {
+async function cancelInvoice(orderId) {
     try {
-        const res = await fetch(`${API_BASE}/admin/orders/${id}`, { method: 'DELETE' });
+        // Find the invoice linked to this order
+        const inv = allInvoices.find(i => (i.orderId || i.order?._id || i.order) == orderId);
+        if (!inv) return alert("Could not find invoice record to cancel.");
+
+        const res = await fetch(`${API_BASE}/admin/invoices/${inv._id}/cancel`, { method: 'PUT' });
         const result = await res.json();
         if (result.success) {
-            alert("🗑️  Order deleted successfully.");
-            loadOrders(); // Refresh history
+            alert("✅ Record Cancelled. Inventory restored. Record preserved for audit.");
+            loadOrders();
+            loadInvoices();
+            renderOrderHistory();
+            renderInvoices();
+        } else {
+            alert("Cancellation failed: " + result.message);
         }
-    } catch (e) { alert("Delete failed."); }
+    } catch (e) { alert("Cancellation failed."); }
 }
 
 function closeOrderModal() {
@@ -5713,6 +5722,10 @@ async function generateSampleMatchedPDF({
     doc.text(title.toUpperCase(), pageW - 32.5, infoY - 1, { align: 'center' });
     doc.setTextColor(0);
 
+    // Right Top Label below border line
+    doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    doc.text("Original Inv. for Buyer", pageW - 12, 14, { align: 'right' });
+
     let nextY = infoY + 8;
     doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]);
     doc.line(10, nextY, 200, nextY); // Header Separator
@@ -5868,8 +5881,8 @@ async function generateSampleMatchedPDF({
         try { 
             // Use local QRCode library for faster, offline-capable generation
             const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
-            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 5, 22, 22); // Slightly larger and moved up
-            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 19, { align: 'center' });
+            doc.addImage(qrDataUrl, 'PNG', 95, footerY + 5, 22, 22); // Two lines below (moved down from -5)
+            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 29, { align: 'center' });
         } catch(e){
             console.warn("Local QR failed. Fallback to API/Image.", e);
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
@@ -5889,8 +5902,8 @@ async function generateSampleMatchedPDF({
     } else if (companyProfile.qrImage) {
         try { 
             const fmt = companyProfile.qrImage.includes('jpeg') ? 'JPEG' : 'PNG';
-            doc.addImage(companyProfile.qrImage, fmt, 95, footerY - 5, 22, 22); 
-            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 19, { align: 'center' });
+            doc.addImage(companyProfile.qrImage, fmt, 95, footerY + 5, 22, 22); 
+            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 29, { align: 'center' });
         } catch(e){}
     }
 

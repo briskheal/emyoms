@@ -1425,6 +1425,10 @@ async function generateSampleMatchedPDF(inv) {
 
     doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
     
+    // Right Top Label below border line
+    doc.setFontSize(7); doc.setFont("helvetica", "normal");
+    doc.text("Original Inv. for Buyer", 198, 14, { align: 'right' });
+
     doc.setFontSize(8); doc.setFont("helvetica", "bold"); // Smaller Tax Invoice label
     doc.text("TAX INVOICE", 105, infoY + 14, { align: 'center' });
     
@@ -1536,8 +1540,8 @@ async function generateSampleMatchedPDF(inv) {
     if (upiLink && window.QRCode) {
         try {
             const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
-            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 20, 22, 22);
-            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 4, { align: 'center' });
+            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 10, 22, 22);
+            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 14, { align: 'center' });
         } catch(err) { 
             console.error("Local QR Error:", err);
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
