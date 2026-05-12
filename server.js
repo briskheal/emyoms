@@ -1317,13 +1317,30 @@ app.put('/api/admin/invoices/:id/cancel', async (req, res) => {
         if (inv.status === 'cancelled') throw new Error("Invoice already cancelled");
 
         // 1. Restore Inventory
+        console.log(`[CANCEL] Processing ${inv.items.length} items for Invoice ${inv.invoiceNo}`);
         for (const item of inv.items) {
-            const product = await db.Product.findByPk(item.productId);
-            if (product) {
-                const totalQty = (Number(item.qty) || 0) + (Number(item.bonusQty) || 0);
-                await product.increment('qtyAvailable', { by: totalQty, transaction: t });
-                const batch = await db.Batch.findOne({ where: { productId: item.productId, batchNo: item.batch } });
-                if (batch) await batch.increment('qtyAvailable', { by: totalQty, transaction: t });
+            const pId = item.productId;
+            const bNo = item.batch;
+            const qty = Number(item.qty) || 0;
+            const bonus = Number(item.bonusQty) || 0;
+            const totalToRestore = qty + bonus;
+
+            console.log(`[CANCEL] Restoring Item: ${item.name}, ProductID: ${pId}, Batch: ${bNo}, Qty: ${totalToRestore}`);
+
+            if (pId) {
+                const product = await db.Product.findByPk(pId);
+                if (product) {
+                    await product.increment('qtyAvailable', { by: totalToRestore, transaction: t });
+                    console.log(`[CANCEL] Updated Product ${product.name} (+${totalToRestore})`);
+                }
+
+                if (bNo && bNo !== 'N/A') {
+                    const batch = await db.Batch.findOne({ where: { productId: pId, batchNo: bNo } });
+                    if (batch) {
+                        await batch.increment('qtyAvailable', { by: totalToRestore, transaction: t });
+                        console.log(`[CANCEL] Updated Batch ${bNo} (+${totalToRestore})`);
+                    }
+                }
             }
         }
 

@@ -5715,13 +5715,10 @@ async function generateSampleMatchedPDF({
     doc.setFont("helvetica", "normal");
     doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, headerX, infoY + 4);
 
-    // TAX INVOICE BOX - Aligned with 'Original Inv' above
-    const boxWidth = 45;
-    const boxX = pageW - 10 - boxWidth;
-    doc.setFillColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.rect(boxX, infoY - 5, boxWidth, 6, 'F'); 
-    doc.setTextColor(255); doc.setFontSize(7); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), boxX + (boxWidth/2), infoY - 1, { align: 'center' });
+    // TAX INVOICE LABEL - Clean Bold Design (No Box)
+    doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
+    doc.setFontSize(12); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), pageW - 10, infoY - 1, { align: 'right' });
     doc.setTextColor(0);
 
     // Right Top Label below border line - Perfectly aligned with the box edge

@@ -1429,13 +1429,10 @@ async function generateSampleMatchedPDF(inv) {
     doc.setFontSize(7); doc.setFont("helvetica", "normal");
     doc.text("Original Inv. for Buyer", 200, 14, { align: 'right' });
 
-    // TAX INVOICE BOX - Aligned with 'Original Inv' above
-    const boxWidth = 45;
-    const boxX = 200 - boxWidth;
-    doc.setFillColor(0); // Theme color fallback
-    doc.rect(boxX, infoY + 8, boxWidth, 6, 'F'); 
-    doc.setTextColor(255); doc.setFontSize(7); doc.setFont("helvetica", "bold");
-    doc.text("TAX INVOICE", boxX + (boxWidth/2), infoY + 12, { align: 'center' });
+    // TAX INVOICE LABEL - Clean Bold Design (No Box)
+    doc.setTextColor(0);
+    doc.setFontSize(12); doc.setFont("helvetica", "bold");
+    doc.text("TAX INVOICE", 200, infoY + 12, { align: 'right' });
     doc.setTextColor(0);
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
