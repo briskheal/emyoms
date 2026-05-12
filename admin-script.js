@@ -5715,16 +5715,18 @@ async function generateSampleMatchedPDF({
     doc.setFont("helvetica", "normal");
     doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, headerX, infoY + 4);
 
-    // TAX INVOICE BOX - Even smaller as requested
+    // TAX INVOICE BOX - Aligned with 'Original Inv' above
+    const boxWidth = 45;
+    const boxX = pageW - 10 - boxWidth;
     doc.setFillColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.rect(pageW - 55, infoY - 5, 45, 6, 'F'); 
+    doc.rect(boxX, infoY - 5, boxWidth, 6, 'F'); 
     doc.setTextColor(255); doc.setFontSize(7); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), pageW - 32.5, infoY - 1, { align: 'center' });
+    doc.text(title.toUpperCase(), boxX + (boxWidth/2), infoY - 1, { align: 'center' });
     doc.setTextColor(0);
 
-    // Right Top Label below border line
+    // Right Top Label below border line - Perfectly aligned with the box edge
     doc.setFontSize(7); doc.setFont("helvetica", "normal");
-    doc.text("Original Inv. for Buyer", pageW - 12, 14, { align: 'right' });
+    doc.text("Original Inv. for Buyer", pageW - 10, 14, { align: 'right' });
 
     let nextY = infoY + 8;
     doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]);
