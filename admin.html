@@ -2209,8 +2209,35 @@
 
 
 
-    <!-- MODAL (Purchase Entry) -->
-    <!-- MODAL (Purchase Entry) -->
+    <!-- MODAL (Product Transaction Timeline) -->
+    <div id="productTimelineModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2500;">
+        <div class="glass-card" style="width: 90%; max-width: 1000px; max-height: 85vh; overflow-y: auto; padding: 2rem; border-top: 4px solid var(--accent);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                <div>
+                    <div style="font-size:0.55rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;">INVENTORY AUDIT TRAIL</div>
+                    <div id="timeline-product-name" style="font-size:1.2rem;font-weight:800;color:#f8fafc;letter-spacing:-0.02em;">📦 Product Timeline</div>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="closeTimelineModal()" style="padding:5px 12px;font-size:0.8rem;opacity:0.7;">✕ Close</button>
+            </div>
+            
+            <div class="table-container">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8rem;">
+                    <thead>
+                        <tr style="background: rgba(0,0,0,0.3);">
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border);">Date</th>
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border); text-align: center;">Type</th>
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border);">Ref No</th>
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border);">Party / Stockist</th>
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border); text-align: center;">Batch</th>
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border); text-align: right;">Rate</th>
+                            <th style="padding: 12px; border-bottom: 2px solid var(--glass-border); text-align: center;">Qty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timelineTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     <div id="purchaseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.94); backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
         <div class="glass-card" style="width: 98vw; max-width: none; height: 98vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--primary); border-radius: 10px; position: relative;">
             

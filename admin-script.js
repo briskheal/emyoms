@@ -1065,7 +1065,7 @@ function renderProducts(list = allProducts) {
     if (!tbody) return;
     tbody.innerHTML = list.map(p => `
         <tr>
-            <td style="font-weight: 700;">${p.name}</td>
+            <td style="font-weight: 700; color:var(--primary); cursor:pointer; text-decoration: underline;" onclick="viewProductTimeline('${p._id}')" title="Click to view full transaction history">${p.name}</td>
             <td style="color:var(--text-muted); font-size:0.8rem;">${p.packing || '-'}</td>
             <td style="font-family: monospace;">${p.hsn || '-'}</td>
             <td>₹${p.mrp}</td>
@@ -2381,6 +2381,72 @@ async function cancelInvoice(orderId) {
             alert("Cancellation failed: " + result.message);
         }
     } catch (e) { alert("Cancellation failed."); }
+}
+
+// --- PRODUCT TIMELINE LOGIC ---
+
+async function viewProductTimeline(productId) {
+    const p = allProducts.find(x => x._id == productId);
+    if (!p) return;
+
+    document.getElementById('timeline-product-name').innerText = `📦 Timeline: ${p.name}`;
+    const tbody = document.getElementById('timelineTableBody');
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; opacity:0.6;">⌛ Loading History...</td></tr>';
+    document.getElementById('productTimelineModal').classList.remove('hidden');
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/products/${productId}/timeline`);
+        const result = await res.json();
+        if (result.success) {
+            renderProductTimeline(result.timeline);
+        } else {
+            alert("Failed to load timeline: " + result.error);
+        }
+    } catch (e) {
+        alert("Failed to load timeline history.");
+    }
+}
+
+function renderProductTimeline(timeline) {
+    const tbody = document.getElementById('timelineTableBody');
+    if (timeline.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:3rem; opacity:0.5;">No transactions found for this product.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = timeline.map(entry => {
+        const isSale = entry.type === 'SALE';
+        const dateStr = new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        const badgeColor = isSale ? '#ef4444' : '#10b981';
+        const qtyColor = isSale ? '#ef4444' : '#10b981';
+        
+        // Setup deep link click handler
+        const viewDetailAction = isSale ? `viewOrderDetails('${entry.orderId}')` : `viewPurchaseDetails('${entry.id}')`;
+
+        return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 12px; font-weight: 600; opacity: 0.8;">${dateStr}</td>
+                <td style="padding: 12px; text-align: center;">
+                    <span style="background: ${badgeColor}22; color: ${badgeColor}; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; border: 1px solid ${badgeColor}44;">
+                        ${entry.type}
+                    </span>
+                </td>
+                <td style="padding: 12px;">
+                    <a href="javascript:void(0)" onclick="${viewDetailAction}" style="color: var(--accent); font-weight: 700; text-decoration: none;">${entry.refNo}</a>
+                </td>
+                <td style="padding: 12px; font-weight: 600;">${entry.party}</td>
+                <td style="padding: 12px; text-align: center; opacity: 0.8;">${entry.batch || '-'}</td>
+                <td style="padding: 12px; text-align: right; font-family: monospace;">₹${Number(entry.rate).toFixed(2)}</td>
+                <td style="padding: 12px; text-align: center; font-weight: 800; color: ${qtyColor};">
+                    ${entry.qty > 0 ? '+' : ''}${entry.qty}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function closeTimelineModal() {
+    document.getElementById('productTimelineModal').classList.add('hidden');
 }
 
 function closeOrderModal() {

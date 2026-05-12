@@ -1486,6 +1486,74 @@ app.put('/api/admin/invoices/:id', async (req, res) => {
 
 // --- PURCHASE ENTRY ---
 
+// --- PRODUCT MASTER ENHANCEMENTS ---
+
+// Get Product Transaction Timeline (Purchases + Sales)
+app.get('/api/admin/products/:id/timeline', async (req, res) => {
+    try {
+        const productId = req.params.id;
+        
+        // 1. Fetch Purchase History
+        const purchaseItems = await db.PurchaseItem.findAll({
+            where: { productId },
+            include: [{ 
+                model: db.PurchaseEntry, 
+                attributes: ['purchaseNo', 'supplierInvoiceNo', 'invoiceDate', 'createdAt', 'supplierName'] 
+            }],
+            order: [[{ model: db.PurchaseEntry }, 'createdAt', 'ASC']]
+        });
+
+        // 2. Fetch Sales History
+        const invoiceItems = await db.InvoiceItem.findAll({
+            where: { productId },
+            include: [{ 
+                model: db.Invoice,
+                attributes: ['invoiceNo', 'createdAt', 'status'],
+                include: [{ model: db.Stockist, attributes: ['name'] }]
+            }],
+            order: [[{ model: db.Invoice }, 'createdAt', 'ASC']]
+        });
+
+        // 3. Format and Merge
+        const timeline = [];
+
+        purchaseItems.forEach(it => {
+            timeline.push({
+                date: it.PurchaseEntry.invoiceDate || it.PurchaseEntry.createdAt,
+                type: 'PURCHASE',
+                refNo: it.PurchaseEntry.purchaseNo,
+                party: it.PurchaseEntry.supplierName || 'Supplier',
+                qty: it.qty,
+                batch: it.batch,
+                rate: it.rate,
+                id: it.PurchaseEntry.id
+            });
+        });
+
+        invoiceItems.forEach(it => {
+            // Only include non-cancelled invoices
+            if (it.Invoice.status !== 'cancelled') {
+                timeline.push({
+                    date: it.Invoice.createdAt,
+                    type: 'SALE',
+                    refNo: it.Invoice.invoiceNo,
+                    party: it.Invoice.Stockist ? it.Invoice.Stockist.name : 'Stockist',
+                    qty: -it.qty, // Negative for outward
+                    batch: it.batch,
+                    rate: it.priceUsed,
+                    id: it.Invoice.id,
+                    orderId: it.Invoice.orderId
+                });
+            }
+        });
+
+        // 4. Final Sort
+        timeline.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        res.json({ success: true, timeline });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/purchase-entries', async (req, res) => {
     try {
         const entries = await db.PurchaseEntry.findAll({ 
