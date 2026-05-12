@@ -12,7 +12,10 @@ module.exports = (sequelize, DataTypes) => {
         stockistId: {
             type: DataTypes.INTEGER,
             references: { model: 'Stockists', key: 'id' }
-        }
+        },
+        channel: { type: DataTypes.STRING, defaultValue: 'DIRECT' },
+        paymentMode: { type: DataTypes.STRING, defaultValue: 'CASH' },
+        remarks: { type: DataTypes.TEXT }
     }, {
         indexes: [
             { fields: ['orderNo'] },

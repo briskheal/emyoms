@@ -131,6 +131,15 @@ async function findNextUniqueNo(config, type) {
             } else if (type === 'purchase') {
                 const purCollision = await db.PurchaseEntry.findOne({ where: { purchaseNo: docNo } });
                 if (!purCollision) exists = false;
+            } else if (type === 'order') {
+                const ordCollision = await db.Order.findOne({ where: { orderNo: docNo } });
+                if (!ordCollision) exists = false;
+            } else if (type === 'expense') {
+                const expCollision = await db.Expense.findOne({ where: { expenseNo: docNo } });
+                if (!expCollision) exists = false;
+            } else if (type === 'payin' || type === 'payout') {
+                const payCollision = await db.Payment.findOne({ where: { paymentNo: docNo } });
+                if (!payCollision) exists = false;
             } else {
                 exists = false;
             }
@@ -1237,35 +1246,49 @@ app.post('/api/admin/direct-sale', async (req, res) => {
 
 
         for (const item of items) {
+            // Sanitize item: remove id to avoid PK collisions, ensure numeric rates
+            const cleanItem = { ...item };
+            delete cleanItem.id; 
+            
             const productId = parseInt(item.productId || item.product);
             const product = await db.Product.findByPk(productId);
             if (product) {
-                const totalQty = Number(item.qty) + Number(item.free || 0);
+                const qty = Number(item.qty) || 0;
+                const free = Number(item.free) || 0;
+                const totalQty = qty + free;
+                
                 await product.decrement('qtyAvailable', { by: totalQty });
                 const batch = await db.Batch.findOne({ where: { productId, batchNo: item.batch } });
                 if (batch) await batch.decrement('qtyAvailable', { by: totalQty });
 
+                const rate = Number(item.rate) || 0;
+                const ptr = Number(item.ptr) || 0;
+
                 // Create Order Item
                 await db.OrderItem.create({
-                    ...item,
+                    ...cleanItem,
                     productId,
                     orderId: newOrder.id,
-                    bonusQty: item.free || 0,
-                    pts: item.rate || 0,
-                    ptr: item.ptr || 0,
-                    priceUsed: item.rate || 0
+                    qty,
+                    bonusQty: free,
+                    pts: rate,
+                    ptr: ptr,
+                    priceUsed: rate,
+                    totalValue: Number(item.totalValue) || (qty * rate)
                 });
 
                 // Create Invoice Item
                 const invItem = await db.InvoiceItem.create({
-                    ...item,
+                    ...cleanItem,
                     productId,
                     invoiceId: newInvoice.id,
-                    bonusQty: item.free || 0,
-                    expDate: item.expDate || item.exp || '',
-                    pts: item.rate || 0,
-                    ptr: item.ptr || 0,
-                    priceUsed: item.rate || 0
+                    qty,
+                    bonusQty: free,
+                    expDate: item.expDate || item.exp || item.expiry || '',
+                    pts: rate,
+                    ptr: ptr,
+                    priceUsed: rate,
+                    totalValue: Number(item.totalValue) || (qty * rate)
                 });
                 console.log(`[DEBUG] Created InvoiceItem: ${product.name}, Exp: ${invItem.expDate}`);
             }

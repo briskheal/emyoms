@@ -7,7 +7,9 @@ module.exports = (sequelize, DataTypes) => {
         grandTotal: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         outstandingAmount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         status: { type: DataTypes.STRING, defaultValue: 'approved' },
-        dueDate: { type: DataTypes.DATE }
+        dueDate: { type: DataTypes.DATE },
+        orderId: { type: DataTypes.INTEGER },
+        placeOfSupply: { type: DataTypes.STRING }
     });
 
     Invoice.prototype.toJSON = function () {
