@@ -2924,6 +2924,13 @@ function updateSaleProductMeta(prodId) {
     
     safeSetVal('sale-rate', finalRate);
     calculateSaleLineTotal();
+    
+    // Auto-focus Qty for fast entry
+    const qtyEl = document.getElementById('sale-qty');
+    if (qtyEl) { 
+        qtyEl.focus(); 
+        qtyEl.select(); 
+    }
 }
 
 function updateSaleBatchMeta(batchNo) {
@@ -3000,6 +3007,52 @@ function addSaleItem() {
     document.getElementById('sale-gst-pct').value = '';
     document.getElementById('sale-line-total').innerText = '₹0.00';
     document.getElementById('sale-prod-search').focus();
+}
+
+function handleSalesRowKey(e, currentId) {
+    if (e.defaultPrevented) return;
+    const sequence = ['sale-prod-search', 'sale-batch-select', 'sale-ptr', 'sale-rate', 'sale-qty', 'sale-free'];
+    
+    if (e.key === 'Enter') {
+        if (currentId === 'sale-prod-search') {
+            const resultsDiv = document.getElementById('sale-search-results');
+            const isHidden = !resultsDiv || resultsDiv.style.display === 'none';
+            const hasSelected = document.getElementById('sale-prod-select').value !== '';
+            
+            if (isHidden && hasSelected) {
+                e.preventDefault();
+                const qtyEl = document.getElementById('sale-qty');
+                if (qtyEl) { qtyEl.focus(); qtyEl.select(); }
+                return;
+            }
+        }
+        
+        // If in qty, rate, free or ptr, try to add item
+        if (['sale-ptr', 'sale-rate', 'sale-qty', 'sale-free'].includes(currentId)) {
+            e.preventDefault();
+            addSaleItem();
+        }
+    } else if (e.key === 'ArrowRight') {
+        const idx = sequence.indexOf(currentId);
+        if (idx > -1 && idx < sequence.length - 1) {
+            e.preventDefault();
+            const next = document.getElementById(sequence[idx + 1]);
+            if (next) { next.focus(); if(next.select) next.select(); }
+        }
+    } else if (e.key === 'ArrowLeft') {
+        const idx = sequence.indexOf(currentId);
+        if (idx > 0) {
+            e.preventDefault();
+            const prev = document.getElementById(sequence[idx - 1]);
+            if (prev) { prev.focus(); if(prev.select) prev.select(); }
+        }
+    } else if (e.key === 'ArrowDown') {
+        // ArrowDown also triggers add if we are not in search (where it handles dropdown)
+        if (currentId !== 'sale-prod-search') {
+            e.preventDefault();
+            addSaleItem();
+        }
+    }
 }
 
 function renderSaleItems() {
