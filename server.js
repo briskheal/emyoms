@@ -1469,6 +1469,16 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
                         qtyAvailable: 0
                     }
                 });
+                
+                // Always update metadata in case it was missing or different
+                await batch.update({
+                    mfgDate: item.mfg || item.mfgDate || batch.mfgDate,
+                    expDate: item.exp || item.expDate || batch.expDate,
+                    mrp: item.mrp || batch.mrp,
+                    pts: item.pts || batch.pts,
+                    ptr: item.ptr || batch.ptr
+                });
+                
                 await batch.increment('qtyAvailable', { by: item.qty });
 
                 await db.PurchaseItem.create({
@@ -1567,6 +1577,16 @@ app.put('/api/admin/purchase-entries/:id', async (req, res) => {
                         qtyAvailable: 0
                     }
                 });
+                
+                // Update metadata
+                await batch.update({
+                    mfgDate: item.mfg || item.mfgDate || batch.mfgDate,
+                    expDate: item.exp || item.expDate || batch.expDate,
+                    mrp: item.mrp || batch.mrp,
+                    pts: item.pts || batch.pts,
+                    ptr: item.ptr || batch.ptr
+                });
+                
                 await batch.increment('qtyAvailable', { by: item.qty });
 
                 await db.PurchaseItem.create({

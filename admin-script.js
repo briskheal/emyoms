@@ -2039,7 +2039,7 @@ function viewOrderDetails(id) {
             if (!batchOptions) batchOptions = `<option value="">No Stock</option>`;
             batchCellHtml = `<select id="batch-${o._id}-${item._id}" class="batch-select" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 4px; font-size: 0.75rem;">${batchOptions}</select>`;
         } else {
-            batchCellHtml = `<span style="font-weight: 700; color: var(--accent);">${item.batch || 'N/A'}</span>`;
+            batchCellHtml = `<div><span style="font-weight: 700; color: var(--accent);">${item.batch || 'N/A'}</span><br/><span style="font-size: 0.6rem; color: #94a3b8; font-weight: 600;">Exp: ${item.expDate || item.exp || '-'}</span></div>`;
         }
 
         return `
@@ -2498,11 +2498,18 @@ function renderInvoices(list = null) {
 
 function filterInvoices(query) {
     const q = query.toLowerCase();
-    const filtered = allInvoices.filter(inv => 
-        inv.invoiceNo.toLowerCase().includes(q) || 
-        (inv.stockist && inv.stockist.name.toLowerCase().includes(q)) ||
-        (inv.stockistName && inv.stockistName.toLowerCase().includes(q))
-    );
+    const filtered = allInvoices.filter(inv => {
+        const matchesHeader = inv.invoiceNo.toLowerCase().includes(q) || 
+            (inv.stockist && inv.stockist.name.toLowerCase().includes(q)) ||
+            (inv.stockistName && inv.stockistName.toLowerCase().includes(q));
+        
+        const matchesItems = inv.items && inv.items.some(it => 
+            it.name.toLowerCase().includes(q) || 
+            (it.batch && it.batch.toLowerCase().includes(q))
+        );
+
+        return matchesHeader || matchesItems;
+    });
     renderInvoices(filtered);
 }
 
