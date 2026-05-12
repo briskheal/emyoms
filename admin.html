@@ -282,7 +282,7 @@
             width: 100%; 
             background: rgba(15, 23, 42, 0.6); 
             border: 1px solid var(--glass-border); 
-            border-radius: 12px; 
+            border-radius: 4px; 
             padding: 0.75rem 1rem; 
             color: #fff; 
             font-size: 0.85rem; 
@@ -292,7 +292,7 @@
 
         .btn { 
             padding: 0.7rem 1.5rem; 
-            border-radius: 12px; 
+            border-radius: 6px; 
             font-weight: 700; 
             cursor: pointer; 
             transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
@@ -2180,7 +2180,7 @@
     <!-- MODAL (Purchase Entry) -->
     <!-- MODAL (Purchase Entry) -->
     <div id="purchaseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.94); backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 95vw; max-width: 1550px; height: 95vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--primary); border-radius: 20px; position: relative;">
+        <div class="glass-card" style="width: 98vw; max-width: none; height: 98vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--primary); border-radius: 10px; position: relative;">
             
             <!-- FIXED HEADER -->
             <div style="padding: 0.45rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); flex: 0 0 auto;">
@@ -2240,18 +2240,19 @@
                                 <thead style="position: sticky; top: 0; background: #0f172a; z-index: 100;">
                                     <tr style="height: 26px;">
                                         <th style="width: 45px; text-align: center; padding: 4px 2px;">ACT</th>
-                                        <th style="width: 17%; padding: 4px 6px;">Product Details</th>
+                                        <th style="width: 18%; padding: 4px 6px;">Product Details</th>
+                                        <th style="width: 6%; padding: 4px 6px;">HSN</th>
                                         <th style="width: 6%; padding: 4px 6px;">Pack</th>
-                                        <th style="width: 10%; padding: 4px 6px;">Batch No</th>
+                                        <th style="width: 8%; padding: 4px 6px;">Batch No</th>
                                         <th style="width: 7%; padding: 4px 6px;">Mfg(MM-YY)</th>
                                         <th style="width: 7%; padding: 4px 6px;">Exp(MM-YY)</th>
                                         <th style="width: 6%; padding: 4px 6px;">MRP</th>
                                         <th style="width: 6%; padding: 4px 6px;">PTR</th>
                                         <th style="width: 6%; padding: 4px 6px;">PTS</th>
-                                        <th style="width: 7%; padding: 4px 6px;">Rate</th>
-                                        <th style="width: 6%; padding: 4px 6px;">Qty</th>
-                                        <th style="width: 5%; padding: 4px 6px;">GST%</th>
-                                        <th style="width: 10%; text-align: right; padding: 4px 12px 4px 6px;">Line Total</th>
+                                        <th style="width: 6%; padding: 4px 6px;">Rate</th>
+                                        <th style="width: 5%; padding: 4px 6px;">Qty</th>
+                                        <th style="width: 4%; padding: 4px 6px;">GST%</th>
+                                        <th style="width: 11%; text-align: right; padding: 4px 12px 4px 6px;">Line Total</th>
                                     </tr>
                                     <!-- INTEGRATED INPUT ROW -->
                                     <tr style="background: rgba(99, 102, 241, 0.12); position: sticky; top: 26px; z-index: 99;">
@@ -2264,16 +2265,17 @@
                                                 <input type="hidden" id="pur-prod-select">
                                             </div>
                                         </td>
-                                        <td><input type="text" id="pur-pack" placeholder="Pack" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td><input type="text" id="pur-batch" placeholder="BATCH123" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td style="position: relative;"><input type="text" id="pur-mfg" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.7rem; padding: 3px 20px 3px 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"><span onclick="openMonthYearPicker('pur-mfg')" style="position: absolute; right: 3px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.7rem; opacity: 0.7; z-index: 5;">📅</span></td>
-                                        <td style="position: relative;"><input type="text" id="pur-exp" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.7rem; padding: 3px 20px 3px 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"><span onclick="openMonthYearPicker('pur-exp')" style="position: absolute; right: 3px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.7rem; opacity: 0.7; z-index: 5;">📅</span></td>
-                                        <td><input type="number" id="pur-mrp" step="0.01" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td><input type="number" id="pur-ptr" step="0.01" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td><input type="number" id="pur-pts" step="0.01" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td><input type="number" id="pur-rate" step="0.01" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td><input type="number" id="pur-qty" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
-                                        <td><input type="number" id="pur-gst-pct" oninput="calculatePurchaseLineTotal()" style="font-size: 0.72rem; padding: 3px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;"></td>
+                                        <td><input type="text" id="pur-hsn" placeholder="HSN" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="text" id="pur-pack" placeholder="Pack" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="text" id="pur-batch" placeholder="BATCH" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td style="position: relative;"><input type="text" id="pur-mfg" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.75rem; padding: 4px 22px 4px 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"><span onclick="openMonthYearPicker('pur-mfg')" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.8rem; opacity: 0.7; z-index: 5;">📅</span></td>
+                                        <td style="position: relative;"><input type="text" id="pur-exp" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.75rem; padding: 4px 22px 4px 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"><span onclick="openMonthYearPicker('pur-exp')" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.8rem; opacity: 0.7; z-index: 5;">📅</span></td>
+                                        <td><input type="number" id="pur-mrp" step="0.01" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="number" id="pur-ptr" step="0.01" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="number" id="pur-pts" step="0.01" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="number" id="pur-rate" step="0.01" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="number" id="pur-qty" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
+                                        <td><input type="number" id="pur-gst-pct" oninput="calculatePurchaseLineTotal()" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 28px; width: 100%; border-radius: 2px;"></td>
                                         <td style="text-align: right; padding-right: 12px;">
                                             <div id="pur-line-total" style="font-weight: 800; color: var(--primary); font-size: 0.8rem;">₹0.00</div>
                                         </td>

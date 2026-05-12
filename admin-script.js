@@ -2553,6 +2553,7 @@ function addPurchaseItem() {
     console.log('addPurchaseItem called. Items before:', purchaseItems.length);
     const prodId = document.getElementById('pur-prod-select').value;
     const prodName = document.getElementById('pur-prod-search').value;
+    const hsn = document.getElementById('pur-hsn').value;
     const pack = document.getElementById('pur-pack').value;
     const batch = document.getElementById('pur-batch').value;
     const mfg = document.getElementById('pur-mfg').value;
@@ -2574,13 +2575,14 @@ function addPurchaseItem() {
     const gstAmount = Number((taxable * (gstPct / 100)).toFixed(2));
     const lineTotal = Number((taxable + gstAmount).toFixed(2));
 
-    const newItem = { productId: prodId, productName: prodName, pack, batch, mfg, exp, mrp: Number(mrp.toFixed(2)), ptr: Number(ptr.toFixed(2)), pts: Number(pts.toFixed(2)), rate: Number(rate.toFixed(2)), qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
+    const newItem = { productId: prodId, productName: prodName, hsn, pack, batch, mfg, exp, mrp: Number(mrp.toFixed(2)), ptr: Number(ptr.toFixed(2)), pts: Number(pts.toFixed(2)), rate: Number(rate.toFixed(2)), qty, gstPercent: gstPct, taxable, gstAmount, lineTotal };
     purchaseItems.push(newItem);
     console.log('Item added. Items after:', purchaseItems.length, newItem);
 
     // Clear row inputs
     safeSetVal('pur-prod-search', '');
     safeSetVal('pur-prod-select', '');
+    safeSetVal('pur-hsn', '');
     safeSetVal('pur-pack', '');
     safeSetVal('pur-batch', '');
     safeSetVal('pur-mfg', '');
@@ -2619,6 +2621,7 @@ function renderPurchaseItems() {
                 <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.85rem;">✕</button>
             </td>
             <td style="font-weight: 700;">${item.productName || 'N/A'}</td>
+            <td>${item.hsn || '-'}</td>
             <td>${item.pack || '-'}</td>
             <td>${item.batch || '-'}</td>
             <td>${item.mfg || '-'}</td>
@@ -2642,6 +2645,7 @@ function editPurchaseLineItem(index) {
     // Load into top row for editing
     safeSetVal('pur-prod-search', item.productName);
     safeSetVal('pur-prod-select', item.productId);
+    safeSetVal('pur-hsn', item.hsn || '');
     safeSetVal('pur-pack', item.pack || '');
     safeSetVal('pur-batch', item.batch || '');
     safeSetVal('pur-mfg', item.mfg || '');
@@ -4124,8 +4128,9 @@ function viewPurchaseDetails(id) {
         const qty = i.qty || 0;
         const rate = Number(i.rate || i.purchaseRate || 0).toFixed(2);
         const gst = i.gstPercent || 0;
+        const hsn = i.hsn || product.hsn || '-';
         const total = Number(i.lineTotal || i.totalValue || 0).toFixed(2);
-        return `  ${idx+1}. ${name}\n     Batch: ${batch} | Qty: ${qty} | Rate: ₹${rate} | GST: ${gst}% | Total: ₹${total}`;
+        return `  ${idx+1}. ${name}\n     HSN: ${hsn} | Batch: ${batch} | Qty: ${qty} | Rate: ₹${rate} | GST: ${gst}% | Total: ₹${total}`;
     }).join('\n');
     
     alert(
@@ -4233,20 +4238,31 @@ function editPurchaseEntry(id) {
 
         // --- Items ---
         purchaseItems = (p.items || []).map(i => {
-            const product = allProducts.find(pr => (pr._id || pr.id) == i.productId) || i.Product || {};
+            const product = allProducts.find(pr => (pr._id || pr.id) == (i.productId || i.product)) || i.Product || {};
+            const qty = Number(i.qty || 0);
+            const rate = Number(i.rate || i.purchaseRate || 0);
+            const gstPct = Number(i.gstPercent || (window.companyProfile ? window.companyProfile.gstRate : 5));
+            const taxable = Number((qty * rate).toFixed(2));
+            const gstAmount = Number((taxable * (gstPct / 100)).toFixed(2));
+            const lineTotal = Number((taxable + gstAmount).toFixed(2));
+
             return {
                 productId: i.productId || i.product || '',
                 productName: product.name || i.name || i.productName || 'Unknown Product',
+                hsn: i.hsn || product.hsn || '',
+                pack: i.pack || product.packing || '',
                 batch: i.batch || '',
                 mfg: i.mfg || i.mfgDate || '',
                 exp: i.exp || i.expDate || '',
-                mrp: Number(i.mrp || 0).toFixed(2) * 1,
-                rate: Number(i.rate || i.purchaseRate || 0),
-                qty: Number(i.qty || 0),
-                gstPercent: Number(i.gstPercent || 12),
-                taxable: Number(i.taxable || ((i.qty || 0) * (i.rate || i.purchaseRate || 0))).toFixed(2) * 1,
-                gstAmount: Number(i.gstAmount || 0),
-                lineTotal: Number(i.lineTotal || i.totalValue || 0)
+                mrp: Number(i.mrp || product.mrp || 0),
+                ptr: Number(i.ptr || product.ptr || 0),
+                pts: Number(i.pts || product.pts || 0),
+                rate,
+                qty,
+                gstPercent: gstPct,
+                taxable,
+                gstAmount,
+                lineTotal
             };
         });
 
@@ -4301,6 +4317,7 @@ function updateProductEntryMeta(id) {
     const p = allProducts.find(x => x._id == id || x.id == id);
     if (!p) return;
     // Auto-fill purchase rate (PTS), GST%, and MRP from product master
+    safeSetVal('pur-hsn', p.hsn || '');
     safeSetVal('pur-pack', p.packing || p.pack || '');
     safeSetVal('pur-ptr', p.ptr || 0);
     safeSetVal('pur-pts', p.pts || 0);
