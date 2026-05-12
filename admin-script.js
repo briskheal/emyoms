@@ -2649,6 +2649,7 @@ function editPurchaseLineItem(index) {
     setTimeout(() => document.getElementById('pur-qty')?.focus(), 50);
 }
 
+function updatePurchaseFooter() {
     // Update footer strip
     const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
     const gstTotal = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
