@@ -1403,26 +1403,29 @@ async function generateSampleMatchedPDF(inv) {
     if (companySettings?.logoImage) {
         try {
             const format = companySettings.logoImage.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-            doc.addImage(companySettings.logoImage, format, 15, headerY, 20, 20);
+            // Wider logo as requested (35x20), moved slightly left
+            doc.addImage(companySettings.logoImage, format, 12, headerY - 2, 35, 20);
         } catch(e){}
     }
 
+    // Company Name & Details - Shifted Right to accommodate wider logo
+    const headerX = 52; 
     doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
-    doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", 40, headerY + 5);
+    doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", headerX, headerY + 5);
     
     doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(60);
     const coAddr = companySettings?.address || "Office Address Here";
     const addrLines = doc.splitTextToSize(coAddr, 140);
-    doc.text(addrLines, 40, headerY + 10);
+    doc.text(addrLines, headerX, headerY + 10);
     
     let infoY = headerY + 10 + (addrLines.length * 4);
     doc.setFontSize(8);
-    doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, 40, infoY);
-    doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, 40, infoY + 4);
+    doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, headerX, infoY);
+    doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, headerX, infoY + 4);
 
     doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
     
-    doc.setFontSize(12); doc.setFont("helvetica", "bold");
+    doc.setFontSize(10); doc.setFont("helvetica", "bold"); // Smaller Tax Invoice label
     doc.text("TAX INVOICE", 105, infoY + 14, { align: 'center' });
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal");

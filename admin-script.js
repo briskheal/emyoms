@@ -2209,7 +2209,7 @@ function openOrderEditMode(orderId) {
         name: item.name,
         batch: item.batch,
         hsn: item.hsn,
-        expDate: item.expDate,
+        expDate: item.expDate || item.exp || item.expiry || '',
         mrp: item.mrp,
         ptr: item.ptr,
         qty: item.qty,
@@ -2508,7 +2508,7 @@ function filterInvoices(query) {
 
 function downloadInvoiceTemplate() {
     const headers = [
-        ["Invoice No*", "Date (DD-MM-YYYY)*", "Party Name*", "Product Name*", "Qty*", "Rate (Ex. GST)*", "GST %*", "Batch No", "Bonus Qty"]
+        ["Invoice No*", "Date (DD-MM-YYYY)*", "Party Name*", "Product Name*", "Qty*", "Rate (Ex. GST)*", "GST %*", "Batch No", "Exp Date", "Bonus Qty"]
     ];
     const ws = XLSX.utils.aoa_to_sheet(headers);
     const wb = XLSX.utils.book_new();
@@ -2546,6 +2546,7 @@ async function handleInvoiceBulkUpload(input) {
                 rate: Number(row["Rate (Ex. GST)*"]),
                 gstPercent: Number(row["GST %*"]),
                 batch: row["Batch No"] || 'N/A',
+                expDate: row["Exp Date"] || '',
                 bonusQty: Number(row["Bonus Qty"] || 0)
             });
         });
@@ -3216,7 +3217,7 @@ function renderSaleItems() {
             <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div></td>
             <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
-            <td><div style="font-weight:600; font-size:0.7rem; color:var(--accent);">${item.expDate || item.exp || '-'}</div></td>
+            <td><div style="font-weight:600; font-size:0.7rem; color:var(--accent);">${item.expDate || item.exp || item.expiry || '-'}</div></td>
             <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
             <td style="font-size: 0.65rem; opacity: 0.6;">₹${Number(item.ptr || 0).toFixed(2)}</td>
             <td>
@@ -5674,32 +5675,35 @@ async function generateSampleMatchedPDF({
     // --- 2. HEADER SECTION (LOGO + COMPANY) ---
     let headerY = 15;
     if (companyProfile && companyProfile.logoImage) {
-        try {
+        try { 
             const imgData = companyProfile.logoImage;
             const format = imgData.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-            doc.addImage(imgData, format, 15, headerY, 20, 20);
+            // Wider logo as requested (35x20), moved slightly left
+            doc.addImage(imgData, format, 12, headerY - 2, 35, 20);
         } catch(e) { console.warn("Logo add failed", e); }
     }
 
+    // Company Name & Details - Shifted Right to accommodate wider logo
+    const headerX = 52; 
     doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", 40, headerY + 5);
+    doc.text((companyProfile && companyProfile.name) || "EMYRIS BIOLIFESCIENCES", headerX, headerY + 5);
     
     doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(60);
     const coAddr = (companyProfile && companyProfile.address) || "Office Address Loading...";
     const addrLines = doc.splitTextToSize(coAddr, 140);
-    doc.text(addrLines, 40, headerY + 10);
+    doc.text(addrLines, headerX, headerY + 10);
     
     let infoY = headerY + 10 + (addrLines.length * 4);
     doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(0);
-    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, 40, infoY);
+    doc.text(`GSTIN: ${(companyProfile && companyProfile.gstNo) || 'N/A'} | DL No: ${(companyProfile && companyProfile.dlNo) || 'N/A'}`, headerX, infoY);
     doc.setFont("helvetica", "normal");
-    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, 40, infoY + 4);
+    doc.text(`Contact: ${(companyProfile && companyProfile.phones?.[0]) || 'N/A'} | Email: ${(companyProfile && companyProfile.emails?.[0]) || 'N/A'}`, headerX, infoY + 4);
 
-    // TAX INVOICE BOX
+    // TAX INVOICE BOX - Little smaller as requested
     doc.setFillColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.rect(pageW - 60, infoY - 5, 50, 8, 'F');
-    doc.setTextColor(255); doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text(title.toUpperCase(), pageW - 35, infoY + 0.5, { align: 'center' });
+    doc.rect(pageW - 55, infoY - 5, 45, 7, 'F'); 
+    doc.setTextColor(255); doc.setFontSize(8); doc.setFont("helvetica", "bold");
+    doc.text(title.toUpperCase(), pageW - 32.5, infoY - 0.5, { align: 'center' });
     doc.setTextColor(0);
 
     let nextY = infoY + 8;

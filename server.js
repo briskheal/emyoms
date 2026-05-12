@@ -1072,7 +1072,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
                 name: item.name,
                 manufacturer: item.manufacturer,
                 batch: item.batch,
-                expDate: item.expDate || '',
+                expDate: item.expDate || item.exp || item.expiry || '',
                 qty: item.qty,
                 priceUsed: item.priceUsed,
                 mrp: item.mrp,
@@ -1148,7 +1148,8 @@ app.post('/api/admin/invoices/bulk', async (req, res) => {
                     mrp: product.mrp,
                     totalValue: lineTotal,
                     gstPercent: item.gstPercent,
-                    hsn: product.hsn
+                    hsn: product.hsn,
+                    expDate: item.expDate || ''
                 });
             }
 
