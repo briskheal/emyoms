@@ -5746,10 +5746,11 @@ async function generateSampleMatchedPDF({
                     (supplyState === '' && coStateCode === '36'); // Default to Intra if we are in 36 and no supply specified
     
     const isInter = !isIntra;
+    const taxHeader = isInter ? [['GST%', 'Taxable', 'IGST', 'Total Tax']] : [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']];
     let taxBody = [];
     Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
         const rate = parseFloat(r); const d = taxMap[r];
-        if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), '0.00', '0.00', d.tax.toFixed(2)]); }
+        if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), d.tax.toFixed(2), d.tax.toFixed(2)]); }
         else {
             const hT = (d.tax / 2).toFixed(2);
             taxBody.push([`${rate}%`, d.taxable.toFixed(2), hT, hT, d.tax.toFixed(2)]);
@@ -5760,13 +5761,13 @@ async function generateSampleMatchedPDF({
     doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.text("GST TAX SUMMARY", 12, summaryY);
     doc.autoTable({
         startY: summaryY + 2,
-        head: [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']],
+        head: taxHeader,
         body: taxBody,
         theme: 'grid',
         headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6.5, halign: 'center' },
         styles: { fontSize: 6.5, halign: 'right', cellPadding: 1.5 },
         margin: { left: 10 },
-        tableWidth: 85
+        tableWidth: isInter ? 65 : 85
     });
 
     // Totals Block

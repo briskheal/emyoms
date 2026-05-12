@@ -1049,6 +1049,9 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
         // Ensure totals are rounded
         const roundedGrandTotal = Math.round(order.grandTotal);
 
+        const stockist = await db.Stockist.findByPk(order.stockistId);
+        const supply = (stockist ? (stockist.state || stockist.city) : '') || 'Telangana';
+
         const newInvoice = await db.Invoice.create({
             invoiceNo,
             orderId: order.id,
@@ -1057,6 +1060,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
             gstAmount: order.gstAmount,
             grandTotal: roundedGrandTotal,
             outstandingAmount: roundedGrandTotal,
+            placeOfSupply: supply,
             status: 'approved'
         });
 
@@ -1068,6 +1072,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
                 name: item.name,
                 manufacturer: item.manufacturer,
                 batch: item.batch,
+                expDate: item.expDate || '',
                 qty: item.qty,
                 priceUsed: item.priceUsed,
                 mrp: item.mrp,
@@ -1078,7 +1083,6 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
                 ptr: item.ptr || 0,
                 bonusQty: item.bonusQty || 0
             });
-
         }
 
         await order.update({ status: 'invoiced' });
