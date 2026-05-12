@@ -1255,6 +1255,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
                     productId,
                     invoiceId: newInvoice.id,
                     bonusQty: item.free || 0,
+                    expDate: item.expDate || item.exp || '',
                     pts: item.rate || 0,
                     ptr: item.ptr || 0,
                     priceUsed: item.rate || 0
@@ -1299,7 +1300,7 @@ app.put('/api/admin/invoices/:id', async (req, res) => {
             if (product) await product.increment('qtyAvailable', { by: totalQty });
             
             const batch = await db.Batch.findOne({ where: { productId, batchNo: oldItem.batch } });
-            if (batch) await batch.decrement('qtyAvailable', { by: totalQty });
+            if (batch) await batch.increment('qtyAvailable', { by: totalQty });
         }
 
         // 1.2 Reverse Accounting Balance
@@ -1356,6 +1357,7 @@ app.put('/api/admin/invoices/:id', async (req, res) => {
                     productId,
                     invoiceId: invoice.id,
                     bonusQty: item.free || 0,
+                    expDate: item.expDate || item.exp || '',
                     pts: item.rate || 0,
                     ptr: item.ptr || 0,
                     priceUsed: item.rate || 0
@@ -1368,6 +1370,7 @@ app.put('/api/admin/invoices/:id', async (req, res) => {
                         productId,
                         orderId: order.id,
                         bonusQty: item.free || 0,
+                        expDate: item.expDate || item.exp || '',
                         pts: item.rate || 0,
                         ptr: item.ptr || 0,
                         priceUsed: item.rate || 0

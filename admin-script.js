@@ -3179,14 +3179,23 @@ function renderSaleItems() {
                 <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#fff; background:#ef4444; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.6rem; font-weight:800;">DEL</button>
             </td>
             <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div></td>
-            <td><div style="font-weight:600;">${item.batch}</div></td>
+            <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
-            <td><div style="font-weight:600;">${item.expDate || '-'}</div></td>
+            <td><div style="font-weight:600; font-size:0.7rem; color:var(--accent);">${item.expDate || item.exp || '-'}</div></td>
             <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
-            <td>₹${Number(item.ptr || 0).toFixed(2)}</td>
-            <td>₹${Number(item.rate || 0).toFixed(2)}</td>
-            <td style="text-align:center; font-weight:700;">${item.qty}</td>
-            <td style="text-align:center; font-weight:700; color:var(--accent);">${item.free || 0}</td>
+            <td style="font-size: 0.65rem; opacity: 0.6;">₹${Number(item.ptr || 0).toFixed(2)}</td>
+            <td>
+                <input type="number" step="0.01" value="${item.rate}" oninput="updateDirectSaleLine(${index}, 'rate', this.value)" 
+                    style="width: 70px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
+            </td>
+            <td>
+                <input type="number" value="${item.qty}" oninput="updateDirectSaleLine(${index}, 'qty', this.value)" 
+                    style="width: 55px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
+            </td>
+            <td>
+                <input type="number" value="${item.free || 0}" oninput="updateDirectSaleLine(${index}, 'free', this.value)" 
+                    style="width: 45px; background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.2); color: var(--accent); text-align: center; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
+            </td>
             <td style="text-align:center;">${pct}%</td>
             <td style="text-align:right; font-weight:700; color:var(--accent); padding-right:10px;">₹${(val + gst).toFixed(2)}</td>
         </tr>`;
@@ -3238,6 +3247,79 @@ function renderSaleItems() {
     setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
     setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
     setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+}
+
+function updateDirectSaleLine(index, field, value) {
+    if (!directSaleItems[index]) return;
+    const item = directSaleItems[index];
+    const numVal = parseFloat(value) || 0;
+    
+    item[field] = numVal;
+    
+    // Recalculate line total (Taxable Value)
+    item.totalValue = (item.qty || 0) * (item.rate || 0);
+    
+    // Re-render everything to update all summary labels and split taxes
+    // We don't want to re-render the whole table on every keystroke as it loses focus
+    // Instead, we just update the footer strip and the specific line's total
+    
+    // However, for simplicity and to ensure split taxes are correct, 
+    // we'll update the summary totals without a full re-render if possible.
+    // Actually, for consistency, full re-render is safer but might cause focus issues.
+    // Let's do a "debounced" re-render or just update the totals.
+    
+    updateSaleStripTotals();
+}
+
+function updateSaleStripTotals() {
+    let subTotal = 0;
+    let gstTotal = 0;
+    
+    directSaleItems.forEach(item => {
+        const val = (item.qty || 0) * (item.rate || 0);
+        const gst = (val * (item.gstPercent || 0)) / 100;
+        subTotal += val;
+        gstTotal += gst;
+    });
+    
+    const total = subTotal + gstTotal;
+    const rounded = Math.round(total);
+    const roundOff = rounded - total;
+    
+    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+    
+    setVal('sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('sale-gst-total', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    
+    const roEl = document.getElementById('sale-roundoff');
+    if (roEl) roEl.innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
+    
+    setVal('strip-sale-count', directSaleItems.length);
+    setVal('strip-sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
+    setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+
+    // Update Split GST Labels
+    const supplyState = (document.getElementById('sale-supply')?.value || '').toLowerCase();
+    const partyId = document.getElementById('sale-party').value;
+    const party = allStockists.find(s => (s._id || s.id) == partyId);
+    const partyGst = (party?.gst || party?.gstNo || '').substring(0, 2);
+    const isIntra = (partyGst === '36') || (supplyState.includes('telangana'));
+    
+    const labelEl = document.getElementById('label-sale-gst');
+    const splitEl = document.getElementById('strip-sale-gst-split');
+    
+    if (gstTotal > 0) {
+        if (isIntra) {
+            if (labelEl) labelEl.innerText = "CGST+SGST:";
+            if (splitEl) splitEl.innerText = `(C:${(gstTotal/2).toFixed(2)}|S:${(gstTotal/2).toFixed(2)})`;
+        } else {
+            if (labelEl) labelEl.innerText = "IGST:";
+            if (splitEl) splitEl.innerText = `(INTER-STATE)`;
+        }
+    }
 }
 
 async function saveDirectSale(e) {

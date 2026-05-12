@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
         totalValue: { type: DataTypes.DECIMAL(15, 2) },
         gstPercent: { type: DataTypes.DECIMAL(5, 2) },
         hsn: { type: DataTypes.STRING },
+        expDate: { type: DataTypes.STRING },
         pts: { type: DataTypes.DECIMAL(15, 2) },
         ptr: { type: DataTypes.DECIMAL(15, 2) }
     });
