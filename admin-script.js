@@ -5673,7 +5673,9 @@ async function generateSampleMatchedPDF({
     let headerY = 15;
     if (companyProfile && companyProfile.logoImage) {
         try {
-            doc.addImage(companyProfile.logoImage, 'PNG', 15, headerY, 20, 20);
+            const imgData = companyProfile.logoImage;
+            const format = imgData.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(imgData, format, 15, headerY, 20, 20);
         } catch(e) { console.warn("Logo add failed", e); }
     }
 
@@ -5744,8 +5746,9 @@ async function generateSampleMatchedPDF({
             const ptr = Number(it.ptr || 0);
             const qty = Number(it.qty || 0);
             const bonus = Number(it.bonusQty || 0);
+            const expStr = it.expDate || it.expiry || it.exp || '-';
             return [
-                idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
+                idx + 1, it.hsn || '-', it.name, it.batch || '-', expStr, 
                 mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
                 qty, bonus, (it.gstPercent || 0) + '%', 
                 (qty * pts).toFixed(2)
@@ -5833,10 +5836,35 @@ async function generateSampleMatchedPDF({
     const bankLines = (companyProfile.bankDetails || "").split('\n');
     bankLines.forEach((l, i) => doc.text(l.trim(), 12, footerY + 6 + (i * 3)));
 
-    // QR Code
-    if (companyProfile.qrImage) {
-        try { doc.addImage(companyProfile.qrImage, 'PNG', 95, footerY, 20, 20); } catch(e){}
-        doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+    // QR Code Generation
+    let upiLink = "";
+    if (companyProfile.upiId) {
+        upiLink = `upi://pay?pa=${companyProfile.upiId}&pn=${encodeURIComponent(companyProfile.name)}&am=${grandTotal}&cu=INR`;
+    } else if (companyProfile.bankAccountNo && companyProfile.bankIfsc) {
+        upiLink = `upi://pay?pa=${companyProfile.bankAccountNo}@${companyProfile.bankIfsc}.ifsc.npci&pn=${encodeURIComponent(companyProfile.name)}&am=${grandTotal}&cu=INR`;
+    }
+
+    if (upiLink) {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
+        try { 
+            doc.addImage(qrUrl, 'PNG', 95, footerY, 20, 20); 
+            doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+        } catch(e){
+            console.warn("Dynamic QR failed. Fallback to image.", e);
+            if (companyProfile.qrImage) {
+                try { 
+                    const fmt = companyProfile.qrImage.includes('jpeg') ? 'JPEG' : 'PNG';
+                    doc.addImage(companyProfile.qrImage, fmt, 95, footerY, 20, 20); 
+                    doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+                } catch(e2){}
+            }
+        }
+    } else if (companyProfile.qrImage) {
+        try { 
+            const fmt = companyProfile.qrImage.includes('jpeg') ? 'JPEG' : 'PNG';
+            doc.addImage(companyProfile.qrImage, fmt, 95, footerY, 20, 20); 
+            doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+        } catch(e){}
     }
 
     // Terms & Conditions
@@ -5850,7 +5878,11 @@ async function generateSampleMatchedPDF({
     doc.setFont("helvetica", "bold"); doc.setFontSize(8);
     doc.text(`For ${(companyProfile.name) || "EMYRIS BIOLIFESCIENCES"}`, 198, footerY + 2, { align: 'right' });
     if (companyProfile.signatureImage) {
-        try { doc.addImage(companyProfile.signatureImage, 'JPEG', 165, footerY + 5, 30, 10); } catch(e){}
+        try { 
+            const sigData = companyProfile.signatureImage;
+            const fmt = sigData.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(sigData, fmt, 165, footerY + 5, 30, 10); 
+        } catch(e){}
     }
     doc.text("Authorised Signatory", 198, footerY + 25, { align: 'right' });
 

@@ -1050,7 +1050,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
         const roundedGrandTotal = Math.round(order.grandTotal);
 
         const stockist = await db.Stockist.findByPk(order.stockistId);
-        const supply = (stockist ? (stockist.state || stockist.city) : '') || 'Telangana';
+        const supply = (stockist ? (stockist.state || stockist.city) : '') || companyProfile.defaultPlaceOfSupply || 'Telangana';
 
         const newInvoice = await db.Invoice.create({
             invoiceNo,
@@ -1060,7 +1060,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
             gstAmount: order.gstAmount,
             grandTotal: roundedGrandTotal,
             outstandingAmount: roundedGrandTotal,
-            placeOfSupply: supply,
+            placeOfSupply: supply || req.body.placeOfSupply,
             status: 'approved'
         });
 
@@ -1162,6 +1162,7 @@ app.post('/api/admin/invoices/bulk', async (req, res) => {
                 gstAmount,
                 grandTotal,
                 outstandingAmount: grandTotal,
+                placeOfSupply: invData.placeOfSupply || stockist.state || 'Telangana',
                 status: 'approved',
                 createdAt: invoiceDate,
                 updatedAt: invoiceDate
@@ -1228,6 +1229,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
             gstAmount: numGstAmount,
             grandTotal: numGrandTotal,
             outstandingAmount: numGrandTotal,
+            placeOfSupply: req.body.placeOfSupply || 'Telangana',
             status: 'approved',
             createdAt: date ? new Date(date) : new Date()
         });
