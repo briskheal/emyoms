@@ -3002,6 +3002,7 @@ function updateSalePartyContext() {
         const supplyEl = document.getElementById('sale-supply');
         if (supplyEl) {
             // Priority: Party State -> Party City -> Company Default
+            // For GST, Place of Supply is usually the State.
             const state = party.state || party.city || (companyProfile ? companyProfile.defaultPlaceOfSupply : '');
             supplyEl.value = state;
         }
@@ -4331,7 +4332,7 @@ async function generateStandardPDF({
             const taxable = Number(it.qty) * price;
             const total = taxable + (taxable * rate / 100);
             return [
-                idx + 1, it.name, it.hsn || '-', it.batch || '-', it.exp || '-', 
+                idx + 1, it.name, it.hsn || '-', it.batch || '-', it.expDate || it.exp || it.expiry || '-', 
                 (Number(it.mrp) || 0).toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
                 it.qty, bonus, rate + '%', total.toFixed(2)
             ];
@@ -4361,7 +4362,7 @@ async function viewInvoicePDF(id) {
         if (!inv) return alert("Invoice not found in system.");
         const partyData = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
-            { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
+            { label: 'Place of Supply', value: inv.placeOfSupply || partyData.state || partyData.city || companyProfile.defaultPlaceOfSupply || 'Telangana' },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
         ];
         
@@ -4393,7 +4394,7 @@ async function downloadInvoicePDF(id) {
         if (!inv) return alert("Invoice not found in system.");
         const partyData = allStockists.find(s => (s._id || s.id) == (inv.stockistId || inv.stockist?._id || inv.stockist)) || {};
         const extraFields = [
-            { label: 'Place of Supply', value: inv.placeOfSupply || companyProfile.defaultPlaceOfSupply },
+            { label: 'Place of Supply', value: inv.placeOfSupply || partyData.state || partyData.city || companyProfile.defaultPlaceOfSupply || 'Telangana' },
             { label: 'Due Date', value: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'N/A' }
         ];
         await generateStandardPDF({
@@ -5834,29 +5835,43 @@ async function generateSampleMatchedPDF({
     doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.text("BANK DETAILS:", 12, footerY + 2);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
     const bankLines = (companyProfile.bankDetails || "").split('\n');
-    bankLines.forEach((l, i) => doc.text(l.trim(), 12, footerY + 6 + (i * 3)));
+    let bankLastY = footerY + 2;
+    bankLines.forEach((l, i) => {
+        bankLastY = footerY + 6 + (i * 3);
+        doc.text(l.trim(), 12, bankLastY);
+    });
 
     // QR Code Generation
     let upiLink = "";
     if (companyProfile.upiId) {
-        upiLink = `upi://pay?pa=${companyProfile.upiId}&pn=${encodeURIComponent(companyProfile.name)}&am=${grandTotal}&cu=INR`;
+        // Ensure grandTotal is formatted to 2 decimal places for UPI
+        const am = Number(grandTotal).toFixed(2);
+        upiLink = `upi://pay?pa=${companyProfile.upiId}&pn=${encodeURIComponent(companyProfile.name)}&am=${am}&cu=INR`;
     } else if (companyProfile.bankAccountNo && companyProfile.bankIfsc) {
-        upiLink = `upi://pay?pa=${companyProfile.bankAccountNo}@${companyProfile.bankIfsc}.ifsc.npci&pn=${encodeURIComponent(companyProfile.name)}&am=${grandTotal}&cu=INR`;
+        const am = Number(grandTotal).toFixed(2);
+        upiLink = `upi://pay?pa=${companyProfile.bankAccountNo}@${companyProfile.bankIfsc}.ifsc.npci&pn=${encodeURIComponent(companyProfile.name)}&am=${am}&cu=INR`;
     }
 
-    if (upiLink) {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
+    if (upiLink && window.QRCode) {
         try { 
-            doc.addImage(qrUrl, 'PNG', 95, footerY, 20, 20); 
+            // Use local QRCode library for faster, offline-capable generation
+            const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
+            doc.addImage(qrDataUrl, 'PNG', 95, footerY, 20, 20); 
             doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
         } catch(e){
-            console.warn("Dynamic QR failed. Fallback to image.", e);
-            if (companyProfile.qrImage) {
-                try { 
-                    const fmt = companyProfile.qrImage.includes('jpeg') ? 'JPEG' : 'PNG';
-                    doc.addImage(companyProfile.qrImage, fmt, 95, footerY, 20, 20); 
-                    doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
-                } catch(e2){}
+            console.warn("Local QR failed. Fallback to API/Image.", e);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
+            try { 
+                doc.addImage(qrUrl, 'PNG', 95, footerY, 20, 20); 
+                doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+            } catch(e2){
+                if (companyProfile.qrImage) {
+                    try { 
+                        const fmt = companyProfile.qrImage.includes('jpeg') ? 'JPEG' : 'PNG';
+                        doc.addImage(companyProfile.qrImage, fmt, 95, footerY, 20, 20); 
+                        doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+                    } catch(e3){}
+                }
             }
         }
     } else if (companyProfile.qrImage) {
@@ -5867,12 +5882,13 @@ async function generateSampleMatchedPDF({
         } catch(e){}
     }
 
-    // Terms & Conditions
-    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TERMS & CONDITIONS:", 12, footerY + 18);
+    // Terms & Conditions - One line below bank details to avoid overlap
+    const termsY = Math.max(footerY + 22, bankLastY + 8); 
+    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TERMS & CONDITIONS:", 12, termsY);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6);
     const termsText = terms || companyProfile.invoiceTerms || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged for delayed payment.";
     const termsLines = doc.splitTextToSize(termsText, 80);
-    doc.text(termsLines, 12, footerY + 22);
+    doc.text(termsLines, 12, termsY + 4);
 
     // Signatory
     doc.setFont("helvetica", "bold"); doc.setFontSize(8);
@@ -5881,7 +5897,7 @@ async function generateSampleMatchedPDF({
         try { 
             const sigData = companyProfile.signatureImage;
             const fmt = sigData.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-            doc.addImage(sigData, fmt, 165, footerY + 5, 30, 10); 
+            doc.addImage(sigData, fmt, 160, footerY + 4, 35, 12); // Slightly larger signature
         } catch(e){}
     }
     doc.text("Authorised Signatory", 198, footerY + 25, { align: 'right' });

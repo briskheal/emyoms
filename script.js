@@ -1399,19 +1399,31 @@ async function generateSampleMatchedPDF(inv) {
         return final + ' Only';
     };
 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
-    doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", 105, 15, { align: 'center' });
-    
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const coAddr = companySettings?.address || "Office Address Here";
-    doc.text(coAddr, 105, 20, { align: 'center' });
-    doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, 105, 25, { align: 'center' });
-    doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, 105, 30, { align: 'center' });
+    let headerY = 15;
+    if (companySettings?.logoImage) {
+        try {
+            const format = companySettings.logoImage.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(companySettings.logoImage, format, 15, headerY, 20, 20);
+        } catch(e){}
+    }
 
-    doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, 35, 200, 35);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
+    doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", 40, headerY + 5);
+    
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(60);
+    const coAddr = companySettings?.address || "Office Address Here";
+    const addrLines = doc.splitTextToSize(coAddr, 140);
+    doc.text(addrLines, 40, headerY + 10);
+    
+    let infoY = headerY + 10 + (addrLines.length * 4);
+    doc.setFontSize(8);
+    doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, 40, infoY);
+    doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, 40, infoY + 4);
+
+    doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
     
     doc.setFontSize(12); doc.setFont("helvetica", "bold");
-    doc.text("TAX INVOICE", 105, 42, { align: 'center' });
+    doc.text("TAX INVOICE", 105, infoY + 14, { align: 'center' });
     
     doc.setFontSize(9); doc.setFont("helvetica", "normal");
     doc.text(`Invoice No:`, 145, 50); doc.setFont("helvetica", "bold"); doc.text(inv.invoiceNo, 170, 50);
@@ -1433,10 +1445,10 @@ async function generateSampleMatchedPDF(inv) {
         startY: 85,
         head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
         body: inv.items.map((it, idx) => [
-            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.exp || '-', 
+            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.expDate || it.exp || it.expiry || '-', 
             (it.mrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
-            it.priceUsed.toFixed(2), (it.gstPercent || 0) + '%', 
-            (it.qty * it.priceUsed).toFixed(2)
+            (it.priceUsed || it.rate || 0).toFixed(2), (it.gstPercent || 0) + '%', 
+            (it.qty * (it.priceUsed || it.rate || 0)).toFixed(2)
         ]),
         theme: 'grid',
         headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
@@ -1508,17 +1520,55 @@ async function generateSampleMatchedPDF(inv) {
     doc.text(`(Amount in Words: ${numberToWords(inv.grandTotal)})`, 10, summaryY + 30);
 
     const footerY = 270;
+    // QR Code Generation
+    let upiLink = "";
+    if (companySettings?.upiId) {
+        const am = Number(inv.grandTotal).toFixed(2);
+        upiLink = `upi://pay?pa=${companySettings.upiId}&pn=${encodeURIComponent(companySettings.name || 'EMYRIS')}&am=${am}&cu=INR`;
+    } else if (companySettings?.bankAccountNo && companySettings?.bankIfsc) {
+        const am = Number(inv.grandTotal).toFixed(2);
+        upiLink = `upi://pay?pa=${companySettings.bankAccountNo}@${companySettings.bankIfsc.toUpperCase().trim()}.ifsc.npci&pn=${encodeURIComponent(companySettings.name || 'EMYRIS')}&am=${am}&cu=INR`;
+    }
+
+    if (upiLink && window.QRCode) {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
+            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 20, 20, 20);
+            doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 2, { align: 'center' });
+        } catch(err) { 
+            console.error("Local QR Error:", err);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
+            try { 
+                doc.addImage(qrUrl, 'PNG', 95, footerY - 20, 20, 20); 
+                doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 2, { align: 'center' });
+            } catch(e2){}
+        }
+    }
+
     doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
     const bankLines = (companySettings?.bankDetails) ? companySettings.bankDetails.split('\n') : [];
     doc.text("BANK DETAILS:", 10, footerY);
-    bankLines.forEach((l, i) => doc.text(l, 10, footerY + 4 + (i * 3)));
+    let bankLastY = footerY;
+    bankLines.forEach((l, i) => {
+        bankLastY = footerY + 4 + (i * 3);
+        doc.text(l, 10, bankLastY);
+    });
+
+    // Terms & Conditions
+    const termsY = Math.max(footerY + 18, bankLastY + 6);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(7);
+    doc.text("TERMS & CONDITIONS:", 10, termsY);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(6);
+    const termsText = companySettings?.invoiceTerms || companySettings?.termsConditions || "1. Goods once sold will not be taken back.\n2. Subject to local Jurisdiction.";
+    const termsLines = doc.splitTextToSize(termsText, 80);
+    doc.text(termsLines, 10, termsY + 4);
 
     doc.setFont("helvetica", "bold"); doc.setTextColor(0);
     doc.text(`For ${companySettings?.name || "EMYRIS BIOLIFESCIENCES"}`, 195, footerY, { align: 'right' });
     if (companySettings?.signatureImage) {
-        try { doc.addImage(companySettings.signatureImage, 'JPEG', 165, footerY + 2, 30, 10); } catch(e){}
+        try { doc.addImage(companySettings.signatureImage, 'JPEG', 160, footerY + 2, 35, 12); } catch(e){}
     }
-    doc.text("Authorised Signatory", 195, footerY + 15, { align: 'right' });
+    doc.text("Authorised Signatory", 195, footerY + 18, { align: 'right' });
 
     doc.save(filename);
 }
