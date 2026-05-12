@@ -1533,8 +1533,8 @@ async function generateSampleMatchedPDF(inv) {
     if (upiLink && window.QRCode) {
         try {
             const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
-            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 20, 20, 20);
-            doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 2, { align: 'center' });
+            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 20, 22, 22);
+            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 4, { align: 'center' });
         } catch(err) { 
             console.error("Local QR Error:", err);
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
@@ -1555,7 +1555,7 @@ async function generateSampleMatchedPDF(inv) {
     });
 
     // Terms & Conditions
-    const termsY = Math.max(footerY + 18, bankLastY + 6);
+    const termsY = Math.max(footerY + 24, bankLastY + 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(7);
     doc.text("TERMS & CONDITIONS:", 10, termsY);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6);

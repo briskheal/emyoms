@@ -380,6 +380,7 @@ function renderSettings() {
     if (s.logoImage) {
         const logoPreview = document.getElementById('logo-preview');
         if (logoPreview) { logoPreview.src = s.logoImage; logoPreview.style.display = 'block'; }
+        safeSetVal('set-logo-b64', s.logoImage);
     }
     if (s.signatureImage) {
         const sigPreview = document.getElementById('sig-preview');
@@ -5856,8 +5857,8 @@ async function generateSampleMatchedPDF({
         try { 
             // Use local QRCode library for faster, offline-capable generation
             const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
-            doc.addImage(qrDataUrl, 'PNG', 95, footerY, 20, 20); 
-            doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 5, 22, 22); // Slightly larger and moved up
+            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 19, { align: 'center' });
         } catch(e){
             console.warn("Local QR failed. Fallback to API/Image.", e);
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
@@ -5877,13 +5878,13 @@ async function generateSampleMatchedPDF({
     } else if (companyProfile.qrImage) {
         try { 
             const fmt = companyProfile.qrImage.includes('jpeg') ? 'JPEG' : 'PNG';
-            doc.addImage(companyProfile.qrImage, fmt, 95, footerY, 20, 20); 
-            doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 22, { align: 'center' });
+            doc.addImage(companyProfile.qrImage, fmt, 95, footerY - 5, 22, 22); 
+            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 19, { align: 'center' });
         } catch(e){}
     }
 
-    // Terms & Conditions - One line below bank details to avoid overlap
-    const termsY = Math.max(footerY + 22, bankLastY + 8); 
+    // Terms & Conditions - Moved down to ensure no overlap and better readability
+    const termsY = Math.max(footerY + 26, bankLastY + 12); 
     doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TERMS & CONDITIONS:", 12, termsY);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6);
     const termsText = terms || companyProfile.invoiceTerms || "1. Goods once sold will not be taken back.\n2. Interest @18% p.a. will be charged for delayed payment.";

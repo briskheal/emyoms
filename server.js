@@ -1256,7 +1256,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
                 });
 
                 // Create Invoice Item
-                await db.InvoiceItem.create({
+                const invItem = await db.InvoiceItem.create({
                     ...item,
                     productId,
                     invoiceId: newInvoice.id,
@@ -1266,6 +1266,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
                     ptr: item.ptr || 0,
                     priceUsed: item.rate || 0
                 });
+                console.log(`[DEBUG] Created InvoiceItem: ${product.name}, Exp: ${invItem.expDate}`);
             }
         }
 
