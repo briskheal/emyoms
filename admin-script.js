@@ -2206,7 +2206,8 @@ function openOrderEditMode(orderId) {
     safeSetVal('sale-date', inv.createdAt ? inv.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
     safeSetVal('sale-ref-no', o.refNo || o.orderNo || '');
     safeSetVal('sale-remarks', o.remarks || '');
-    safeSetVal('sale-supply', inv.placeOfSupply || '');
+    const supply = inv.placeOfSupply || (o.stockist ? (o.stockist.state || o.stockist.city) : '') || (companyProfile ? companyProfile.defaultPlaceOfSupply : '');
+    safeSetVal('sale-supply', supply);
     
     renderSaleItems();
 }
@@ -2864,9 +2865,12 @@ function openDirectSaleModal(type, preserveEdit = false) {
         if (modalTitle) modalTitle.innerText = 'Generate Direct Invoice';
         if (submitBtn) submitBtn.innerText = '✓ POST FINAL SALE';
         
-        // Explicitly clear non-standard fields
-        safeSetVal('sale-party-search', '');
-        safeSetVal('sale-party', '');
+        // Explicitly clear non-standard fields if not preserving edit
+        if (!preserveEdit) {
+            safeSetVal('sale-party-search', '');
+            safeSetVal('sale-party', '');
+            safeSetVal('sale-supply', '');
+        }
         
         // Set Today's Date (Robust YYYY-MM-DD)
         const now = new Date();
@@ -2880,20 +2884,22 @@ function openDirectSaleModal(type, preserveEdit = false) {
         const typeInput = document.getElementById('sale-type-input');
         if (typeInput) typeInput.value = type;
         
-        // Fetch next invoice number
-        const url = `${API_BASE}/admin/next-number/invoice`;
-        console.log("Fetching next invoice number from:", url);
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    console.log("Setting next invoice number:", data.nextNumber);
-                    safeSetVal('sale-ref-no', data.nextNumber);
-                }
-            })
-            .catch(e => console.error("Could not fetch next number", e));
+        if (!preserveEdit) {
+            // Fetch next invoice number ONLY for new sales
+            const url = `${API_BASE}/admin/next-number/invoice`;
+            console.log("Fetching next invoice number from:", url);
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log("Setting next invoice number:", data.nextNumber);
+                        safeSetVal('sale-ref-no', data.nextNumber);
+                    }
+                })
+                .catch(e => console.error("Could not fetch next number", e));
 
-        directSaleItems = [];
+            directSaleItems = [];
+        }
         renderSaleItems();
 
         // UI Adjustments based on type
