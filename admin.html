@@ -1858,39 +1858,56 @@
     <!-- MODAL (Order Details) -->
     <div id="orderDetailModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
         <div class="glass-card" style="width: 96%; max-width: 1600px; margin: 0; max-height: 96vh; overflow-y: auto; padding: 1.5rem 2rem; border-top: 4px solid var(--primary);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
-                <div>
-                    <div style="font-size:0.65rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--primary);margin-bottom:6px;display:flex;align-items:center;gap:8px;">
-                        <span style="width:8px;height:8px;background:var(--primary);border-radius:2px;box-shadow:0 0 10px var(--primary);"></span>
-                        ORDER MANAGEMENT
+            <!-- NEW CONDENSED INTELLIGENCE STRIP -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1.2rem; background: rgba(255,255,255,0.04); padding: 12px 20px; border-radius: 12px; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <!-- Order info -->
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.55rem; color: var(--primary); font-weight: 800; text-transform: uppercase;">Order No</span>
+                        <span id="detail-order-no" style="font-weight: 900; color: #fff; font-size: 0.95rem;">#ORD-XXXX</span>
                     </div>
-                    <div id="detail-order-no" style="font-size:1.4rem;font-weight:900;color:#fff;letter-spacing:-0.5px;">Order #ORD-XXXXXX</div>
-                    <p id="detail-date" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; font-weight: 500;"></p>
+                    
+                    <div style="width: 1px; height: 25px; background: rgba(255,255,255,0.1);"></div>
+                    
+                    <!-- Invoice info -->
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.55rem; color: var(--accent); font-weight: 800; text-transform: uppercase;">Invoice No</span>
+                        <span id="detail-invoice-no" style="font-weight: 900; color: #fff; font-size: 0.95rem;">N/A</span>
+                    </div>
+
+                    <div style="width: 1px; height: 25px; background: rgba(255,255,255,0.1);"></div>
+
+                    <!-- Party info -->
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.55rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">Stockist / Party</span>
+                        <span id="detail-stockist-name" style="font-weight: 800; color: #fff; font-size: 0.95rem;">-</span>
+                    </div>
+
+                    <div style="width: 1px; height: 25px; background: rgba(255,255,255,0.1);"></div>
+
+                    <!-- HQ info -->
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.55rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase;">HQ Location</span>
+                        <span id="detail-hq-name" style="font-weight: 700; color: var(--accent); font-size: 0.85rem;">-</span>
+                    </div>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="closeOrderModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="text-align: right;">
+                        <span style="font-size: 0.55rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; display: block;">Booking Date</span>
+                        <span id="detail-date" style="font-weight: 700; color: #fff; font-size: 0.8rem;">-</span>
+                    </div>
+                    <div id="detail-status" style="padding: 4px 12px; border-radius: 6px; font-weight: 900; font-size: 0.7rem; text-transform: uppercase; box-shadow: 0 0 15px rgba(0,0,0,0.3);">PENDING</div>
+                    <button type="button" class="btn btn-ghost" onclick="closeOrderModal()" style="padding: 4px 8px; font-size: 0.8rem; border-radius: 6px; opacity: 0.7;">✕</button>
+                </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 16px;">
-                <div>
-                    <span class="stat-label" style="margin-bottom: 0.5rem;">Stockist Details</span>
-                    <div id="detail-stockist-name" style="font-weight: 800; font-size: 1.1rem; color: #fff;">-</div>
-                    <div id="detail-stockist-code" style="color: var(--accent); font-weight: 700; margin-top: 4px;">-</div>
-                    
-                    <div id="hq-selection-container" class="hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--glass-border);">
-                        <label class="stat-label" style="color: #facc15;">Assign HQ (Mandatory)</label>
-                        <select id="detail-hq-select" style="width: 100%; margin-top: 5px; background: rgba(0,0,0,0.3); border: 1px solid var(--primary); color: #fff; padding: 8px; border-radius: 8px; font-weight: 600;">
-                            <option value="">-- Select Headquarters --</option>
-                        </select>
-                    </div>
-                    <div id="hq-display-container" class="hidden" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--glass-border);">
-                        <span class="stat-label">Assigned HQ</span>
-                        <div id="detail-hq-name" style="color: #fff; font-weight: 700; font-size: 1rem; margin-top: 4px;">-</div>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <span class="stat-label" style="margin-bottom: 0.5rem;">Status</span>
-                    <div id="detail-status" style="display: inline-block; padding: 6px 15px; border-radius: 99px; font-weight: 800; font-size: 0.8rem;">PENDING</div>
-                </div>
+            <!-- MANDATORY HQ ASSIGNMENT (Hidden unless needed) -->
+            <div id="hq-selection-container" class="hidden" style="margin-bottom: 1rem; padding: 0.75rem 1.25rem; background: rgba(245, 158, 11, 0.08); border: 1px dashed #f59e0b; border-radius: 10px; display: flex; align-items: center; gap: 1.5rem;">
+                <label style="font-size: 0.65rem; font-weight: 900; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px;">Assign Headquarter:</label>
+                <select id="detail-hq-select" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid #f59e0b; color: #fff; padding: 6px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;">
+                    <option value="">-- Select Headquarters --</option>
+                </select>
             </div>
 
             <div class="table-container" style="margin-bottom: 1.5rem; overflow-x: auto; border-radius: 16px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2);">
@@ -1913,13 +1930,14 @@
                 </table>
             </div>
             
-            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-                <button class="btn btn-ghost" onclick="closeOrderModal()" style="flex: 1; justify-content: center;">CLOSE</button>
-                <button class="btn" id="detail-delete-btn" style="flex: 1; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); justify-content: center;">DELETE RECORD</button>
-                <button class="btn" id="detail-reject-btn" style="flex: 1; background: #991b1b; color: #fff; justify-content: center;">❌ REJECT</button>
-                <button class="btn btn-primary" id="detail-approve-btn" style="flex: 1; justify-content: center;">✅ APPROVE</button>
-                <button class="btn" id="detail-invoice-btn" style="flex: 1; background: var(--accent); color: #fff; justify-content: center; display: none;">🧾 INVOICE</button>
-                <button class="btn" id="detail-download-btn" style="flex: 1; background: #6366f1; color: #fff; justify-content: center; display: none;">📥 DOWNLOAD</button>
+            <div style="margin-top: 2rem; display: flex; gap: 0.75rem;">
+                <button class="btn btn-ghost" onclick="closeOrderModal()" style="flex: 1; justify-content: center; font-weight: 800;">CLOSE</button>
+                <button class="btn" id="detail-delete-btn" style="flex: 1; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); justify-content: center; font-weight: 800;">DELETE RECORD</button>
+                <button class="btn" id="detail-reject-btn" style="flex: 1; background: #991b1b; color: #fff; justify-content: center; font-weight: 800;">❌ REJECT</button>
+                <button class="btn btn-primary" id="detail-approve-btn" style="flex: 1; justify-content: center; font-weight: 800;">✅ APPROVE</button>
+                <button class="btn" id="detail-edit-btn" style="flex: 1; background: #f59e0b; color: #fff; justify-content: center; display: none; font-weight: 800;">✏️ EDIT SALE</button>
+                <button class="btn" id="detail-invoice-btn" style="flex: 1; background: var(--accent); color: #fff; justify-content: center; display: none; font-weight: 800;">🧾 INVOICE</button>
+                <button class="btn" id="detail-download-btn" style="flex: 1; background: #6366f1; color: #fff; justify-content: center; display: none; font-weight: 800;">📥 DOWNLOAD PDF</button>
             </div>
 
             <!-- FIXED CALCULATION STRIP -->

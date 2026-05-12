@@ -2085,19 +2085,36 @@ function viewOrderDetails(id) {
     // Invoice Buttons logic
     const invoiceBtn = document.getElementById('detail-invoice-btn');
     const downloadBtn = document.getElementById('detail-download-btn');
+    const editBtn = document.getElementById('detail-edit-btn');
+    const invNoEl = document.getElementById('detail-invoice-no');
+    
     const inv = allInvoices.find(i => (i.orderId || i.order?._id || i.order) == o._id);
+
+    if (inv) {
+        invNoEl.innerText = inv.invoiceNo;
+        invNoEl.style.color = 'var(--accent)';
+    } else {
+        invNoEl.innerText = 'N/A';
+        invNoEl.style.color = 'var(--text-muted)';
+    }
 
     if (o.status === 'approved') {
         invoiceBtn.style.display = 'inline-flex';
         invoiceBtn.onclick = () => generateInvoice(o._id);
         downloadBtn.style.display = 'none';
+        editBtn.style.display = 'none';
     } else if (o.status === 'invoiced') {
         invoiceBtn.style.display = 'none';
         downloadBtn.style.display = 'inline-flex';
-        if (inv) downloadBtn.onclick = () => downloadInvoicePDF(inv._id);
+        editBtn.style.display = 'inline-flex';
+        if (inv) {
+            downloadBtn.onclick = () => downloadInvoicePDF(inv._id);
+            editBtn.onclick = () => openOrderEditMode(o._id);
+        }
     } else {
         invoiceBtn.style.display = 'none';
         downloadBtn.style.display = 'none';
+        editBtn.style.display = 'none';
     }
 
     deleteBtn.onclick = () => {
@@ -2135,6 +2152,63 @@ function viewOrderDetails(id) {
         // Attempt to open anyway if modal ID exists
         if (document.getElementById('orderDetailModal')) document.getElementById('orderDetailModal').classList.remove('hidden');
     }
+}
+
+let isEditMode = false;
+let editingInvoiceId = null;
+
+function openOrderEditMode(orderId) {
+    const o = allOrders.find(x => x._id == orderId);
+    if (!o) return;
+    const inv = allInvoices.find(i => (i.orderId || i.order?._id || i.order) == o._id);
+    if (!inv) return alert("Invoice record not found for this order.");
+
+    closeOrderModal();
+    
+    // Set Edit Mode flags
+    isEditMode = true;
+    editingInvoiceId = inv._id;
+
+    // Reset and Populate directSaleItems
+    directSaleItems = inv.items.map(item => ({
+        product: item.productId || item.product,
+        name: item.name,
+        batch: item.batch,
+        hsn: item.hsn,
+        expDate: item.expDate,
+        mrp: item.mrp,
+        ptr: item.ptr,
+        qty: item.qty,
+        free: item.bonusQty || item.free || 0,
+        rate: item.priceUsed || item.rate,
+        gstPercent: item.gstPercent,
+        totalValue: (item.qty || 0) * (item.priceUsed || item.rate || 0)
+    }));
+
+    // Open Modal (Preserving the flags we just set)
+    const type = o.channel === 'ONLINE' ? 'ONLINE' : 'DIRECT';
+    openDirectSaleModal(type, true);
+
+    // Override Header Title and Submit Button
+    const modalTitle = document.getElementById('sale-modal-title');
+    const submitBtn = document.querySelector('#directSaleModal button[type="submit"]');
+    
+    if (modalTitle) modalTitle.innerText = `Edit Invoiced Sale [${inv.invoiceNo}]`;
+    if (submitBtn) submitBtn.innerText = '💾 SAVE UPDATES (NO COUNTER CHANGE)';
+
+    // Populate Header Fields
+    const partySelect = document.getElementById('sale-party');
+    if (partySelect) {
+        partySelect.value = o.stockistId || (o.stockist ? o.stockist._id : '');
+        document.getElementById('sale-party-search').value = o.stockist ? o.stockist.name : 'Unknown';
+    }
+    
+    safeSetVal('sale-date', inv.createdAt.split('T')[0]);
+    safeSetVal('sale-ref-no', o.refNo || '');
+    safeSetVal('sale-remarks', o.remarks || '');
+    safeSetVal('sale-supply', inv.placeOfSupply || '');
+    
+    renderSaleItems();
 }
 
 function updateModalTotals(orderId, triggerItemId) {
@@ -2774,10 +2848,21 @@ function refreshSaleParties(selectedId = null) {
     }
 }
 
-function openDirectSaleModal(type) {
+function openDirectSaleModal(type, preserveEdit = false) {
     try {
+        if (!preserveEdit) {
+            isEditMode = false;
+            editingInvoiceId = null;
+        }
+
         const form = document.getElementById('saleForm');
         if (form) form.reset();
+        
+        // Reset Modal Title and Button
+        const modalTitle = document.getElementById('sale-modal-title');
+        const submitBtn = document.querySelector('#directSaleModal button[type="submit"]');
+        if (modalTitle) modalTitle.innerText = 'Generate Direct Invoice';
+        if (submitBtn) submitBtn.innerText = '✓ POST FINAL SALE';
         
         // Explicitly clear non-standard fields
         safeSetVal('sale-party-search', '');
@@ -3149,8 +3234,11 @@ async function saveDirectSale(e) {
 
 
     try {
-        const res = await fetch(`${API_BASE}/admin/direct-sale`, {
-            method: 'POST',
+        const url = isEditMode ? `${API_BASE}/admin/invoices/${editingInvoiceId}` : `${API_BASE}/admin/direct-sale`;
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
@@ -3160,9 +3248,12 @@ async function saveDirectSale(e) {
             // Reset button BEFORE alert to keep UI alive
             if (btn) { btn.disabled = false; btn.innerText = originalText; }
             
-            alert(`✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`);
+            const msg = isEditMode ? `✅ Invoice Updated Successfully!` : `✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`;
+            alert(msg);
             
             // RESET EVERYTHING for the next invoice
+            isEditMode = false;
+            editingInvoiceId = null;
             const currentType = document.getElementById('sale-type-input').value;
             openDirectSaleModal(currentType); 
             

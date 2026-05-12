@@ -1273,6 +1273,123 @@ app.post('/api/admin/direct-sale', async (req, res) => {
     }
 });
 
+// --- EDIT INVOICED SALE (Reverse & Reapply Logic) ---
+app.put('/api/admin/invoices/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { party, items, subTotal, gstAmount, grandTotal, date, remarks, placeOfSupply, paymentMode, channel } = req.body;
+
+        const invoice = await db.Invoice.findByPk(id, {
+            include: [
+                { model: db.InvoiceItem, as: 'items' },
+                { model: db.Order, as: 'Order', include: [{ model: db.OrderItem, as: 'items' }] }
+            ]
+        });
+
+        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+        const order = invoice.Order;
+
+        // 1. REVERSE OLD IMPACT
+        // 1.1 Reverse Stock
+        for (const oldItem of (invoice.items || [])) {
+            const productId = oldItem.productId;
+            const totalQty = Number(oldItem.qty || 0) + Number(oldItem.bonusQty || 0);
+            
+            const product = await db.Product.findByPk(productId);
+            if (product) await product.increment('qtyAvailable', { by: totalQty });
+            
+            const batch = await db.Batch.findOne({ where: { productId, batchNo: oldItem.batch } });
+            if (batch) await batch.decrement('qtyAvailable', { by: totalQty });
+        }
+
+        // 1.2 Reverse Accounting Balance
+        if (invoice.stockistId) {
+            const oldStockist = await db.Stockist.findByPk(invoice.stockistId);
+            if (oldStockist) await oldStockist.decrement('outstandingBalance', { by: invoice.grandTotal });
+        }
+
+        // 2. UPDATE HEADERS (Keep IDs and Doc Nos)
+        const numGrandTotal = Number(grandTotal) || 0;
+        
+        await invoice.update({
+            stockistId: party,
+            subTotal: Number(subTotal) || 0,
+            gstAmount: Number(gstAmount) || 0,
+            grandTotal: numGrandTotal,
+            outstandingAmount: numGrandTotal, // Reset outstanding to new total (assuming unpaid for edit)
+            placeOfSupply: placeOfSupply || invoice.placeOfSupply,
+            createdAt: date ? new Date(date) : invoice.createdAt
+        });
+
+        if (order) {
+            await order.update({
+                stockistId: party,
+                subTotal: Number(subTotal) || 0,
+                gstAmount: Number(gstAmount) || 0,
+                grandTotal: numGrandTotal,
+                remarks: remarks || order.remarks,
+                paymentMode: paymentMode || order.paymentMode,
+                channel: channel || order.channel,
+                createdAt: date ? new Date(date) : order.createdAt
+            });
+        }
+
+        // 3. REPLACE ITEMS
+        await db.InvoiceItem.destroy({ where: { invoiceId: id } });
+        if (order) await db.OrderItem.destroy({ where: { orderId: order.id } });
+
+        // 4. APPLY NEW IMPACT & CREATE NEW ITEMS
+        for (const item of items) {
+            const productId = parseInt(item.productId || item.product);
+            const product = await db.Product.findByPk(productId);
+            if (product) {
+                const totalQty = Number(item.qty) + Number(item.free || 0);
+                
+                // Deduct Stock
+                await product.decrement('qtyAvailable', { by: totalQty });
+                const batch = await db.Batch.findOne({ where: { productId, batchNo: item.batch } });
+                if (batch) await batch.decrement('qtyAvailable', { by: totalQty });
+
+                // Create Invoice Item
+                await db.InvoiceItem.create({
+                    ...item,
+                    productId,
+                    invoiceId: invoice.id,
+                    bonusQty: item.free || 0,
+                    pts: item.rate || 0,
+                    ptr: item.ptr || 0,
+                    priceUsed: item.rate || 0
+                });
+
+                // Create Order Item
+                if (order) {
+                    await db.OrderItem.create({
+                        ...item,
+                        productId,
+                        orderId: order.id,
+                        bonusQty: item.free || 0,
+                        pts: item.rate || 0,
+                        ptr: item.ptr || 0,
+                        priceUsed: item.rate || 0
+                    });
+                }
+            }
+        }
+
+        // 5. APPLY NEW ACCOUNTING
+        const newStockist = await db.Stockist.findByPk(party);
+        if (newStockist) {
+            await newStockist.increment('outstandingBalance', { by: numGrandTotal });
+        }
+
+        res.json({ success: true, message: 'Invoice and Order updated successfully', invoice, order });
+
+    } catch (err) {
+        console.error("Edit Invoice Error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // --- PURCHASE ENTRY ---
 
 app.get('/api/admin/purchase-entries', async (req, res) => {
