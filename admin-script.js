@@ -1974,7 +1974,7 @@ function viewOrderDetails(id) {
     document.getElementById('detail-order-no').innerText = `Order #${o.orderNo}`;
     document.getElementById('detail-date').innerText = `Placed on ${new Date(o.createdAt).toLocaleString('en-GB')}`;
     document.getElementById('detail-stockist-name').innerText = o.stockist ? o.stockist.name : 'Unknown';
-    document.getElementById('detail-stockist-code').innerText = o.stockistCode || 'N/A';
+    // Removed detail-stockist-code as it's not in the new strip layout
     
     const statusEl = document.getElementById('detail-status');
     const status = o.status || 'pending';
@@ -2126,7 +2126,7 @@ function viewOrderDetails(id) {
 
     // HQ Assignment / Display Logic
     const hqSelection = document.getElementById('hq-selection-container');
-    const hqDisplay = document.getElementById('hq-display-container');
+    const hqDisplay = document.getElementById('hq-display-container'); // Might be null in new strip
     const hqSelect = document.getElementById('detail-hq-select');
     const hqName = document.getElementById('detail-hq-name');
 
@@ -2203,8 +2203,8 @@ function openOrderEditMode(orderId) {
         document.getElementById('sale-party-search').value = o.stockist ? o.stockist.name : 'Unknown';
     }
     
-    safeSetVal('sale-date', inv.createdAt.split('T')[0]);
-    safeSetVal('sale-ref-no', o.refNo || '');
+    safeSetVal('sale-date', inv.createdAt ? inv.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+    safeSetVal('sale-ref-no', o.refNo || o.orderNo || '');
     safeSetVal('sale-remarks', o.remarks || '');
     safeSetVal('sale-supply', inv.placeOfSupply || '');
     
