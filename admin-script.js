@@ -1049,7 +1049,7 @@ function updateDatalists() {
     if (groupList) groupList.innerHTML = Array.from(groups).map(g => `<option value="${g}"></option>`).join('');
     if (hsnList) hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
     if (gstList) gstList.innerHTML = Array.from(gsts).map(g => `<option value="${g}"></option>`).join('');
-    
+
     // Update HQ Dropdowns
     const partyHqSelect = document.getElementById('party-hq');
     if (partyHqSelect && window.masters && window.masters.hq) {
@@ -1057,6 +1057,15 @@ function updateDatalists() {
         partyHqSelect.innerHTML = '<option value="">-- Select HQ --</option>' + 
             window.masters.hq.map(h => `<option value="${h.name}">${h.name}</option>`).join('');
         partyHqSelect.value = currentVal;
+    }
+
+    // Update Product Category Filter
+    const prodCatFilter = document.getElementById('productCategoryFilter');
+    if (prodCatFilter) {
+        const currentVal = prodCatFilter.value;
+        prodCatFilter.innerHTML = '<option value="">All Categories</option>' + 
+            Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+        prodCatFilter.value = currentVal;
     }
 }
 
@@ -1066,6 +1075,8 @@ function renderProducts(list = allProducts) {
     tbody.innerHTML = list.map(p => `
         <tr>
             <td style="font-weight: 700; color:var(--primary); cursor:pointer; text-decoration: underline;" onclick="viewProductTimeline('${p._id}')" title="Click to view full transaction history">${p.name}</td>
+            <td style="font-size:0.75rem; opacity:0.8;">${p.manufacturer || '-'}</td>
+            <td style="font-size:0.75rem; opacity:0.8;">${p.category || '-'}</td>
             <td style="color:var(--text-muted); font-size:0.8rem;">${p.packing || '-'}</td>
             <td style="font-family: monospace;">${p.hsn || '-'}</td>
             <td>₹${p.mrp}</td>
@@ -1084,11 +1095,18 @@ function renderProducts(list = allProducts) {
 
 function filterProducts(query) {
     const q = query.toLowerCase();
-    const filtered = allProducts.filter(p => 
-        p.name.toLowerCase().includes(q) || 
-        (p.hsn && p.hsn.toLowerCase().includes(q)) ||
-        (p.manufacturer && p.manufacturer.toLowerCase().includes(q))
-    );
+    const catFilter = document.getElementById('productCategoryFilter')?.value || "";
+    
+    const filtered = allProducts.filter(p => {
+        const matchesQuery = p.name.toLowerCase().includes(q) || 
+            (p.hsn && p.hsn.toLowerCase().includes(q)) ||
+            (p.manufacturer && p.manufacturer.toLowerCase().includes(q)) ||
+            (p.category && p.category.toLowerCase().includes(q));
+        
+        const matchesCategory = !catFilter || (p.category && p.category.toUpperCase() === catFilter.toUpperCase());
+        
+        return matchesQuery && matchesCategory;
+    });
     renderProducts(filtered);
 }
 
@@ -2396,14 +2414,19 @@ async function viewProductTimeline(productId) {
 
     try {
         const res = await fetch(`${API_BASE}/admin/products/${productId}/timeline`);
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || `HTTP ${res.status}`);
+        }
         const result = await res.json();
         if (result.success) {
             renderProductTimeline(result.timeline);
         } else {
-            alert("Failed to load timeline: " + result.error);
+            throw new Error(result.error || "Unknown error");
         }
     } catch (e) {
-        alert("Failed to load timeline history.");
+        console.error("Timeline load fail:", e);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#ef4444;">❌ Failed to load history: ${e.message}</td></tr>`;
     }
 }
 

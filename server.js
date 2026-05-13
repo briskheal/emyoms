@@ -1498,7 +1498,8 @@ app.get('/api/admin/products/:id/timeline', async (req, res) => {
             where: { productId },
             include: [{ 
                 model: db.PurchaseEntry, 
-                attributes: ['purchaseNo', 'supplierInvoiceNo', 'invoiceDate', 'createdAt', 'supplierName'] 
+                attributes: ['purchaseNo', 'supplierInvoiceNo', 'invoiceDate', 'createdAt'],
+                include: [{ model: db.Stockist, as: 'Supplier', attributes: ['name'] }]
             }],
             order: [[{ model: db.PurchaseEntry }, 'createdAt', 'ASC']]
         });
@@ -1522,7 +1523,7 @@ app.get('/api/admin/products/:id/timeline', async (req, res) => {
                 date: it.PurchaseEntry.invoiceDate || it.PurchaseEntry.createdAt,
                 type: 'PURCHASE',
                 refNo: it.PurchaseEntry.purchaseNo,
-                party: it.PurchaseEntry.supplierName || 'Supplier',
+                party: it.PurchaseEntry.Supplier ? it.PurchaseEntry.Supplier.name : 'Supplier',
                 qty: it.qty,
                 batch: it.batch,
                 rate: it.rate,
