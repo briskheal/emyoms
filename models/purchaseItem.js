@@ -11,6 +11,9 @@ module.exports = (sequelize, DataTypes) => {
         qty: { type: DataTypes.INTEGER },
         bonusQty: { type: DataTypes.INTEGER, defaultValue: 0 },
         purchaseRate: { type: DataTypes.DECIMAL(15, 2) },
+        mrp: { type: DataTypes.DECIMAL(15, 2) },
+        ptr: { type: DataTypes.DECIMAL(15, 2) },
+        pts: { type: DataTypes.DECIMAL(15, 2) },
         gstPercent: { type: DataTypes.DECIMAL(5, 2) },
         hsn: { type: DataTypes.STRING },
         totalValue: { type: DataTypes.DECIMAL(15, 2) }

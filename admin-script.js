@@ -4555,7 +4555,8 @@ function viewPurchaseDetails(id) {
         const gst = i.gstPercent || 0;
         const hsn = i.hsn || product.hsn || '-';
         const total = Number(i.lineTotal || i.totalValue || 0).toFixed(2);
-        return `  ${idx+1}. ${name}\n     HSN: ${hsn} | Batch: ${batch} | Qty: ${qty} | Rate: ₹${rate} | GST: ${gst}% | Total: ₹${total}`;
+        const mfg = i.manufacturer || product.manufacturer || 'EMYRIS';
+        return `  ${idx+1}. ${name}\n     Mfg: ${mfg} | HSN: ${hsn} | Batch: ${batch} | Qty: ${qty} | Rate: ₹${rate} | GST: ${gst}% | Total: ₹${total}`;
     }).join('\n');
     
     alert(
@@ -4594,10 +4595,13 @@ async function viewPurchasePDF(id) {
             const product = allProducts.find(pr => (pr._id || pr.id) == it.productId) || {};
             return {
                 name: product.name || it.productName || 'Unknown Product',
-                hsn: product.hsn || it.hsn || '',
+                manufacturer: it.manufacturer || product.manufacturer || 'EMYRIS',
+                hsn: it.hsn || product.hsn || '',
                 batch: it.batch || '-',
                 exp: it.expDate || it.exp || '-',
-                mrp: it.mrp || 0,
+                mrp: it.mrp || product.mrp || 0,
+                pts: it.pts || product.pts || 0,
+                ptr: it.ptr || product.ptr || 0,
                 qty: it.qty || 0,
                 price: it.purchaseRate || it.rate || 0,
                 gstPercent: it.gstPercent || 0
@@ -5806,7 +5810,8 @@ async function generateSampleMatchedPDF({
 
     // TAX INVOICE LABEL - Clean Bold Design (No Box)
     doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.setFontSize(12); doc.setFont("helvetica", "bold");
+    const isPurchase = title.includes("PURCHASE");
+    doc.setFontSize(isPurchase ? 9 : 12); doc.setFont("helvetica", "bold");
     doc.text(title.toUpperCase(), pageW - 10, infoY - 1, { align: 'right' });
     doc.setTextColor(0);
 
@@ -5827,7 +5832,7 @@ async function generateSampleMatchedPDF({
 
     // LEFT: PARTY INFO
     doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(themeRgb[0], themeRgb[1], themeRgb[2]);
-    doc.text("BILL TO (PARTY DETAILS):", 15, boxY + 5);
+    doc.text(isPurchase ? "BILL FROM (SUPPLIER DETAILS):" : "BILL TO (PARTY DETAILS):", 15, boxY + 5);
     doc.setFontSize(10); doc.setTextColor(0);
     doc.text(party.name || 'N/A', 15, boxY + 10);
     doc.setFontSize(7.5); doc.setFont("helvetica", "normal");
@@ -5861,8 +5866,12 @@ async function generateSampleMatchedPDF({
             const qty = Number(it.qty || 0);
             const bonus = Number(it.bonusQty || 0);
             const expStr = it.expDate || it.expiry || it.exp || '-';
+            const mfgName = it.manufacturer || (it.product && it.product.manufacturer) || 'EMYRIS';
+            
             return [
-                idx + 1, it.hsn || '-', it.name, it.batch || '-', expStr, 
+                idx + 1, it.hsn || '-', 
+                { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
+                it.batch || '-', expStr, 
                 mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
                 qty, bonus, (it.gstPercent || 0) + '%', 
                 (qty * pts).toFixed(2)

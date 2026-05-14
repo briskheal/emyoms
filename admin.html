@@ -291,7 +291,7 @@
         input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2); background: rgba(15, 23, 42, 0.8); }
 
         .btn { 
-            padding: 0.7rem 1.5rem; 
+            padding: 0.5rem 1rem; 
             border-radius: 6px; 
             font-weight: 700; 
             cursor: pointer; 
@@ -300,9 +300,9 @@
             display: inline-flex; 
             align-items: center; 
             justify-content: center;
-            gap: 10px; 
-            font-size: 0.8rem; 
-            letter-spacing: 0.5px;
+            gap: 6px; 
+            font-size: 0.72rem; 
+            letter-spacing: 0.3px;
         }
         .btn-primary { background: var(--grad-primary); color: #fff; box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4); position: relative; overflow: hidden; }
         .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 35px -5px rgba(99, 102, 241, 0.6); filter: brightness(1.1); }
@@ -559,19 +559,19 @@
 
             <!-- PRODUCT MASTER TAB -->
             <div id="tab-products" class="hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title title-purple" style="margin: 0;"><i class="fas fa-boxes"></i> Product Master</h2>
-                    <div style="display: flex; gap: 0.75rem; align-items: center;">
-                        <input type="text" id="productSearch" placeholder="🔍  Search Products..." onkeyup="filterProducts(this.value)" 
-                               style="padding: 10px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff; width: 240px; font-size: 0.85rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 class="section-title title-purple" style="margin: 0; min-width: auto; padding: 8px 16px;"><i class="fas fa-boxes"></i> Product Master</h2>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="productSearch" placeholder="🔍  Search..." onkeyup="filterProducts(this.value)" 
+                               style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 10px; color: #fff; width: 180px; font-size: 0.75rem;">
                         <select id="productCategoryFilter" onchange="filterProducts(document.getElementById('productSearch').value)" 
-                                style="padding: 10px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff; width: 180px; font-size: 0.85rem;">
+                                style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 10px; color: #fff; width: 140px; font-size: 0.75rem;">
                             <option value="">All Categories</option>
                         </select>
-                        <button class="btn btn-ghost" onclick="downloadProductTemplate()"><i class="fas fa-file-download"></i> Template</button>
-                        <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()"><i class="fas fa-file-upload"></i> Bulk Upload</button>
+                        <button class="btn btn-ghost" onclick="downloadProductTemplate()" style="padding: 8px 12px;"><i class="fas fa-file-download"></i> Template</button>
+                        <button class="btn btn-ghost" onclick="document.getElementById('bulkProductInput').click()" style="padding: 8px 12px;"><i class="fas fa-file-upload"></i> Upload</button>
                         <input type="file" id="bulkProductInput" hidden accept=".csv, .xlsx, .xls" onchange="handleProductBulkUpload(this)">
-                        <button class="btn btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> Single Entry</button>
+                        <button class="btn btn-primary" onclick="openProductModal()" style="padding: 8px 15px;"><i class="fas fa-plus"></i> NEW ENTRY</button>
                     </div>
                 </div>
                 
