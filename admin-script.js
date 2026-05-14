@@ -5943,7 +5943,7 @@ async function generateSampleMatchedPDF({
 
     // --- 4. ITEMS TABLE ---
     const tableHead = isPurchase 
-        ? [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Supply Price', 'Qty', 'Free', 'GST%', 'Amount']]
+        ? [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Purc. Rate', 'Qty', 'Free', 'GST%', 'Amount']]
         : [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'PTR', 'PTS', 'Qty', 'Free', 'GST%', 'Amount']];
 
     doc.autoTable({
