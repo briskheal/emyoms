@@ -2218,14 +2218,16 @@ app.post('/api/admin/expenses', async (req, res) => {
 
 app.get('/api/admin/reports/full-audit', async (req, res) => {
     try {
-        const [invoices, purchases, payments, notes, expenses] = await Promise.all([
+        const [invoices, purchases, payments, notes, expenses, products, stockists] = await Promise.all([
             db.Invoice.findAll({ include: [{ model: db.Stockist }, { model: db.InvoiceItem, as: 'items' }] }),
             db.PurchaseEntry.findAll({ include: [{ model: db.Stockist, as: 'Supplier' }, { model: db.PurchaseItem, as: 'items' }] }),
             db.Payment.findAll({ include: [db.Stockist] }),
             db.FinancialNote.findAll({ include: [{ model: db.Stockist }, { model: db.NoteItem, as: 'items' }] }),
-            db.Expense.findAll({ include: [db.ExpenseCategory] })
+            db.Expense.findAll({ include: [db.ExpenseCategory] }),
+            db.Product.findAll(),
+            db.Stockist.findAll()
         ]);
-        res.json({ invoices, purchases, payments, notes, expenses });
+        res.json({ invoices, purchases, payments, notes, expenses, products, stockists });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

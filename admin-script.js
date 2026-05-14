@@ -4851,13 +4851,31 @@ function getReportDataByType(type, data, fromDate, toDate) {
                 if (partyInvs.length === 0 && type === 'party-sales') return;
                 const revenue = partyInvs.reduce((sum, inv) => sum + inv.subTotal, 0);
                 const grandTotal = partyInvs.reduce((sum, inv) => sum + inv.grandTotal, 0);
-                reportData.push({
+                
+                let partyProfit = 0;
+                partyInvs.forEach(inv => {
+                    inv.items.forEach(item => {
+                        const prodId = (item.product || item.productId || '').toString();
+                        const prod = (products || []).find(p => (p._id || p.id || '').toString() === prodId);
+                        const cost = prod ? Number(prod.pts || 0) : 0;
+                        partyProfit += (Number(item.priceUsed || 0) - cost) * Number(item.qty || 0);
+                    });
+                });
+
+                const row = {
                     "Party Name": s.companyName || s.name,
                     "Total Orders": partyInvs.length,
                     "Taxable Revenue": revenue.toFixed(2),
                     "Total Billing": grandTotal.toFixed(2),
                     "Current Outstanding": (s.outstandingBalance || 0).toFixed(2)
-                });
+                };
+
+                if (type === 'party-profit-loss') {
+                    row["Gross Profit"] = partyProfit.toFixed(2);
+                    row["Margin %"] = revenue > 0 ? ((partyProfit / revenue) * 100).toFixed(2) + '%' : '0%';
+                }
+
+                reportData.push(row);
             });
             break;
 
@@ -4967,20 +4985,31 @@ function getReportDataByType(type, data, fromDate, toDate) {
         case 'bill-profit':
             fileName = "Bill_Profitability_Report";
             filteredInvoices.forEach(inv => {
+                const partyName = inv.Stockist?.name || inv.stockistName || 'N/A';
                 inv.items.forEach(item => {
-                    const prod = (products || []).find(p => p._id.toString() === (item.product || item.productId || '').toString());
-                    const costPrice = prod ? prod.pts : 0;
-                    const profit = (item.priceUsed - costPrice) * item.qty;
+                    const prodId = (item.product || item.productId || '').toString();
+                    const prod = (products || []).find(p => (p._id || p.id || '').toString() === prodId);
+                    
+                    const costRate = prod ? Number(prod.pts || 0) : 0;
+                    const saleRate = Number(item.priceUsed || 0);
+                    const qty = Number(item.qty || 0);
+                    const brand = prod ? (prod.category || prod.group || 'GENERAL') : 'GENERAL';
+                    
+                    const profitAmt = (saleRate - costRate) * qty;
+                    // Margin Formula: ((Sale - Cost) / Sale) * 100
+                    const marginPct = saleRate > 0 ? (((saleRate - costRate) / saleRate) * 100).toFixed(2) : '0';
+
                     reportData.push({
                         "Invoice No": inv.invoiceNo,
                         "Date": new Date(inv.createdAt).toLocaleDateString('en-GB'),
-                        "Party": inv.stockistName,
+                        "Party": partyName,
+                        "Brand": brand,
                         "Product": item.name,
-                        "Qty": item.qty,
-                        "Sale Rate": item.priceUsed,
-                        "Cost Rate": costPrice,
-                        "Profit Amount": profit.toFixed(2),
-                        "Margin %": costPrice > 0 ? (((item.priceUsed - costPrice) / costPrice) * 100).toFixed(2) : '100'
+                        "Qty": qty,
+                        "Cost Rate": costRate.toFixed(2),
+                        "Sale Rate": saleRate.toFixed(2),
+                        "Profit Amt": profitAmt.toFixed(2),
+                        "Margin %": marginPct + '%'
                     });
                 });
             });
@@ -4993,8 +5022,9 @@ function getReportDataByType(type, data, fromDate, toDate) {
             let totalCogs = 0;
             filteredInvoices.forEach(inv => {
                 inv.items.forEach(item => {
-                    const prod = (products || []).find(p => p._id.toString() === (item.product || item.productId || '').toString());
-                    totalCogs += (prod ? prod.pts : 0) * item.qty;
+                    const prodId = (item.product || item.productId || '').toString();
+                    const prod = (products || []).find(p => (p._id || p.id || '').toString() === prodId);
+                    totalCogs += (prod ? Number(prod.pts || 0) : 0) * Number(item.qty || 0);
                 });
             });
             reportData = [
