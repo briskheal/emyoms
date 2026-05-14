@@ -5886,31 +5886,54 @@ async function generateSampleMatchedPDF({
     });
 
     // --- 4. ITEMS TABLE ---
+    const tableHead = isPurchase 
+        ? [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'Supply Price', 'Qty', 'Free', 'GST%', 'Amount']]
+        : [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'PTR', 'PTS', 'Qty', 'Free', 'GST%', 'Amount']];
+
     doc.autoTable({
         startY: boxY + boxH + 5,
-        head: [['Sn', 'HSN', 'Product Description', 'Batch', 'Exp', 'MRP', 'PTR', 'PTS', 'Qty', 'Free', 'GST%', 'Amount']],
+        head: tableHead,
         body: items.map((it, idx) => {
             const mrp = Number(it.mrp || 0);
-            const pts = Number(it.pts || it.price || 0);
+            const price = Number(it.price || it.pts || 0);
             const ptr = Number(it.ptr || 0);
+            const pts = Number(it.pts || 0);
             const qty = Number(it.qty || 0);
             const bonus = Number(it.bonusQty || 0);
             const expStr = it.expDate || it.expiry || it.exp || '-';
             const mfgName = it.manufacturer || (it.product && it.product.manufacturer) || 'EMYRIS';
             
-            return [
-                idx + 1, it.hsn || '-', 
-                { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
-                it.batch || '-', expStr, 
-                mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
-                qty, bonus, (it.gstPercent || 0) + '%', 
-                (qty * pts).toFixed(2)
-            ];
+            if (isPurchase) {
+                return [
+                    idx + 1, it.hsn || '-', 
+                    { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
+                    it.batch || '-', expStr, 
+                    mrp.toFixed(2), price.toFixed(2), 
+                    qty, bonus, (it.gstPercent || 0) + '%', 
+                    (qty * price).toFixed(2)
+                ];
+            } else {
+                return [
+                    idx + 1, it.hsn || '-', 
+                    { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
+                    it.batch || '-', expStr, 
+                    mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
+                    qty, bonus, (it.gstPercent || 0) + '%', 
+                    (qty * pts).toFixed(2)
+                ];
+            }
         }),
         theme: 'grid',
         headStyles: { fillColor: themeRgb, textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
         styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1, lineColor: themeRgb },
-        columnStyles: {
+        columnStyles: isPurchase ? {
+            0: { cellWidth: 8, halign: 'center' },
+            2: { cellWidth: 'auto' },
+            5: { halign: 'right' },
+            6: { halign: 'right' },
+            9: { halign: 'right' },
+            10: { halign: 'right', fontStyle: 'bold' }
+        } : {
             0: { cellWidth: 8, halign: 'center' },
             2: { cellWidth: 'auto' },
             5: { halign: 'right' },
