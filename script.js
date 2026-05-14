@@ -1423,7 +1423,13 @@ async function generateSampleMatchedPDF(inv) {
     doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, headerX, infoY);
     doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, headerX, infoY + 4);
 
-    doc.setDrawColor(0); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
+    const themeHex = companySettings?.themeColor || '#6366f1';
+    const r = parseInt(themeHex.slice(1, 3), 16);
+    const g = parseInt(themeHex.slice(3, 5), 16);
+    const b = parseInt(themeHex.slice(5, 7), 16);
+    const themeRgb = [r, g, b];
+
+    doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
     
     // Right Top Label below border line
     doc.setFontSize(7); doc.setFont("helvetica", "normal");
@@ -1461,8 +1467,8 @@ async function generateSampleMatchedPDF(inv) {
             (it.qty * (it.priceUsed || it.rate || 0)).toFixed(2)
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
-        styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1 },
+        headStyles: { fillColor: themeRgb, textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
+        styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1, lineColor: themeRgb },
         columnStyles: {
             0: { cellWidth: 8, halign: 'center' },
             1: { cellWidth: 15, halign: 'center' },
@@ -1509,7 +1515,7 @@ async function generateSampleMatchedPDF(inv) {
         body: taxBody,
         theme: 'grid',
         headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6, halign: 'center' },
-        styles: { fontSize: 6, halign: 'right', cellPadding: 1 },
+        styles: { fontSize: 6, halign: 'right', cellPadding: 1, lineColor: themeRgb },
         margin: { left: 10 },
         tableWidth: 80
     });

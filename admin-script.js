@@ -5826,8 +5826,8 @@ async function generateSampleMatchedPDF({
     // --- 3. METADATA BOX (PARTY & INVOICE DETAILS) ---
     let boxY = nextY + 5;
     let boxH = 35;
-    doc.setDrawColor(200); doc.setLineWidth(0.2);
-    doc.rect(12, boxY, 186, boxH); // Metadata Outer Box
+    doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]); doc.setLineWidth(0.2);
+    doc.rect(10, boxY, 190, boxH); // Metadata Outer Box (Standardized 10-200)
     doc.line(120, boxY, 120, boxY + boxH); // Vertical Split
 
     // LEFT: PARTY INFO
@@ -5879,7 +5879,7 @@ async function generateSampleMatchedPDF({
         }),
         theme: 'grid',
         headStyles: { fillColor: themeRgb, textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
-        styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1 },
+        styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1, lineColor: themeRgb },
         columnStyles: {
             0: { cellWidth: 8, halign: 'center' },
             2: { cellWidth: 'auto' },
@@ -5929,7 +5929,7 @@ async function generateSampleMatchedPDF({
         body: taxBody,
         theme: 'grid',
         headStyles: { fillColor: [245, 245, 245], textColor: 0, fontSize: 6.5, halign: 'center' },
-        styles: { fontSize: 6.5, halign: 'right', cellPadding: 1.5 },
+        styles: { fontSize: 6.5, halign: 'right', cellPadding: 1.5, lineColor: themeRgb },
         margin: { left: 10 },
         tableWidth: isInter ? 65 : 85
     });
