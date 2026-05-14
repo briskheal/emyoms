@@ -1264,6 +1264,8 @@ app.post('/api/admin/direct-sale', async (req, res) => {
                 const rate = Number(item.rate) || 0;
                 const ptr = Number(item.ptr) || 0;
 
+
+
                 // Create Order Item
                 await db.OrderItem.create({
                     ...cleanItem,
@@ -1346,7 +1348,6 @@ app.put('/api/admin/invoices/:id/cancel', async (req, res) => {
 
         // 2. Mark Cancelled
         await inv.update({ status: 'cancelled', outstandingAmount: 0 }, { transaction: t });
-        
         // 3. Update Order if linked
         if (inv.orderId) {
             await db.Order.update({ status: 'cancelled' }, { where: { id: inv.orderId }, transaction: t });
@@ -1606,6 +1607,7 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
                 product.mrp = item.mrp || product.mrp;
                 product.ptr = item.ptr || product.ptr;
                 product.pts = item.pts || product.pts;
+                product.purchaseRate = item.rate || item.purchaseRate || product.purchaseRate;
                 await product.save();
 
                 let [batch] = await db.Batch.findOrCreate({
@@ -1716,6 +1718,7 @@ app.put('/api/admin/purchase-entries/:id', async (req, res) => {
                 product.mrp = item.mrp || product.mrp;
                 product.ptr = item.ptr || product.ptr;
                 product.pts = item.pts || product.pts;
+                product.purchaseRate = item.rate || item.purchaseRate || product.purchaseRate;
                 await product.save();
 
                 let [batch] = await db.Batch.findOrCreate({

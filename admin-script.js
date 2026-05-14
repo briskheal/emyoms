@@ -4990,7 +4990,7 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     const prodId = (item.product || item.productId || '').toString();
                     const prod = (products || []).find(p => (p._id || p.id || '').toString() === prodId);
                     
-                    const costRate = prod ? Number(prod.pts || 0) : 0;
+                    const costRate = prod ? Number(prod.purchaseRate || 0) : 0;
                     const saleRate = Number(item.priceUsed || 0);
                     const qty = Number(item.qty || 0);
                     const brand = prod ? (prod.category || prod.group || 'GENERAL') : 'GENERAL';
@@ -5024,7 +5024,7 @@ function getReportDataByType(type, data, fromDate, toDate) {
                 inv.items.forEach(item => {
                     const prodId = (item.product || item.productId || '').toString();
                     const prod = (products || []).find(p => (p._id || p.id || '').toString() === prodId);
-                    totalCogs += (prod ? Number(prod.pts || 0) : 0) * Number(item.qty || 0);
+                    totalCogs += (prod ? Number(prod.purchaseRate || 0) : 0) * Number(item.qty || 0);
                 });
             });
             reportData = [
