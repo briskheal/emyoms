@@ -2351,6 +2351,33 @@
                         </div>
                     </div>
                     
+                    <!-- ADDITIONAL CHARGES SECTION -->
+                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.6rem;">
+                            <div style="font-size: 0.6rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                                <span>Add Other Charges (Courier/Transport)</span>
+                                <span style="opacity: 0.6;">GST 12% or 18%</span>
+                            </div>
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <input type="text" id="pur-charge-name" placeholder="Charge Name..." style="flex: 1.5; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3);">
+                                <input type="number" id="pur-charge-amount" placeholder="Amount" style="flex: 1; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3);">
+                                <select id="pur-charge-gst" style="flex: 0.8; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                    <option value="0">0%</option>
+                                    <option value="5">5%</option>
+                                    <option value="12" selected>12%</option>
+                                    <option value="18">18%</option>
+                                    <option value="28">28%</option>
+                                </select>
+                                <button type="button" onclick="addPurchaseCharge()" class="btn btn-primary" style="padding: 0 12px; height: 28px; font-size: 1rem;">+</button>
+                            </div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 10px; overflow-y: auto; max-height: 80px;">
+                            <table style="width: 100%; font-size: 0.65rem;">
+                                <tbody id="purchase-charges-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
                     <!-- REMARKS & ACTION -->
                     <div style="flex: 0 0 auto; background: rgba(255,255,255,0.02); padding: 0.3rem 1rem; border-radius: 10px; display: flex; align-items: center; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
                          <div style="flex: 1; display: flex; align-items: center; gap: 10px;">

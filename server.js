@@ -1592,6 +1592,8 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
             remarks: remarks || '',
             subTotal,
             gstAmount,
+            otherChargesTotal: req.body.otherChargesTotal || 0,
+            additionalCharges: req.body.additionalCharges || [],
             grandTotal
         });
 
@@ -1699,6 +1701,8 @@ app.put('/api/admin/purchase-entries/:id', async (req, res) => {
             remarks: remarks || entry.remarks,
             subTotal: Number(subTotal) || 0,
             gstAmount: Number(gstAmount) || 0,
+            otherChargesTotal: req.body.otherChargesTotal || 0,
+            additionalCharges: req.body.additionalCharges || [],
             grandTotal: Number(grandTotal) || 0
         });
 

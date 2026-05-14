@@ -6,8 +6,10 @@ module.exports = (sequelize, DataTypes) => {
         invoiceDate: { type: DataTypes.DATE },
         subTotal: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         gstAmount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+        otherChargesTotal: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         grandTotal: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
         outstandingAmount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+        additionalCharges: { type: DataTypes.JSONB },
         remarks: { type: DataTypes.TEXT }
     });
     return PurchaseEntry;

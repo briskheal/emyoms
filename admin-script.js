@@ -2755,7 +2755,9 @@ function openPurchaseModal(id = null) {
         }
 
         purchaseItems = [];
+        purchaseCharges = [];
         renderPurchaseItems();
+        renderPurchaseCharges();
         document.getElementById('purchaseModal').classList.remove('hidden');
     } catch (e) { console.error('Error opening purchase modal', e); }
 }
@@ -2825,6 +2827,46 @@ function addPurchaseItem() {
     }, 50);
 }
 
+// --- ADDITIONAL CHARGES LOGIC ---
+let purchaseCharges = [];
+
+function addPurchaseCharge() {
+    const name = document.getElementById('pur-charge-name').value.trim();
+    const amount = parseFloat(document.getElementById('pur-charge-amount').value) || 0;
+    const gstPct = parseFloat(document.getElementById('pur-charge-gst').value) || 0;
+
+    if (!name || amount <= 0) return alert('⚠️ Please enter charge name and amount');
+
+    const gstAmount = Number((amount * (gstPct / 100)).toFixed(2));
+    const total = Number((amount + gstAmount).toFixed(2));
+
+    purchaseCharges.push({ name, amount, gstPct, gstAmount, total });
+    
+    document.getElementById('pur-charge-name').value = '';
+    document.getElementById('pur-charge-amount').value = '';
+    
+    renderPurchaseCharges();
+}
+
+function renderPurchaseCharges() {
+    const tbody = document.getElementById('purchase-charges-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = purchaseCharges.map((c, idx) => `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 4px 8px;">${c.name}</td>
+            <td style="padding: 4px 8px; text-align: right;">₹${c.amount.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: center;">${c.gstPct}%</td>
+            <td style="padding: 4px 8px; text-align: right; font-weight: 700;">₹${c.total.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: center;">
+                <button type="button" onclick="purchaseCharges.splice(${idx}, 1); renderPurchaseCharges();" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;">✕</button>
+            </td>
+        </tr>
+    `).join('');
+
+    updatePurchaseFooter();
+}
+
 function renderPurchaseItems() {
     const tbody = document.getElementById('purchase-items-body');
     if (!tbody) return;
@@ -2884,9 +2926,15 @@ function editPurchaseLineItem(index) {
 }
 
 function updatePurchaseFooter() {
-    // Update footer strip
-    const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
-    const gstTotal = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+    let subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
+    let gstTotal = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+    
+    // Add Additional Charges
+    const chargesTaxable = purchaseCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
+    const chargesGst = purchaseCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
+    subTotal += chargesTaxable;
+    gstTotal += chargesGst;
+
     const rawTotal = subTotal + gstTotal;
     const grandTotal = Math.round(rawTotal);
     const roundOff = grandTotal - rawTotal;
@@ -2917,8 +2965,9 @@ async function savePurchaseEntry(event) {
     if (btn) { btn.disabled = true; btn.innerText = '⏳ POSTING...'; }
 
     try {
-        const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
-        const gstAmount = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+        const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0) + purchaseCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
+        const gstAmount = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0) + purchaseCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
+        const otherChargesTotal = purchaseCharges.reduce((acc, c) => acc + (c.total || 0), 0);
         const rawTotal = subTotal + gstAmount;
         const grandTotal = Math.round(rawTotal);
         const roundOff = Number((grandTotal - rawTotal).toFixed(2));
@@ -2932,6 +2981,8 @@ async function savePurchaseEntry(event) {
             warehouse: document.getElementById('pur-warehouse')?.value || 'MAIN',
             remarks: document.getElementById('pur-remarks').value,
             items: purchaseItems,
+            additionalCharges: purchaseCharges,
+            otherChargesTotal,
             subTotal: Number(subTotal.toFixed(2)),
             gstAmount: Number(gstAmount.toFixed(2)),
             roundOff,
@@ -4620,6 +4671,7 @@ async function viewPurchasePDF(id) {
                 gst: supplierData.gstNo || '' 
             },
             items: pdfItems,
+            additionalCharges: p.additionalCharges || [],
             grandTotal: p.grandTotal,
             extraFields: [
                 { label: 'Supplier Inv No', value: p.supplierInvoiceNo || 'N/A' },
@@ -4653,6 +4705,10 @@ function editPurchaseEntry(id) {
         
         safeSetVal('pur-payment-mode', p.paymentMode || 'CREDIT');
         safeSetVal('pur-remarks', p.remarks || '');
+
+        // --- Additional Charges ---
+        purchaseCharges = Array.isArray(p.additionalCharges) ? JSON.parse(JSON.stringify(p.additionalCharges)) : [];
+        renderPurchaseCharges();
 
         // --- Supplier Search ---
         const supplier = allStockists.find(s => (s._id || s.id) == p.supplier);
@@ -5792,7 +5848,7 @@ async function saveExpense(e) {
 }
 
 async function generateSampleMatchedPDF({ 
-    doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
+    doc, title, subTitle, docNo, docTypeLabel, date, party, items, additionalCharges = [], grandTotal, terms, showBank, extraFields, filename 
 }) {
     // --- 1. SETTINGS & COLORS ---
     const pageH = 297; const pageW = 210;
@@ -5893,36 +5949,54 @@ async function generateSampleMatchedPDF({
     doc.autoTable({
         startY: boxY + boxH + 5,
         head: tableHead,
-        body: items.map((it, idx) => {
-            const mrp = Number(it.mrp || 0);
-            const price = Number(it.price || it.pts || 0);
-            const ptr = Number(it.ptr || 0);
-            const pts = Number(it.pts || 0);
-            const qty = Number(it.qty || 0);
-            const bonus = Number(it.bonusQty || 0);
-            const expStr = it.expDate || it.expiry || it.exp || '-';
-            const mfgName = it.manufacturer || (it.product && it.product.manufacturer) || 'EMYRIS';
-            
-            if (isPurchase) {
-                return [
-                    idx + 1, it.hsn || '-', 
-                    { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
-                    it.batch || '-', expStr, 
-                    mrp.toFixed(2), price.toFixed(2), 
-                    qty, bonus, (it.gstPercent || 0) + '%', 
-                    (qty * price).toFixed(2)
-                ];
-            } else {
-                return [
-                    idx + 1, it.hsn || '-', 
-                    { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
-                    it.batch || '-', expStr, 
-                    mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
-                    qty, bonus, (it.gstPercent || 0) + '%', 
-                    (qty * pts).toFixed(2)
-                ];
-            }
-        }),
+        body: [
+            ...items.map((it, idx) => {
+                const mrp = Number(it.mrp || 0);
+                const price = Number(it.price || it.pts || 0);
+                const ptr = Number(it.ptr || 0);
+                const pts = Number(it.pts || 0);
+                const qty = Number(it.qty || 0);
+                const bonus = Number(it.bonusQty || 0);
+                const expStr = it.expDate || it.expiry || it.exp || '-';
+                const mfgName = it.manufacturer || (it.product && it.product.manufacturer) || 'EMYRIS';
+                
+                if (isPurchase) {
+                    return [
+                        idx + 1, it.hsn || '-', 
+                        { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
+                        it.batch || '-', expStr, 
+                        mrp.toFixed(2), price.toFixed(2), 
+                        qty, bonus, (it.gstPercent || 0) + '%', 
+                        (qty * price).toFixed(2)
+                    ];
+                } else {
+                    return [
+                        idx + 1, it.hsn || '-', 
+                        { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
+                        it.batch || '-', expStr, 
+                        mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
+                        qty, bonus, (it.gstPercent || 0) + '%', 
+                        (qty * pts).toFixed(2)
+                    ];
+                }
+            }),
+            ...additionalCharges.map((c, idx) => {
+                if (isPurchase) {
+                    return [
+                        '#', '-', 
+                        { content: `CHARGE: ${c.name}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
+                        '-', '-', '-', c.amount.toFixed(2), 
+                        '1', '0', c.gstPct + '%', c.total.toFixed(2)
+                    ];
+                } else {
+                    return [
+                        '#', '-', 
+                        { content: `CHARGE: ${c.name}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
+                        '-', '-', '-', '-', '-', '1', '0', c.gstPct + '%', c.total.toFixed(2)
+                    ];
+                }
+            })
+        ],
         theme: 'grid',
         headStyles: { fillColor: themeRgb, textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center' },
         styles: { fontSize: 7, cellPadding: 2, textColor: 0, lineWidth: 0.1, lineColor: themeRgb },
@@ -5957,6 +6031,17 @@ async function generateSampleMatchedPDF({
         const qty = Number(it.qty || 0);
         const taxable = qty * price;
         const gst = (taxable * rate) / 100;
+        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
+        taxMap[rate].taxable += taxable;
+        taxMap[rate].tax += gst;
+        totalTaxable += taxable; totalGST += gst;
+    });
+
+    // Add Additional Charges to Tax Map
+    additionalCharges.forEach(c => {
+        const rate = parseFloat(c.gstPct) || 0;
+        const taxable = Number(c.amount || 0);
+        const gst = Number(c.gstAmount || 0);
         if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
         taxMap[rate].taxable += taxable;
         taxMap[rate].tax += gst;
