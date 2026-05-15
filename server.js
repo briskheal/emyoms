@@ -648,7 +648,14 @@ app.post('/api/admin/products', async (req, res) => {
             }
         }
         res.json({ success: true, product });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { 
+        console.error("Product Create Error:", err);
+        res.status(500).json({ 
+            success: false, 
+            error: err.message, 
+            details: err.errors ? err.errors.map(e => e.message) : [] 
+        }); 
+    }
 });
 
 app.put('/api/admin/products/:id', async (req, res) => {
@@ -667,7 +674,14 @@ app.put('/api/admin/products/:id', async (req, res) => {
             }
         }
         res.json({ success: true, product });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { 
+        console.error("Product Update Error:", err);
+        res.status(500).json({ 
+            success: false, 
+            error: err.message, 
+            details: err.errors ? err.errors.map(e => e.message) : [] 
+        }); 
+    }
 });
 
 app.delete('/api/products/:id', async (req, res) => {

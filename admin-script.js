@@ -232,7 +232,7 @@ function addProductBatch() {
         pts: Number(bPts || document.getElementById('prod-pts').value || 0),
         ptr: Number(bPtr || document.getElementById('prod-ptr').value || 0),
         purchaseRate: Number(bPur || document.getElementById('prod-purchase-rate').value || 0),
-        qtyAvailable: Number(bQty || 0)
+        qtyAvailable: Math.floor(Number(bQty || 0))
     });
     
     document.getElementById('new-batch-no').value = '';
@@ -1183,10 +1183,10 @@ async function saveProduct(e) {
         ptr: Number(document.getElementById('prod-ptr').value),
         pts: Number(document.getElementById('prod-pts').value),
         purchaseRate: Number(document.getElementById('prod-purchase-rate').value || 0),
-        qtyAvailable: Number(document.getElementById('prod-qty').value),
+        qtyAvailable: Math.floor(Number(document.getElementById('prod-qty').value || 0)),
         batches: currentProductBatches,
-        bonusBuy: Number(document.getElementById('prod-buy').value),
-        bonusGet: Number(document.getElementById('prod-get').value)
+        bonusBuy: Math.floor(Number(document.getElementById('prod-buy').value || 0)),
+        bonusGet: Math.floor(Number(document.getElementById('prod-get').value || 0))
     };
 
     try {
@@ -1202,7 +1202,8 @@ async function saveProduct(e) {
             closeProductModal();
             loadProducts();
         } else {
-            alert("Failed to save: " + (result.error || result.message || "Unknown error"));
+            const detailStr = result.details && result.details.length ? ("\nDetails: " + result.details.join(", ")) : "";
+            alert("Failed to save: " + (result.error || result.message || "Unknown error") + detailStr);
         }
     } catch (e) { 
         console.error("Save error:", e);
