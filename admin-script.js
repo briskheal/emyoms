@@ -2998,24 +2998,29 @@ function editPurchaseLineItem(index) {
 }
 
 function updatePurchaseFooter() {
-    let subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
-    let gstTotal = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+    const prodTaxable = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
+    const prodGst = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
     
-    // Add Additional Charges
     const chargesTaxable = purchaseCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
     const chargesGst = purchaseCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
-    subTotal += chargesTaxable;
-    gstTotal += chargesGst;
+    const chargesTotal = purchaseCharges.reduce((acc, c) => acc + (c.total || 0), 0);
+
+    const subTotal = prodTaxable + chargesTaxable;
+    const gstTotal = prodGst + chargesGst;
 
     const rawTotal = subTotal + gstTotal;
     const grandTotal = Math.round(rawTotal);
     const roundOff = grandTotal - rawTotal;
+
     const safeEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    const format = (v) => '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     safeEl('strip-pur-count', purchaseItems.length);
-    safeEl('strip-pur-subtotal', '₹' + subTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-    safeEl('strip-pur-gst', '₹' + gstTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
-    safeEl('strip-pur-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
-    safeEl('strip-pur-total', '₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 }));
+    safeEl('strip-pur-prod-total', format(prodTaxable));
+    safeEl('strip-pur-charges', format(chargesTotal));
+    safeEl('strip-pur-gst', format(gstTotal));
+    safeEl('strip-pur-roundoff', (roundOff >= 0 ? '+' : '-') + '₹' + Math.abs(roundOff).toFixed(2));
+    safeEl('strip-pur-total', format(grandTotal));
 }
 
 async function savePurchaseEntry(event) {
