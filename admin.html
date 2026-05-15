@@ -1410,6 +1410,26 @@
                         </div>
                     </div>
 
+                    
+                    <!-- EXPENSE & OVERHEADS -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #f87171;">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">💸</span> Expense & Overheads</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('expense-transaction')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Detailed Expense Log</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Itemized list of all operational expenses.</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('expense-category')">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Category-wise Breakdown</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Expenses grouped by Head (Direct/Indirect).</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- EXPENSE MANAGEMENT: Full Grid -->
                     <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #ef4444; grid-column: 1 / -1;">
                         <!-- Header Row -->
@@ -3252,7 +3272,7 @@
 
 
     <!-- MODAL (Report Preview) -->
-    <div id="reportModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000;">
+    <div id="reportModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 6000;">
         <div class="glass-card" style="width: 95%; max-width: 1400px; height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-top: 5px solid #10b981;">
             
             <!-- Header -->
