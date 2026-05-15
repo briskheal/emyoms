@@ -2368,9 +2368,10 @@
                                 <span style="opacity: 0.6;">GST 12% or 18%</span>
                             </div>
                             <div style="display: flex; gap: 0.4rem; align-items: center;">
-                                <input type="text" id="pur-charge-name" placeholder="Charge Name..." style="flex: 1.5; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3);">
-                                <input type="number" id="pur-charge-amount" placeholder="Amount" style="flex: 1; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3);">
-                                <select id="pur-charge-gst" style="flex: 0.8; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="text" id="pur-charge-name" autocomplete="off" placeholder="Charge Name..." style="flex: 1.5; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="text" id="pur-charge-hsn" autocomplete="off" placeholder="HSN" style="flex: 0.7; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="number" id="pur-charge-amount" placeholder="Amount" style="flex: 1; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <select id="pur-charge-gst" style="flex: 0.8; font-size: 0.75rem; height: 28px; background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.1);">
                                     <option value="0">0%</option>
                                     <option value="5">5%</option>
                                     <option value="12" selected>12%</option>
@@ -2542,11 +2543,12 @@
                         <div style="background: rgba(255,255,255,0.02); padding: 0.8rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                             <div style="font-size: 0.55rem; font-weight: 900; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">➕ Add Courier / Other Charges</div>
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="text" id="sale-charge-name" placeholder="Charge Name (e.g. Courier)" style="flex: 1.5; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3);">
-                                <input type="number" id="sale-charge-amount" placeholder="Amt" style="flex: 0.8; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); text-align: right;">
-                                <select id="sale-charge-gst" style="flex: 0.7; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;">
+                                <input type="text" id="sale-charge-name" autocomplete="off" placeholder="Charge Name" style="flex: 1.5; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="text" id="sale-charge-hsn" autocomplete="off" placeholder="HSN" style="flex: 0.7; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="number" id="sale-charge-amount" placeholder="Amt" style="flex: 0.8; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); text-align: right; color: #fff;">
+                                <select id="sale-charge-gst" style="flex: 0.7; font-size: 0.75rem; height: 30px; background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;">
                                     <option value="18">18% GST</option>
-                                    <option value="12">12% GST</option>
+                                    <option value="12" selected>12% GST</option>
                                     <option value="5">5% GST</option>
                                     <option value="0">Exempted</option>
                                 </select>

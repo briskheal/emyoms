@@ -2904,6 +2904,7 @@ let purchaseCharges = [];
 
 function addPurchaseCharge() {
     const name = document.getElementById('pur-charge-name').value.trim();
+    const hsn = document.getElementById('pur-charge-hsn').value.trim();
     const amount = parseFloat(document.getElementById('pur-charge-amount').value) || 0;
     const gstPct = parseFloat(document.getElementById('pur-charge-gst').value) || 0;
 
@@ -2912,9 +2913,10 @@ function addPurchaseCharge() {
     const gstAmount = Number((amount * (gstPct / 100)).toFixed(2));
     const total = Number((amount + gstAmount).toFixed(2));
 
-    purchaseCharges.push({ name, amount, gstPct, gstAmount, total });
+    purchaseCharges.push({ name, hsn, amount, gstPct, gstAmount, total });
     
     document.getElementById('pur-charge-name').value = '';
+    document.getElementById('pur-charge-hsn').value = '';
     document.getElementById('pur-charge-amount').value = '';
     
     renderPurchaseCharges();
@@ -3548,6 +3550,7 @@ let saleCharges = [];
 
 function addSaleCharge() {
     const name = document.getElementById('sale-charge-name').value.trim();
+    const hsn = document.getElementById('sale-charge-hsn').value.trim();
     const amount = parseFloat(document.getElementById('sale-charge-amount').value) || 0;
     const gstPct = parseFloat(document.getElementById('sale-charge-gst').value) || 0;
 
@@ -3556,9 +3559,10 @@ function addSaleCharge() {
     const gstAmount = Number((amount * (gstPct / 100)).toFixed(2));
     const total = Number((amount + gstAmount).toFixed(2));
 
-    saleCharges.push({ name, amount, gstPct, gstAmount, total });
+    saleCharges.push({ name, hsn, amount, gstPct, gstAmount, total });
     
     document.getElementById('sale-charge-name').value = '';
+    document.getElementById('sale-charge-hsn').value = '';
     document.getElementById('sale-charge-amount').value = '';
     
     renderSaleCharges();
@@ -6103,7 +6107,7 @@ async function generateSampleMatchedPDF({
                         { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
                         it.batch || '-', expStr, 
                         mrp.toFixed(2), price.toFixed(2), 
-                        qty, bonus, (it.gstPercent || 0) + '%', 
+                        qty, bonus, Math.floor(it.gstPercent || 0) + '%', 
                         (qty * price).toFixed(2)
                     ];
                 } else {
@@ -6112,7 +6116,7 @@ async function generateSampleMatchedPDF({
                         { content: `${it.name}\n[Mfg: ${mfgName}]`, styles: { fontStyle: 'bold' } }, 
                         it.batch || '-', expStr, 
                         mrp.toFixed(2), ptr.toFixed(2), pts.toFixed(2), 
-                        qty, bonus, (it.gstPercent || 0) + '%', 
+                        qty, bonus, Math.floor(it.gstPercent || 0) + '%', 
                         (qty * pts).toFixed(2)
                     ];
                 }
@@ -6120,16 +6124,16 @@ async function generateSampleMatchedPDF({
             ...additionalCharges.map((c, idx) => {
                 if (isPurchase) {
                     return [
-                        '#', '-', 
+                        '#', c.hsn || '-', 
                         { content: `CHARGE: ${c.name}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
                         '-', '-', '-', c.amount.toFixed(2), 
-                        '1', '0', c.gstPct + '%', c.total.toFixed(2)
+                        '1', '0', Math.floor(c.gstPct || 0) + '%', c.total.toFixed(2)
                     ];
                 } else {
                     return [
-                        '#', '-', 
+                        '#', c.hsn || '-', 
                         { content: `CHARGE: ${c.name}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
-                        '-', '-', '-', '-', '-', '1', '0', c.gstPct + '%', c.total.toFixed(2)
+                        '-', '-', '-', '-', '-', '1', '0', Math.floor(c.gstPct || 0) + '%', c.total.toFixed(2)
                     ];
                 }
             })
@@ -6193,8 +6197,9 @@ async function generateSampleMatchedPDF({
     let taxBody = [];
     Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
         const rate = parseFloat(r); const d = taxMap[r];
-        if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), d.tax.toFixed(2), d.tax.toFixed(2)]); }
-        else { taxBody.push([`${rate}%`, d.taxable.toFixed(2), (d.tax/2).toFixed(2), (d.tax/2).toFixed(2), d.tax.toFixed(2)]); }
+        const label = Math.floor(rate) + '%';
+        if (isInter) { taxBody.push([label, d.taxable.toFixed(2), d.tax.toFixed(2), d.tax.toFixed(2)]); }
+        else { taxBody.push([label, d.taxable.toFixed(2), (d.tax/2).toFixed(2), (d.tax/2).toFixed(2), d.tax.toFixed(2)]); }
     });
 
     doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); doc.text("GST TAX SUMMARY", 12, summaryY);
