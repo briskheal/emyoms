@@ -1971,29 +1971,42 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
         });
 
         // 2. Validate quantities across all items
+        // Accumulate requested quantities by productId to handle multiple variations in the same submission
+        const newRequestsMap = {};
         for (const newItem of items) {
             const requestedQty = Number(newItem.qty || newItem.claimQty || 0);
             if (requestedQty <= 0) continue;
+            newRequestsMap[newItem.productId] = (newRequestsMap[newItem.productId] || 0) + requestedQty;
+        }
 
+        for (const productId of Object.keys(newRequestsMap)) {
+            const totalRequested = newRequestsMap[productId];
+            
             let previouslyClaimed = 0;
             existingClaims.forEach(claim => {
-                const match = claim.items.find(i => i.productId === newItem.productId);
-                if (match) previouslyClaimed += Number(match.qty || 0);
+                claim.items.forEach(i => {
+                    if (String(i.productId) === String(productId)) {
+                        previouslyClaimed += Number(i.qty || 0);
+                    }
+                });
             });
 
             // Get the original invoice quantity for this specific product
             const inv = await db.Invoice.findOne({
                 where: { invoiceNo, stockistId },
-                include: [{ model: db.InvoiceItem, as: 'items', where: { productId: newItem.productId } }]
+                include: [{ model: db.InvoiceItem, as: 'items', where: { productId } }]
             });
 
             if (!inv || !inv.items || inv.items.length === 0) continue; 
             
             const originalQty = Number(inv.items[0].qty || 0);
-            if ((previouslyClaimed + requestedQty) > originalQty) {
+            const remainingToClaim = originalQty - previouslyClaimed;
+            
+            if (totalRequested > remainingToClaim) {
+                const name = items.find(i => String(i.productId) === String(productId))?.name || 'Product';
                 return res.status(400).json({ 
                     success: false, 
-                    message: `⚠️ OVER-CLAIM ERROR: Product '${newItem.name}' already has ${previouslyClaimed} units claimed. Only ${originalQty - previouslyClaimed} units remaining to claim.` 
+                    message: `⚠️ OVER-CLAIM ERROR: Product '${name}' already has ${previouslyClaimed} units claimed. Only ${remainingToClaim} units remaining to claim.` 
                 });
             }
         }
