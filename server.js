@@ -496,7 +496,7 @@ const addIdAlias = (data) => {
     return data;
 };
 
-app.get('/api/admin/categories', async (req, res) => {
+app.get('/api/categories', async (req, res) => {
     try {
         const data = await db.Category.findAll();
         res.json(addIdAlias(data));
@@ -523,7 +523,7 @@ app.delete('/api/admin/categories/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/admin/hsns', async (req, res) => {
+app.get('/api/hsns', async (req, res) => {
     try {
         const data = await db.HSN.findAll();
         res.json(addIdAlias(data));
@@ -550,7 +550,7 @@ app.delete('/api/admin/hsns/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/admin/gst', async (req, res) => {
+app.get('/api/gst', async (req, res) => {
     try {
         const data = await db.GST.findAll();
         res.json(addIdAlias(data));
@@ -577,7 +577,7 @@ app.delete('/api/admin/gst/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/admin/groups', async (req, res) => {
+app.get('/api/groups', async (req, res) => {
     try {
         const data = await db.Group.findAll();
         res.json(addIdAlias(data));
