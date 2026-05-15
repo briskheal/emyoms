@@ -642,7 +642,9 @@ app.post('/api/admin/products', async (req, res) => {
         const product = await db.Product.create(req.body);
         if (req.body.batches && Array.isArray(req.body.batches)) {
             for (const b of req.body.batches) {
-                await db.Batch.create({ ...b, productId: product.id });
+                const cb = { ...b };
+                delete cb.id; delete cb._id;
+                await db.Batch.create({ ...cb, productId: product.id });
             }
         }
         res.json({ success: true, product });
@@ -659,7 +661,9 @@ app.put('/api/admin/products/:id', async (req, res) => {
         if (req.body.batches) {
             await db.Batch.destroy({ where: { productId: product.id } });
             for (const b of req.body.batches) {
-                await db.Batch.create({ ...b, productId: product.id });
+                const cb = { ...b };
+                delete cb.id; delete cb._id;
+                await db.Batch.create({ ...cb, productId: product.id });
             }
         }
         res.json({ success: true, product });
