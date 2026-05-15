@@ -2271,7 +2271,47 @@ app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
 
 // --- PAYMENTS & EXPENSES ---
 
+async function autoPostPaymentJV(payment, stockist, t) {
+    let bankLedgerName = 'Cash Account';
+    if (['Bank Transfer', 'UPI', 'Cheque'].includes(payment.method)) bankLedgerName = 'Bank Account (HDFC)';
+    const bankLedger = await db.Ledger.findOne({ where: { name: bankLedgerName } });
+
+    const jvNo = await getNextDocNo('jv');
+    const isReceipt = payment.type === 'RECEIPT';
+
+    const jv = await db.JournalVoucher.create({
+        jvNo,
+        date: payment.date || new Date(),
+        narration: `Auto JV: ${isReceipt ? 'Payment In' : 'Payment Out'} ${payment.paymentNo} ${isReceipt ? 'from' : 'to'} ${stockist ? stockist.name : 'Unknown Party'}`,
+        totalAmount: payment.amount,
+        refType: 'Payment',
+        refId: payment.id
+    }, { transaction: t });
+
+    await db.JournalEntryLine.bulkCreate([
+        {
+            jvId: jv.id,
+            type: isReceipt ? 'DR' : 'CR',
+            amount: payment.amount,
+            entityType: 'Ledger',
+            entityId: bankLedger ? bankLedger.id : null,
+            entityName: bankLedgerName,
+            notes: `Paid via ${payment.method || 'Cash'}`
+        },
+        {
+            jvId: jv.id,
+            type: isReceipt ? 'CR' : 'DR',
+            amount: payment.amount,
+            entityType: 'Stockist',
+            entityId: stockist ? stockist.id : null,
+            entityName: stockist ? stockist.name : 'Unknown Party',
+            notes: `${isReceipt ? 'Receipt' : 'Payment'}`
+        }
+    ], { transaction: t });
+}
+
 app.post('/api/admin/payments', async (req, res) => {
+    const t = await db.sequelize.transaction();
     try {
         const { party, amount, method, type, date } = req.body;
         const partyId = party; 
@@ -2286,7 +2326,27 @@ app.post('/api/admin/payments', async (req, res) => {
             method,
             type,
             date: date || new Date()
-        });
+        }, { transaction: t });
+
+        const stockist = await db.Stockist.findByPk(partyId, { transaction: t });
+        
+        // Auto JV
+        await autoPostPaymentJV(payment, stockist, t);
+
+        const adj = type === 'RECEIPT' ? -numAmount : numAmount;
+        if (stockist) {
+            stockist.outstandingBalance = Number(stockist.outstandingBalance) + adj;
+            await stockist.save({ transaction: t });
+        }
+
+        await t.commit();
+        res.json({ success: true, payment });
+    } catch (e) {
+        await t.rollback();
+        console.error(e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 
         const stockist = await db.Stockist.findByPk(partyId);
@@ -2362,23 +2422,71 @@ app.get('/api/admin/next-doc-no', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+async function autoPostExpenseJV(expense, t) {
+    const expCat = await db.ExpenseCategory.findOne({ where: { name: expense.categoryName } });
+    
+    let crLedgerName = 'Cash Account';
+    if (['Bank Transfer', 'UPI', 'Cheque'].includes(expense.paymentMethod)) crLedgerName = 'Bank Account (HDFC)';
+    const crLedger = await db.Ledger.findOne({ where: { name: crLedgerName } });
+
+    const jvNo = await getNextDocNo('jv');
+    const jv = await db.JournalVoucher.create({
+        jvNo,
+        date: expense.date || new Date(),
+        narration: `Auto JV: Expense ${expense.expenseNo} - ${expense.title || expense.categoryName}`,
+        totalAmount: expense.amount,
+        refType: 'Expense',
+        refId: expense.id
+    }, { transaction: t });
+
+    await db.JournalEntryLine.bulkCreate([
+        {
+            jvId: jv.id,
+            type: 'DR',
+            amount: expense.amount,
+            entityType: 'ExpenseCategory',
+            entityId: expCat ? expCat.id : null,
+            entityName: expense.categoryName,
+            notes: expense.title || ''
+        },
+        {
+            jvId: jv.id,
+            type: 'CR',
+            amount: expense.amount,
+            entityType: 'Ledger',
+            entityId: crLedger ? crLedger.id : null,
+            entityName: crLedgerName,
+            notes: `Paid via ${expense.paymentMethod || 'Cash'}`
+        }
+    ], { transaction: t });
+}
+
 app.post('/api/admin/expenses', async (req, res) => {
+    const t = await db.sequelize.transaction();
     try {
         const expenseNo = await getNextDocNo('expense');
         const expense = await db.Expense.create({
             ...req.body,
             amount: Number(req.body.amount) || 0,
             expenseNo
-        });
+        }, { transaction: t });
 
+        await autoPostExpenseJV(expense, t);
+
+        await t.commit();
         res.json({ success: true, expense });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { 
+        await t.rollback();
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
 
 app.put('/api/admin/expenses/:id', async (req, res) => {
+    const t = await db.sequelize.transaction();
     try {
-        const expense = await db.Expense.findByPk(req.params.id);
-        if (!expense) return res.status(404).json({ success: false, error: 'Expense not found' });
+        const expense = await db.Expense.findByPk(req.params.id, { transaction: t });
+        if (!expense) throw new Error('Expense not found');
+        
         await expense.update({
             type:          req.body.type          || expense.type,
             categoryName:  req.body.categoryName  || expense.categoryName,
@@ -2387,18 +2495,43 @@ app.put('/api/admin/expenses/:id', async (req, res) => {
             amount:        Number(req.body.amount) || expense.amount,
             paymentMethod: req.body.paymentMethod || expense.paymentMethod,
             notes:         req.body.notes         !== undefined ? req.body.notes : expense.notes
-        });
+        }, { transaction: t });
+
+        const oldJv = await db.JournalVoucher.findOne({ where: { refType: 'Expense', refId: expense.id }, transaction: t });
+        if (oldJv) {
+            await db.JournalEntryLine.destroy({ where: { jvId: oldJv.id }, transaction: t });
+            await oldJv.destroy({ transaction: t });
+        }
+        await autoPostExpenseJV(expense, t);
+
+        await t.commit();
         res.json({ success: true, expense });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { 
+        await t.rollback();
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
 
 app.delete('/api/admin/expenses/:id', async (req, res) => {
+    const t = await db.sequelize.transaction();
     try {
-        const expense = await db.Expense.findByPk(req.params.id);
-        if (!expense) return res.status(404).json({ success: false, error: 'Expense not found' });
-        await expense.destroy();
+        const expense = await db.Expense.findByPk(req.params.id, { transaction: t });
+        if (!expense) throw new Error('Expense not found');
+        
+        const oldJv = await db.JournalVoucher.findOne({ where: { refType: 'Expense', refId: expense.id }, transaction: t });
+        if (oldJv) {
+            await db.JournalEntryLine.destroy({ where: { jvId: oldJv.id }, transaction: t });
+            await oldJv.destroy({ transaction: t });
+        }
+
+        await expense.destroy({ transaction: t });
+
+        await t.commit();
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { 
+        await t.rollback();
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
 
 // --- JOURNAL ENTRIES (JV) ---
