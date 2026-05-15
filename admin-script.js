@@ -7049,9 +7049,9 @@ function addJvLine() {
             <option value="Bank">Bank Account</option>
             <option value="SystemLedger">System Ledger</option>
         </select>
-        <div style="display:flex; gap: 4px;">
+        <div style="display:flex; gap: 4px; width:100%;">
             <input type="hidden" class="jv-entity-id">
-            <input type="text" class="jv-entity-name" required placeholder="Type name..." style="padding:8px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff; width:100%;">
+            <input type="text" class="jv-entity-name" required list="stockist-list" placeholder="Select Name..." oninput="syncJvId(this)" style="padding:8px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff; width:100%;">
         </div>
         <input type="text" class="jv-notes" placeholder="Optional notes" style="padding:8px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff;">
         <input type="number" class="jv-amount" required step="0.01" min="0.01" value="0.00" oninput="calculateJvTotals()" style="padding:8px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff; font-weight:bold; text-align:right;">
@@ -7206,3 +7206,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attempt to load JVs when the dashboard boots up
     loadJvs();
 });
+
+
+function syncJvId(input) {
+    const row = input.parentElement.parentElement;
+    const ledger = row.querySelector('.jv-ledger').value;
+    const idInput = row.querySelector('.jv-entity-id');
+    const name = input.value;
+    
+    if (ledger === 'Stockist') {
+        const s = allStockists.find(x => x.name === name);
+        if (s) idInput.value = s.id;
+        else idInput.value = '';
+    }
+}

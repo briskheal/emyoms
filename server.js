@@ -140,6 +140,9 @@ async function findNextUniqueNo(config, type) {
             } else if (type === 'payin' || type === 'payout') {
                 const payCollision = await db.Payment.findOne({ where: { paymentNo: docNo } });
                 if (!payCollision) exists = false;
+            } else if (type === 'jv') {
+                const jvCollision = await db.JournalVoucher.findOne({ where: { jvNo: docNo } });
+                if (!jvCollision) exists = false;
             } else {
                 exists = false;
             }
@@ -2313,20 +2316,100 @@ app.post('/api/admin/expenses', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// --- JOURNAL ENTRIES (JV) ---
+
+app.get('/api/admin/journal-vouchers', async (req, res) => {
+    try {
+        const jvs = await db.JournalVoucher.findAll({
+            include: [{ model: db.JournalEntryLine, as: 'lines' }],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json(jvs);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/journal-vouchers', async (req, res) => {
+    const t = await db.sequelize.transaction();
+    try {
+        const { date, narration, lines } = req.body;
+        
+        // Validation: Must have lines
+        if (!lines || lines.length < 2) {
+            throw new Error('A journal entry must have at least two lines.');
+        }
+
+        // Validation: Total DR must equal Total CR
+        let totalDr = 0;
+        let totalCr = 0;
+        lines.forEach(l => {
+            const amt = Number(l.amount) || 0;
+            if (l.type === 'DR') totalDr += amt;
+            else if (l.type === 'CR') totalCr += amt;
+        });
+
+        // Round to 2 decimals for safe comparison
+        totalDr = Math.round(totalDr * 100) / 100;
+        totalCr = Math.round(totalCr * 100) / 100;
+
+        if (totalDr !== totalCr) {
+            throw new Error(`Debit total (₹${totalDr}) must equal Credit total (₹${totalCr}).`);
+        }
+
+        const jvNo = await getNextDocNo('jv');
+
+        const newJv = await db.JournalVoucher.create({
+            jvNo,
+            date: date || new Date(),
+            narration,
+            totalAmount: totalDr
+        }, { transaction: t });
+
+        // Insert Lines
+        for (const line of lines) {
+            await db.JournalEntryLine.create({
+                jvId: newJv.id,
+                type: line.type,
+                amount: Number(line.amount) || 0,
+                entityType: line.entityType,
+                entityId: line.entityId || null,
+                entityName: line.entityName,
+                notes: line.notes || ''
+            }, { transaction: t });
+
+            // FINANCIAL INTEGRATION: Update Stockist Balance if applicable
+            if (line.entityType === 'Stockist' && line.entityId) {
+                const stockist = await db.Stockist.findByPk(line.entityId, { transaction: t });
+                if (stockist) {
+                    const adj = (line.type === 'DR') ? Number(line.amount) : -Number(line.amount);
+                    await stockist.increment('outstandingBalance', { by: adj, transaction: t });
+                }
+            }
+        }
+
+        await t.commit();
+        res.json({ success: true, jv: newJv });
+
+    } catch (e) {
+        await t.rollback();
+        res.status(400).json({ success: false, error: e.message });
+    }
+});
+
 // --- AUDIT REPORT ---
 
 app.get('/api/admin/reports/full-audit', async (req, res) => {
     try {
-        const [invoices, purchases, payments, notes, expenses, products, stockists] = await Promise.all([
+        const [invoices, purchases, payments, notes, expenses, products, stockists, jvs] = await Promise.all([
             db.Invoice.findAll({ include: [{ model: db.Stockist }, { model: db.InvoiceItem, as: 'items' }] }),
             db.PurchaseEntry.findAll({ include: [{ model: db.Stockist, as: 'Supplier' }, { model: db.PurchaseItem, as: 'items' }] }),
             db.Payment.findAll({ include: [db.Stockist] }),
             db.FinancialNote.findAll({ include: [{ model: db.Stockist }, { model: db.NoteItem, as: 'items' }] }),
             db.Expense.findAll({ include: [db.ExpenseCategory] }),
             db.Product.findAll(),
-            db.Stockist.findAll()
+            db.Stockist.findAll(),
+            db.JournalVoucher.findAll({ include: [{ model: db.JournalEntryLine, as: 'lines' }] })
         ]);
-        res.json({ invoices, purchases, payments, notes, expenses, products, stockists });
+        res.json({ invoices, purchases, payments, notes, expenses, products, stockists, jvs });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2334,11 +2417,15 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
     try {
         const partyId = req.params.id;
         
-        const [invoices, notes, payments, purchases] = await Promise.all([
+        const [invoices, notes, payments, purchases, jvLines] = await Promise.all([
             db.Invoice.findAll({ where: { stockistId: partyId } }),
             db.FinancialNote.findAll({ where: { stockistId: partyId } }),
             db.Payment.findAll({ where: { stockistId: partyId } }),
-            db.PurchaseEntry.findAll({ where: { supplierId: partyId } })
+            db.PurchaseEntry.findAll({ where: { supplierId: partyId } }),
+            db.JournalEntryLine.findAll({ 
+                where: { entityType: 'Stockist', entityId: partyId },
+                include: [{ model: db.JournalVoucher, attributes: ['jvNo', 'date', 'narration'] }]
+            })
         ]);
 
         const ledger = [];
@@ -2381,6 +2468,16 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
             description: 'Stock-In Entry',
             debit: 0,
             credit: parseFloat(p.grandTotal)
+        }));
+
+        // 5. Journal Entries (Manual Adjustments)
+        jvLines.forEach(l => ledger.push({
+            date: l.JournalVoucher?.date || l.createdAt,
+            refNo: l.JournalVoucher?.jvNo || `JV-${l.jvId}`,
+            type: 'JOURNAL ENTRY',
+            description: l.JournalVoucher?.narration || l.notes || 'Manual Adjustment',
+            debit: l.type === 'DR' ? parseFloat(l.amount) : 0,
+            credit: l.type === 'CR' ? parseFloat(l.amount) : 0
         }));
 
         ledger.sort((a, b) => new Date(a.date) - new Date(b.date));
