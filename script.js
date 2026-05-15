@@ -1731,10 +1731,12 @@ function renderPDCNTable() {
                         </td>
                     ` : ''}
                     <td style="padding: 12px; text-align: center;">
-                        <div style="display: inline-block; padding: 4px 10px; border-radius: 6px; background: ${balanceLeft <= 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.15)'}; color: ${balanceLeft <= 0 ? '#ef4444' : '#10b981'}; font-weight: 900; font-size: 1.1rem; border: 1px solid ${balanceLeft <= 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.4)'}; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                            ${balanceLeft}
+                        <div style="font-size: 0.85rem; font-weight: 900; color: ${balanceLeft <= 0 ? '#ef4444' : '#10b981'}; margin-bottom: 4px;">
+                            ${balanceLeft <= 0 ? 'EXHAUSTED' : `AVAILABLE: ${balanceLeft}`}
                         </div>
-                        <div style="font-size: 0.6rem; color: ${balanceLeft <= 0 ? '#ef4444' : 'var(--text-muted)'}; margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${balanceLeft <= 0 ? 'EXHAUSTED' : 'AVAILABLE'}</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">
+                            BILLED: ${item.qty}
+                        </div>
                     </td>
                     <td style="padding: 12px; text-align: right; color: #fff; font-size: 0.8rem;">₹${billedPrice.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.8rem;">${gst}%</td>
