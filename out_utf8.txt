@@ -1,0 +1,4 @@
+﻿Γ£à Email Bridge Configured: https://script.google.com/macros/s/AKfyc...
+≡ƒîÉ [DNS] Switched to Google DNS for Atlas connection
+≡ƒÜÇ OMS Server running on http://localhost:4000
+Γ£à EMYRIS-OMS Database Connected

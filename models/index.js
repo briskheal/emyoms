@@ -61,8 +61,15 @@ db.PDCNClaimItem = require('./pdcnClaimItem')(sequelize, DataTypes);
 db.JournalVoucher = require('./journalVoucher')(sequelize, DataTypes);
 db.JournalEntryLine = require('./journalEntryLine')(sequelize, DataTypes);
 db.Ledger = require('./ledger')(sequelize, DataTypes);
+db.PaymentLink = require('./paymentLink')(sequelize, DataTypes);
 
 // Define Relationships
+db.Payment.hasMany(db.PaymentLink, { as: 'links', foreignKey: 'paymentId' });
+db.PaymentLink.belongsTo(db.Payment, { foreignKey: 'paymentId' });
+db.Invoice.hasMany(db.PaymentLink, { as: 'paymentLinks', foreignKey: 'invoiceId' });
+db.PaymentLink.belongsTo(db.Invoice, { foreignKey: 'invoiceId' });
+db.PurchaseEntry.hasMany(db.PaymentLink, { as: 'paymentLinks', foreignKey: 'purchaseEntryId' });
+db.PaymentLink.belongsTo(db.PurchaseEntry, { foreignKey: 'purchaseEntryId' });
 db.JournalVoucher.hasMany(db.JournalEntryLine, { as: 'lines', foreignKey: 'jvId' });
 db.JournalEntryLine.belongsTo(db.JournalVoucher, { foreignKey: 'jvId' });
 db.Product.hasMany(db.Batch, { as: 'batches', foreignKey: 'productId' });

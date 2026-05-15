@@ -881,6 +881,31 @@ app.post('/api/admin/settings', async (req, res) => {
 
 // --- STOCKIST MANAGEMENT ---
 
+
+app.get('/api/admin/stockists/:id/pending-bills', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const stockist = await db.Stockist.findByPk(id);
+        if (!stockist) return res.status(404).json({ error: 'Stockist not found' });
+
+        let pendingInvoices = [];
+        let pendingPurchases = [];
+
+        if (stockist.type === 'STOCKIST' || stockist.type === 'CUSTOMER') {
+            pendingInvoices = await db.Invoice.findAll({
+                where: { stockistId: id, outstandingAmount: { [db.Sequelize.Op.gt]: 0 } },
+                order: [['createdAt', 'ASC']]
+            });
+        } else {
+            pendingPurchases = await db.PurchaseEntry.findAll({
+                where: { supplierId: id, outstandingAmount: { [db.Sequelize.Op.gt]: 0 } },
+                order: [['createdAt', 'ASC']]
+            });
+        }
+        res.json({ success: true, invoices: pendingInvoices, purchases: pendingPurchases });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 app.get('/api/admin/stockists', async (req, res) => {
     try {
         const { type } = req.query;
@@ -2320,7 +2345,7 @@ async function autoPostPaymentJV(payment, stockist, t) {
 app.post('/api/admin/payments', async (req, res) => {
     const t = await db.sequelize.transaction();
     try {
-        const { party, amount, method, type, date } = req.body;
+        const { party, amount, method, type, date, linkedBills } = req.body;
         const partyId = party; 
         
         const paymentNo = await getNextDocNo(type === 'RECEIPT' ? 'payin' : 'payout');
@@ -2346,6 +2371,35 @@ app.post('/api/admin/payments', async (req, res) => {
             await stockist.save({ transaction: t });
         }
 
+        // Link bills
+        if (linkedBills && Array.isArray(linkedBills)) {
+            for (const link of linkedBills) {
+                const linkAmt = Number(link.amount) || 0;
+                if (linkAmt <= 0) continue;
+
+                await db.PaymentLink.create({
+                    paymentId: payment.id,
+                    invoiceId: link.invoiceId || null,
+                    purchaseEntryId: link.purchaseEntryId || null,
+                    amount: linkAmt
+                }, { transaction: t });
+
+                if (link.invoiceId) {
+                    const inv = await db.Invoice.findByPk(link.invoiceId, { transaction: t });
+                    if (inv) {
+                        inv.outstandingAmount = Number(inv.outstandingAmount) - linkAmt;
+                        await inv.save({ transaction: t });
+                    }
+                } else if (link.purchaseEntryId) {
+                    const pur = await db.PurchaseEntry.findByPk(link.purchaseEntryId, { transaction: t });
+                    if (pur) {
+                        pur.outstandingAmount = Number(pur.outstandingAmount) - linkAmt;
+                        await pur.save({ transaction: t });
+                    }
+                }
+            }
+        }
+
         await t.commit();
         res.json({ success: true, payment });
     } catch (e) {
@@ -2353,16 +2407,6 @@ app.post('/api/admin/payments', async (req, res) => {
         console.error(e);
         res.status(500).json({ success: false, error: e.message });
     }
-});
-
-
-        const stockist = await db.Stockist.findByPk(partyId);
-        const adj = type === 'RECEIPT' ? -Number(amount) : Number(amount);
-        if (stockist) await stockist.increment('outstandingBalance', { by: adj });
-
-
-        res.json({ success: true, payment: { ...payment.toJSON(), linkedBills: [] } });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 app.put('/api/admin/payments/:id', async (req, res) => {
