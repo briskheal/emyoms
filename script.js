@@ -1724,49 +1724,49 @@ function renderPDCNTable() {
             html += `
                 <tr id="${rowId}" style="border-bottom: 1px solid rgba(255,255,255,0.03); ${qtyOverLimit ? 'background: rgba(239, 68, 68, 0.05);' : ''}">
                     ${isFirst ? `
-                        <td rowspan="${variations.length}" class="sticky-col" style="min-width: 150px; font-weight: 700; color: #fff; font-size: 0.8rem; background: var(--card-bg);">
+                        <td rowspan="${variations.length}" class="sticky-col" style="min-width: 130px; font-weight: 700; color: #fff; font-size: 0.7rem; background: var(--card-bg); padding: 6px;">
                             ${item.Product?.name || item.name}
-                            ${item.alreadyClaimedQty > 0 ? `<div style="font-size: 0.6rem; color: var(--accent); margin-top: 4px;">Already Claimed: ${item.alreadyClaimedQty}</div>` : ''}
-                            ${availableFromInvoice === 0 ? `<div style="font-size: 0.6rem; color: #ef4444; font-weight: 900;">⚠️ FULLY CLAIMED</div>` : ''}
+                            ${item.alreadyClaimedQty > 0 ? `<div style="font-size: 0.55rem; color: var(--accent); margin-top: 2px;">Claimed: ${item.alreadyClaimedQty}</div>` : ''}
+                            ${availableFromInvoice === 0 ? `<div style="font-size: 0.55rem; color: #ef4444; font-weight: 900;">⚠️ FULLY CLAIMED</div>` : ''}
                         </td>
                     ` : ''}
-                    <td style="padding: 12px; text-align: center;">
-                        <div style="font-size: 0.85rem; font-weight: 900; color: ${balanceLeft <= 0 ? '#ef4444' : '#10b981'}; margin-bottom: 4px;">
-                            ${balanceLeft <= 0 ? 'EXHAUSTED' : `PEN QTY: ${balanceLeft}`}
+                    <td style="padding: 6px; text-align: center;">
+                        <div style="font-size: 0.75rem; font-weight: 900; color: ${balanceLeft <= 0 ? '#ef4444' : '#10b981'}; margin-bottom: 2px;">
+                            ${balanceLeft <= 0 ? 'EXHAUSTED' : `PEN: ${balanceLeft}`}
                         </div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">
-                            INV QTY: ${item.qty}
+                        <div style="font-size: 0.55rem; color: var(--text-muted); font-weight: 700;">
+                            INV: ${item.qty}
                         </div>
                     </td>
-                    <td style="padding: 12px; text-align: right; color: #fff; font-size: 0.8rem;">₹${billedPrice.toFixed(2)}</td>
-                    <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.8rem;">${gst}%</td>
-                    <td style="padding: 12px; text-align: center;">
+                    <td style="padding: 6px; text-align: right; color: #fff; font-size: 0.7rem;">₹${billedPrice.toFixed(2)}</td>
+                    <td style="padding: 6px; text-align: center; color: #fff; font-size: 0.7rem;">${gst}%</td>
+                    <td style="padding: 6px; text-align: center;">
                         <input type="number" step="1" min="0" max="${balanceLeft}" 
                             value="${v.claimQty}" 
                             oninput="calculatePDCNRow('${item.id}', ${idx}, 'qty', this.value)"
-                            style="width: 60px; background: ${qtyOverLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${qtyOverLimit ? '#ef4444' : 'rgba(255,255,255,0.1)'}; color: #fff; font-weight: 800; text-align: center; border-radius: 4px;">
+                            style="width: 50px; padding: 2px; background: ${qtyOverLimit ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${qtyOverLimit ? '#ef4444' : 'rgba(255,255,255,0.1)'}; color: #fff; font-weight: 800; font-size: 0.7rem; text-align: center; border-radius: 4px;">
                     </td>
 
-                    <td>
+                    <td style="padding: 6px;">
                         <input type="number" step="0.01" class="qty-input" 
                             value="${v.splPrice}" 
                             oninput="calculatePDCNRow('${item.id}', ${idx}, 'price', this.value)"
-                            style="width: 75px; background: rgba(16, 185, 129, 0.15); border-color: var(--accent); color: #fff; font-weight: 800; font-size: 0.8rem; padding: 4px;">
+                            style="width: 65px; padding: 2px; background: rgba(16, 185, 129, 0.15); border-color: var(--accent); color: #fff; font-weight: 800; font-size: 0.7rem;">
                     </td>
-                    <td id="pdcn-diff-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: #f59e0b;">₹0.00</td>
-                    <td id="pdcn-stk-margin-${item.id}-${idx}" style="text-align: right; font-weight: 700; color: var(--primary);">₹0.00</td>
-                    <td id="pdcn-final-${item.id}-${idx}" style="text-align: right; font-weight: 900; color: #fff; background: rgba(99,102,241,0.2);">₹0.00</td>
+                    <td id="pdcn-diff-${item.id}-${idx}" style="padding: 6px; text-align: right; font-weight: 700; color: #f59e0b; font-size: 0.7rem;">₹0.00</td>
+                    <td id="pdcn-stk-margin-${item.id}-${idx}" style="padding: 6px; text-align: right; font-weight: 700; color: var(--primary); font-size: 0.7rem;">₹0.00</td>
+                    <td id="pdcn-final-${item.id}-${idx}" style="padding: 6px; text-align: right; font-weight: 900; color: #fff; background: rgba(99,102,241,0.2); font-size: 0.75rem;">₹0.00</td>
 
-                    <td>
+                    <td style="padding: 4px;">
                         <textarea class="note-input" 
                             placeholder="Remarks..." 
                             oninput="calculatePDCNRow('${item.id}', ${idx}, 'remarks', this.value)"
-                            style="width: 100%; min-height: 40px; font-size: 0.7rem; color: #fff; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">${v.remarks}</textarea>
+                            style="width: 100%; min-height: 25px; padding: 4px; font-size: 0.65rem; color: #fff; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">${v.remarks}</textarea>
                     </td>
-                    <td style="text-align: center;">
-                        <div style="display: flex; gap: 5px; justify-content: center;">
-                            <button onclick="addPDCNVariation('${item.id}')" style="background: var(--accent); color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: 900;">+</button>
-                            ${!isFirst ? `<button onclick="removePDCNVariation('${item.id}', ${idx})" style="background: #ef4444; color: #fff; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: 900;">-</button>` : ''}
+                    <td style="padding: 6px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center;">
+                            <button onclick="addPDCNVariation('${item.id}')" style="background: var(--accent); color: #fff; border: none; border-radius: 4px; width: 20px; height: 20px; cursor: pointer; font-weight: 900; font-size: 0.7rem; line-height: 1;">+</button>
+                            ${!isFirst ? `<button onclick="removePDCNVariation('${item.id}', ${idx})" style="background: #ef4444; color: #fff; border: none; border-radius: 4px; width: 20px; height: 20px; cursor: pointer; font-weight: 900; font-size: 0.7rem; line-height: 1;">-</button>` : ''}
                         </div>
                     </td>
                 </tr>

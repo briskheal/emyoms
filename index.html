@@ -547,28 +547,28 @@
                         </table>
                     </div>
 
-                    <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem; background: rgba(0,0,0,0.4); padding: 1.25rem 2.5rem; border-radius: 16px; border: 1px solid var(--glass-border); align-items: center; gap: 2.5rem; flex-wrap: wrap;">
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Taxable Value</span>
-                            <span id="pdcn-total-taxable" style="font-size: 1.1rem; font-weight: 700; color: #fff; font-family: monospace;">₹0.00</span>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 1rem; background: rgba(0,0,0,0.4); padding: 0.75rem 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border); align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span style="font-size: 0.55rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Taxable Value</span>
+                            <span id="pdcn-total-taxable" style="font-size: 0.9rem; font-weight: 700; color: #fff; font-family: monospace;">₹0.00</span>
                         </div>
-                        <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Tax Amount</span>
-                            <span id="pdcn-total-tax" style="font-size: 1.1rem; font-weight: 700; color: #fff; font-family: monospace;">₹0.00</span>
+                        <div style="width: 1px; height: 25px; background: rgba(255,255,255,0.1);"></div>
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span style="font-size: 0.55rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Tax Amount</span>
+                            <span id="pdcn-total-tax" style="font-size: 0.9rem; font-weight: 700; color: #fff; font-family: monospace;">₹0.00</span>
                         </div>
-                        <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <span style="font-size: 0.6rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Round Off</span>
-                            <span id="pdcn-total-roundoff" style="font-size: 1.1rem; font-weight: 700; color: var(--text-muted); font-family: monospace;">₹0.00</span>
+                        <div style="width: 1px; height: 25px; background: rgba(255,255,255,0.1);"></div>
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span style="font-size: 0.55rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Round Off</span>
+                            <span id="pdcn-total-roundoff" style="font-size: 0.9rem; font-weight: 700; color: var(--text-muted); font-family: monospace;">₹0.00</span>
                         </div>
                         
-                        <div style="margin-left: auto; background: var(--grad-primary); padding: 12px 25px; border-radius: 14px; display: flex; align-items: center; gap: 20px; box-shadow: 0 10px 25px rgba(99,102,241,0.3);">
+                        <div style="margin-left: auto; background: var(--grad-primary); padding: 8px 15px; border-radius: 10px; display: flex; align-items: center; gap: 15px; box-shadow: 0 5px 15px rgba(99,102,241,0.2);">
                             <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                                <span style="font-size: 0.65rem; font-weight: 900; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1.5px;">Grand Total PDCN</span>
-                                <span id="pdcn-grand-total" style="font-size: 2rem; font-weight: 900; color: #fff; letter-spacing: -1px; font-family: monospace; line-height: 1;">₹0.00</span>
+                                <span style="font-size: 0.55rem; font-weight: 900; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px;">Grand Total PDCN</span>
+                                <span id="pdcn-grand-total" style="font-size: 1.5rem; font-weight: 900; color: #fff; letter-spacing: -1px; font-family: monospace; line-height: 1;">₹0.00</span>
                             </div>
-                            <button id="pdcn-submit-btn" class="btn-primary" style="background: #fff; color: var(--primary); padding: 10px 20px; border-radius: 10px; font-weight: 800; border: none; cursor: pointer; transition: 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="submitPDCNClaim()">SUBMIT CLAIM</button>
+                            <button id="pdcn-submit-btn" class="btn-primary" style="background: #fff; color: var(--primary); padding: 8px 15px; font-size: 0.8rem; border-radius: 8px; font-weight: 800; border: none; cursor: pointer; transition: 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" onclick="submitPDCNClaim()">SUBMIT CLAIM</button>
                         </div>
                     </div>
                 </div>
@@ -699,7 +699,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.8"></script>
+    <script src="script.js?v=1.0.9"></script>
 
     <style>
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
