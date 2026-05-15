@@ -1125,305 +1125,93 @@
             </div>
 
             <!-- JOURNAL VOUCHERS TAB -->
+            
+            <!-- ACCOUNTS & LEDGERS TAB -->
             <div id="tab-jvs" class="hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <div>
-                        <h2 class="section-title" style="margin-bottom: 0.5rem;">📓 Journal Entries (JV)</h2>
-                        <p style="color: var(--text-muted); font-size: 0.85rem;">Manage complex manual adjustments and double-entry accounting.</p>
+                        <h2 class="section-title" style="margin-bottom: 0.5rem;">&#128218; Accounts & Ledgers</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Trial Balance, Ledger Statements, and Journal Entries.</p>
                     </div>
-                    <button class="btn btn-primary" onclick="openJvModal()">
-                        <i class="fas fa-plus"></i> ADD JOURNAL ENTRY
-                    </button>
+                    <div style="display:flex; gap:0.5rem; background:rgba(255,255,255,0.03); padding:5px; border-radius:10px; border:1px solid var(--glass-border);">
+                        <button onclick="switchFinanceTab('trial-balance', this)" class="btn btn-primary finance-nav-btn" style="padding:6px 14px; font-size:0.75rem;">Trial Balance</button>
+                        <button onclick="switchFinanceTab('ledger-stmt', this)" class="btn btn-ghost finance-nav-btn" style="padding:6px 14px; font-size:0.75rem;">Ledger Statement</button>
+                        <button onclick="switchFinanceTab('jv-register', this)" class="btn btn-ghost finance-nav-btn" style="padding:6px 14px; font-size:0.75rem;">Journal Entries</button>
+                    </div>
                 </div>
                 
-                <div class="glass-card" style="padding: 0; overflow: hidden;">
+                <!-- TRIAL BALANCE VIEW -->
+                <div id="finance-view-trial-balance" class="glass-card finance-view" style="padding: 0; overflow: hidden;">
+                    <div style="padding:1.5rem; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; font-size:1rem; color:#f59e0b;">Trial Balance</h3>
+                        <button class="btn btn-ghost" onclick="loadTrialBalance()" style="padding:6px 12px; font-size:0.75rem;">&#8635; Refresh</button>
+                    </div>
                     <div style="overflow-x: auto;">
                         <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th>JV NO</th>
-                                    <th>DATE</th>
-                                    <th>NARRATION</th>
-                                    <th>TOTAL (DR)</th>
-                                    <th>TOTAL (CR)</th>
-                                    <th>ACTIONS</th>
+                                    <th style="padding:10px 15px; color:#f59e0b;">GROUP / CATEGORY</th>
+                                    <th style="padding:10px 15px; color:var(--text-muted);">LEDGER NAME</th>
+                                    <th style="padding:10px 15px; text-align:right; color:#10b981;">DEBIT (DR)</th>
+                                    <th style="padding:10px 15px; text-align:right; color:#ef4444;">CREDIT (CR)</th>
                                 </tr>
                             </thead>
-                            <tbody id="jvs-grid"></tbody>
+                            <tbody id="trial-balance-body">
+                                <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">Loading...</td></tr>
+                            </tbody>
+                            <tfoot id="trial-balance-foot">
+                            </tfoot>
                         </table>
                     </div>
                 </div>
-            </div>
 
-            <!-- FINANCIAL NOTES TAB -->
-            <div id="tab-notes" class="hidden">
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 class="section-title" id="notes-page-title" style="margin: 0;">📋 ALL CN/DN DETAILS</h2>
-                    <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="noteSearch" placeholder="Search by Party or Note No..." 
-                            onkeyup="filterNotes()"
-                            style="width: 250px; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--glass-border); border-radius: 12px; color: #fff;">
-                        <h3 id="note-context-label" style="font-size: 0.8rem; color: var(--accent); margin: 0; font-weight: 700;"></h3>
-                        <button class="btn btn-primary" onclick="openNoteModal()">📋 ALL CN/DN</button>
+                <!-- LEDGER STATEMENT VIEW -->
+                <div id="finance-view-ledger-stmt" class="glass-card finance-view hidden" style="padding: 1.5rem; min-height:400px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+                        <div>
+                            <h3 style="margin:0 0 0.5rem 0; font-size:1rem; color:#a855f7;">Ledger Statement</h3>
+                            <div style="font-size:0.7rem; color:var(--text-muted);">Select an account to view all postings.</div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; align-items:center; background:rgba(0,0,0,0.4); padding:8px 12px; border-radius:12px; border:1px solid var(--glass-border);">
+                            <select id="ledger-stmt-type" onchange="onLedgerStmtTypeChange()" style="padding:7px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:6px; color:#fff; font-size:0.75rem;">
+                                <option value="Ledger">Ledger Account</option>
+                                <option value="Stockist">Party / Stockist</option>
+                                <option value="ExpenseCategory">Expense Head</option>
+                            </select>
+                            <div style="position:relative; width:220px;">
+                                <input type="hidden" id="ledger-stmt-id">
+                                <input type="text" id="ledger-stmt-search" list="jv-entity-list" placeholder="Search..." oninput="syncLedgerStmtId(this)" style="width:100%; padding:7px 10px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:6px; color:#fff; font-size:0.75rem; box-sizing:border-box;">
+                            </div>
+                            <button class="btn btn-primary" onclick="loadLedgerStatement()" style="padding:7px 16px; font-size:0.75rem; background:linear-gradient(135deg,#a855f7,#7e22ce); border:none;">VIEW</button>
+                        </div>
+                    </div>
+                    
+                    <div id="ledger-stmt-results">
+                        <div style="text-align:center; padding:3rem; color:var(--text-muted); font-size:0.8rem;">Select a ledger and click View.</div>
                     </div>
                 </div>
-                <div class="glass-card">
-                    <div class="table-container">
-                        <table>
+
+                <!-- JOURNAL REGISTER VIEW -->
+                <div id="finance-view-jv-register" class="glass-card finance-view hidden" style="padding: 0; overflow: hidden;">
+                    <div style="padding:1.5rem; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; font-size:1rem; color:#10b981;">Journal Register</h3>
+                        <button class="btn btn-primary" onclick="openJvModal()" style="padding:6px 16px; font-size:0.75rem;">&#43; ADD JV</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="modern-table">
                             <thead>
                                 <tr>
-                                    <th>Note No</th>
-                                    <th>Type</th>
-                                    <th>Party Name</th>
-                                    <th>Reason</th>
-                                    <th style="text-align: right;">Amount</th>
-                                    <th>Date</th>
-                                    <th style="text-align: right;">Actions</th>
-                                    <th>View</th>
+                                    <th style="width: 100px;">JV NO</th>
+                                    <th style="width: 100px;">DATE</th>
+                                    <th>NARRATION</th>
+                                    <th style="text-align: right; width: 150px;">TOTAL (&#8377;)</th>
                                 </tr>
                             </thead>
-                            <tbody id="noteTableBody"></tbody>
+                            <tbody id="jv-grid-body">
+                                <tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading JVs...</td></tr>
+                            </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-
-            <!-- REPORTS TAB (OVERHAULED) -->
-            <div id="tab-reports" class="hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <div>
-                        <h2 class="section-title" style="margin: 0;">📊 Intelligence & Compliance Center</h2>
-                        <p style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 5px;">Strategic reporting and tax audit portal</p>
-                    </div>
-                    <div style="display: flex; gap: 1rem;">
-                         <button class="btn btn-ghost" onclick="window.print()" style="font-size: 0.7rem;">⏣ PRINT VIEW</button>
-                         <button class="btn btn-primary" style="font-size: 0.7rem; background: var(--accent);" onclick="exportAllReports()">📦 EXCEL CONSOLIDATED</button>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
-                    
-                    <!-- FINANCIAL REPORTS -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--primary);">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📝ˆ</span> Financial Performance</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('bill-profit')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Bill-wise Profit Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Itemized margins comparing PTR/PTS vs Sale price.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('p-and-l')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Profit & Loss Statement</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Consolidated revenue vs cost vs expenses.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('cashflow')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Cashflow Analysis</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Inflow (Receipts) vs Outflow (Payouts/Expenses).</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('balance-sheet')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Balance Sheet</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Assets, Liabilities, and Equity overview.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('business-status')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Business Status (Bank Statement)</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Current bank balances and outstanding overview.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('discount-report')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Consolidated Discount Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">All discounts offered across invoices.</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- PARTY & LEDGER REPORTS -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid var(--accent);">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">🤝 </span> Party & Ledger</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('consolidated-ledger')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Consolidated Party Ledger</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">List of all parties with balances.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('party-statement')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Party Statement</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Detailed ledger statement for individual parties.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('party-profit-loss')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Party-wise Profit & Loss</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Profitability breakdown per stockist.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('sale-purchase-party')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Sale/Purchase by Party</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Total sales and purchases segmented by party.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('ageing-report')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Ageing Report (30/60/90+)</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Track long-term pending payments.</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-
-                    <!-- COMPLIANCE & TAXATION -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #10b981;">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📋</span> Compliance & Tax</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-1')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-1 (Sales Return)</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">B2B invoice data for tax filing.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('doc-expiry')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">License Expiry Tracker</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Monitor DL and GST validity dates.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-2')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-2 (Inward Supplies)</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Purchase data for ITC claim filing.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-3b')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-3B Summary</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Consolidated summary of Outward/Inward GST.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gst-transaction')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GST Transaction Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">All transactions involving tax liability.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('gstr-9')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">GSTR-9 (Annual Return)</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Annual comprehensive GST filing report.</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- ITEM & STOCK REPORTS -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #f59e0b;">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 1.5rem;"><span style="opacity: 0.8;">📦</span> Item & Inventory</h3>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('stock-summary')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Stock Summary Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Pdt Name, HSN, Batch, Qty overview.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('item-profit-loss')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Item-wise Profit & Loss</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Margin analysis per individual SKU.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('low-stock')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Low Stock Summary Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Products below threshold re-order levels.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('item-batch')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Item Batch Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Deep dive into batch-level inventory.</span>
-                                </div>
-                            </button>
-                            <button class="btn btn-ghost" style="justify-content: flex-start; text-align: left;" onclick="generateReport('item-discount')">
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-size: 0.85rem; font-weight: 800; color: #fff;">Item-wise Discount Report</span>
-                                    <span style="font-size: 0.65rem; color: var(--text-muted);">Promotional deductions applied per item.</span>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- EXPENSE MANAGEMENT: Full Grid -->
-                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #ef4444; grid-column: 1 / -1;">
-                        <!-- Header Row -->
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-                            <h3 class="section-title" style="font-size: 1rem; margin:0;">&#128184; Expense Register</h3>
-                            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-                                <input type="text" id="exp-search" oninput="filterExpenses()" placeholder="&#128269; Search by head, narration..." style="padding:6px 12px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.75rem; width:220px;">
-                                <select id="exp-filter-type" onchange="filterExpenses()" style="padding:6px 10px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.75rem;">
-                                    <option value="">All Types</option>
-                                    <option value="Direct">Direct</option>
-                                    <option value="Indirect">Indirect</option>
-                                </select>
-                                <button class="btn btn-primary" onclick="openExpenseModal()" style="padding:6px 16px; font-size:0.75rem; background:linear-gradient(135deg,#ef4444,#f97316); border:none;">
-                                    &#43; LOG EXPENSE
-                                </button>
-                                <button class="btn btn-ghost" onclick="generateReport('expense-transaction')" style="padding:6px 12px; font-size:0.75rem;">
-                                    &#128196; PDF Report
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Summary Strip -->
-                        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; margin-bottom:1rem;">
-                            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:10px; padding:10px 14px; text-align:center;">
-                                <div style="font-size:0.55rem; color:#ef4444; font-weight:900; letter-spacing:0.1em;">TOTAL EXPENSES</div>
-                                <div id="exp-stat-total" style="font-size:1.2rem; font-weight:900; color:#ef4444;">&#8377;0.00</div>
-                            </div>
-                            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:10px; padding:10px 14px; text-align:center;">
-                                <div style="font-size:0.55rem; color:#f59e0b; font-weight:900; letter-spacing:0.1em;">DIRECT</div>
-                                <div id="exp-stat-direct" style="font-size:1.2rem; font-weight:900; color:#f59e0b;">&#8377;0.00</div>
-                            </div>
-                            <div style="background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.2); border-radius:10px; padding:10px 14px; text-align:center;">
-                                <div style="font-size:0.55rem; color:#a855f7; font-weight:900; letter-spacing:0.1em;">INDIRECT</div>
-                                <div id="exp-stat-indirect" style="font-size:1.2rem; font-weight:900; color:#a855f7;">&#8377;0.00</div>
-                            </div>
-                        </div>
-
-                        <!-- Expense Table -->
-                        <div style="overflow-x:auto;">
-                            <table style="width:100%; border-collapse:collapse; font-size:0.75rem;">
-                                <thead>
-                                    <tr style="border-bottom:2px solid var(--glass-border);">
-                                        <th style="padding:8px 10px; text-align:left; color:#ef4444; font-size:0.6rem; letter-spacing:0.08em;">REF NO</th>
-                                        <th style="padding:8px 10px; text-align:left; color:var(--text-muted); font-size:0.6rem;">DATE</th>
-                                        <th style="padding:8px 10px; text-align:left; color:var(--text-muted); font-size:0.6rem;">TYPE</th>
-                                        <th style="padding:8px 10px; text-align:left; color:var(--text-muted); font-size:0.6rem;">HEAD</th>
-                                        <th style="padding:8px 10px; text-align:left; color:var(--text-muted); font-size:0.6rem;">NARRATION</th>
-                                        <th style="padding:8px 10px; text-align:left; color:var(--text-muted); font-size:0.6rem;">MODE</th>
-                                        <th style="padding:8px 10px; text-align:right; color:#ef4444; font-size:0.6rem;">AMOUNT (&#8377;)</th>
-                                        <th style="padding:8px 10px; text-align:center; color:var(--text-muted); font-size:0.6rem;">ACTIONS</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="expense-register-body">
-                                    <tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Loading expenses...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
                 </div>
             </div>
 
