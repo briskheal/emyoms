@@ -1732,10 +1732,10 @@ function renderPDCNTable() {
                     ` : ''}
                     <td style="padding: 12px; text-align: center;">
                         <div style="font-size: 0.85rem; font-weight: 900; color: ${balanceLeft <= 0 ? '#ef4444' : '#10b981'}; margin-bottom: 4px;">
-                            ${balanceLeft <= 0 ? 'EXHAUSTED' : `AVAILABLE: ${balanceLeft}`}
+                            ${balanceLeft <= 0 ? 'EXHAUSTED' : `PEN QTY: ${balanceLeft}`}
                         </div>
                         <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700;">
-                            BILLED: ${item.qty}
+                            INV QTY: ${item.qty}
                         </div>
                     </td>
                     <td style="padding: 12px; text-align: right; color: #fff; font-size: 0.8rem;">₹${billedPrice.toFixed(2)}</td>
