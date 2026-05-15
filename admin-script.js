@@ -5904,30 +5904,23 @@ function downloadExcel(data, fileName, sheetName = "Report") {
 
 const EXPENSE_CATEGORIES = {
     Direct: [
-        'Raw Material Purchase',
-        'Packaging Material',
-        'Inward Freight / Logistics',
-        'Manufacturing Cost',
-        'Quality Testing / Lab Fees',
-        'Direct Labour',
-        'Commission / Brokerage',
-        'Sales Discount / Scheme Cost',
-        'Other Direct Cost'
+        'Freight Inward',
+        'Loading & Unloading Charges',
+        'Packing Materials'
     ],
     Indirect: [
-        'Office Rent',
-        'Salary & Wages',
-        'Electricity & Utilities',
-        'Telephone / Internet',
-        'Marketing & Advertising',
+        'Courier & Postage (Outward)',
+        'Staff Salaries & Wages',
         'Travel & Conveyance',
-        'Repairs & Maintenance',
-        'Professional Fees',
+        'Office Rent',
+        'Electricity & Water Bills',
+        'Internet & Telephone Bills',
         'Printing & Stationery',
+        'Staff Welfare',
+        'Marketing & Promotional Expenses',
         'Bank Charges & Interest',
-        'Insurance Premium',
-        'Subscription & Software',
-        'Miscellaneous / Other'
+        'Repairs & Maintenance',
+        'Accounting & Legal Fees'
     ]
 };
 
