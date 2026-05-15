@@ -445,7 +445,8 @@
                 <div id="sub-finance" style="display:none; padding-left: 2.5rem; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
                     <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('invoices', this); closeSidebar()">● Sales Invoices</div>
                     <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('payments', this, 'RECEIPT'); closeSidebar()">● Payment In (Receipts)</div>
-                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('payments', this, 'PAYMENT'); closeSidebar()">● Payment Out (Payouts)</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('payments', this, 'PAYMENT'); closeSidebar()">📤 Payment Out (Payouts)</div>
+                    <div class="nav-item" style="font-size: 0.8rem; padding: 5px 10px;" onclick="switchTab('jvs', this); closeSidebar()">📓 Journal Entries (JV)</div>
                     
                     <div style="margin: 5px 0; border-top: 1px dashed rgba(255,255,255,0.05);"></div>
 
@@ -814,6 +815,13 @@
                                     <input type="number" id="cnt-payout-next" placeholder="Next" style="flex: 1;">
                                 </div>
                             </div>
+                            <div class="form-group" style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <label style="font-size: 0.65rem; color: var(--accent);">JOURNAL VOUCHER (JV)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="cnt-jv-pre" placeholder="Prefix (JV-26-27-)" style="flex: 2;">
+                                    <input type="number" id="cnt-jv-next" placeholder="Next" style="flex: 1;">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1068,6 +1076,37 @@
                                 </tr>
                             </thead>
                             <tbody id="paymentTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JOURNAL VOUCHERS TAB -->
+            <div id="tab-jvs" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 class="section-title" style="margin-bottom: 0.5rem;">📓 Journal Entries (JV)</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Manage complex manual adjustments and double-entry accounting.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openJvModal()">
+                        <i class="fas fa-plus"></i> ADD JOURNAL ENTRY
+                    </button>
+                </div>
+                
+                <div class="glass-card" style="padding: 0; overflow: hidden;">
+                    <div style="overflow-x: auto;">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>JV NO</th>
+                                    <th>DATE</th>
+                                    <th>NARRATION</th>
+                                    <th>TOTAL (DR)</th>
+                                    <th>TOTAL (CR)</th>
+                                    <th>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jvs-grid"></tbody>
                         </table>
                     </div>
                 </div>
@@ -2862,7 +2901,65 @@
         </div>
     </div>
 
-    <!-- MODAL (Expense Entry) -->
+    <!-- JV MODAL -->
+    <div id="jvModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000;">
+        <div class="glass-card" style="width: 900px; margin: 0; border-top: 5px solid #a855f7; padding: 0; overflow: hidden; border-radius: 24px;">
+            <div style="background: rgba(255,255,255,0.03); padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size:0.55rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#a855f7; margin-bottom:4px;">ACCOUNTING</div>
+                    <h2 style="font-size:1.3rem; font-weight:900; color:#fff; margin:0;">📓 New Journal Voucher</h2>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('jvModal').classList.add('hidden')" style="width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; font-size: 1.2rem;">✖</button>
+            </div>
+
+            <form id="jvForm" onsubmit="saveJv(event)" style="padding: 2rem;">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#a855f7; margin-bottom:8px; display:block;">JV DATE</label>
+                        <input type="date" id="jv-date" required style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:0.7rem; font-weight:800; color:#a855f7; margin-bottom:8px; display:block;">NARRATION / REASON</label>
+                        <input type="text" id="jv-narration" required placeholder="e.g. Being adjustment for invoice error..." style="padding:12px; background:rgba(0,0,0,0.4); border:2px solid var(--glass-border); border-radius:12px;">
+                    </div>
+                </div>
+
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 80px 150px 250px 1fr 1fr 50px; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.7rem; font-weight: 800; color: var(--text-muted);">
+                        <div>TYPE</div>
+                        <div>LEDGER</div>
+                        <div>ENTITY NAME</div>
+                        <div>NOTES</div>
+                        <div>AMOUNT (₹)</div>
+                        <div></div>
+                    </div>
+                    <div id="jv-lines-container">
+                        <!-- Lines will be injected here -->
+                    </div>
+                    <button type="button" class="btn btn-ghost" onclick="addJvLine()" style="margin-top: 1rem; color: #a855f7; border: 1px dashed rgba(168, 85, 247, 0.5); width: 100%; border-radius: 8px;">
+                        <i class="fas fa-plus"></i> Add Row
+                    </button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(168, 85, 247, 0.05); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(168, 85, 247, 0.2);">
+                    <div style="display: flex; gap: 2rem;">
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 4px;">TOTAL DEBIT (DR)</div>
+                            <div id="jv-total-dr" style="font-size: 1.5rem; font-weight: 900; color: #ef4444;">₹0.00</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 4px;">TOTAL CREDIT (CR)</div>
+                            <div id="jv-total-cr" style="font-size: 1.5rem; font-weight: 900; color: #10b981;">₹0.00</div>
+                        </div>
+                    </div>
+                    <button type="submit" id="save-jv-btn" class="btn btn-primary" style="background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); padding: 12px 30px; font-size: 1rem;">
+                        <i class="fas fa-save"></i> POST JOURNAL ENTRY
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+\n\n    <!-- MODAL (Expense Entry) -->
     <div id="expenseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000;">
         <div class="glass-card" style="width: 620px; margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 24px;">
             <!-- Header -->
@@ -2970,7 +3067,7 @@
     <datalist id="hsn-list"></datalist>
     <datalist id="gst-rate-list"></datalist>
 
-    <script src="admin-script.js?v=2.7"></script>
+    <script src="admin-script.js?v=2.8"></script>
 
     <audio id="bgMusic" loop preload="auto"></audio>
 </body>
