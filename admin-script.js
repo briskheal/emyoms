@@ -1189,6 +1189,11 @@ async function saveProduct(e) {
         bonusGet: Math.floor(Number(document.getElementById('prod-get').value || 0))
     };
 
+    const saveBtn = document.getElementById('btn-save-product');
+    const oldBtnText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-small"></span> SAVING...';
+
     try {
         const url = id ? `${API_BASE}/admin/products/${id}` : `${API_BASE}/admin/products`;
         const res = await fetch(url, {
@@ -1197,6 +1202,10 @@ async function saveProduct(e) {
             body: JSON.stringify(data)
         });
         const result = await res.json();
+        
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = oldBtnText;
+
         if (result.success) {
             alert("Product saved successfully!");
             closeProductModal();
@@ -1207,6 +1216,9 @@ async function saveProduct(e) {
         }
     } catch (e) { 
         console.error("Save error:", e);
+        const saveBtn = document.getElementById('btn-save-product');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = 'SAVE PRODUCT';
         alert("Failed to save product. Check console for details."); 
     }
 }

@@ -642,9 +642,17 @@ app.post('/api/admin/products', async (req, res) => {
         const product = await db.Product.create(req.body);
         if (req.body.batches && Array.isArray(req.body.batches)) {
             for (const b of req.body.batches) {
-                const cb = { ...b };
-                delete cb.id; delete cb._id;
-                await db.Batch.create({ ...cb, productId: product.id });
+                await db.Batch.create({
+                    batchNo: b.batchNo,
+                    mfgDate: b.mfgDate,
+                    expDate: b.expDate,
+                    mrp: b.mrp || 0,
+                    pts: b.pts || 0,
+                    ptr: b.ptr || 0,
+                    purchaseRate: b.purchaseRate || 0,
+                    qtyAvailable: b.qtyAvailable || 0,
+                    productId: product.id
+                });
             }
         }
         res.json({ success: true, product });
@@ -668,9 +676,17 @@ app.put('/api/admin/products/:id', async (req, res) => {
         if (req.body.batches) {
             await db.Batch.destroy({ where: { productId: product.id } });
             for (const b of req.body.batches) {
-                const cb = { ...b };
-                delete cb.id; delete cb._id;
-                await db.Batch.create({ ...cb, productId: product.id });
+                await db.Batch.create({
+                    batchNo: b.batchNo,
+                    mfgDate: b.mfgDate,
+                    expDate: b.expDate,
+                    mrp: b.mrp || 0,
+                    pts: b.pts || 0,
+                    ptr: b.ptr || 0,
+                    purchaseRate: b.purchaseRate || 0,
+                    qtyAvailable: b.qtyAvailable || 0,
+                    productId: product.id
+                });
             }
         }
         res.json({ success: true, product });
