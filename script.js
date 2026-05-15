@@ -1731,7 +1731,8 @@ function renderPDCNTable() {
                         </td>
                     ` : ''}
                     <td style="padding: 12px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
-                        <span style="color: ${balanceLeft <= 0 ? '#ef4444' : 'var(--primary)'}; font-weight: 800;">${balanceLeft}</span>
+                        <div style="color: ${balanceLeft <= 0 ? '#ef4444' : 'var(--primary)'}; font-weight: 800; font-size: 0.9rem;">${balanceLeft}</div>
+                        <div style="font-size: 0.55rem; color: var(--text-muted); margin-top: 2px;">Rem. of ${item.qty}</div>
                     </td>
                     <td style="padding: 12px; text-align: right; color: #fff; font-size: 0.8rem;">₹${billedPrice.toFixed(2)}</td>
                     <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.8rem;">${gst}%</td>
@@ -1917,10 +1918,10 @@ async function submitPDCNClaim() {
         const activeVariations = variations.filter(v => v.active && v.claimQty > 0);
         
         const totalQty = activeVariations.reduce((sum, v) => sum + v.claimQty, 0);
-        const maxEligible = item.availableQty || item.qty;
+        const maxEligible = item.availableQty !== undefined ? item.availableQty : item.qty;
         
         if (totalQty > maxEligible) {
-            validationError = `⚠️ Qty Error: Total claimed qty for ${item.name} (${totalQty}) exceeds eligible qty (${maxEligible}).`;
+            validationError = `⚠️ Qty Error: Total claimed qty for ${item.name} (${totalQty}) exceeds remaining eligible qty (${maxEligible}).`;
         }
 
         activeVariations.forEach(v => {

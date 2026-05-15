@@ -1972,25 +1972,28 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
 
         // 2. Validate quantities across all items
         for (const newItem of items) {
+            const requestedQty = Number(newItem.qty || newItem.claimQty || 0);
+            if (requestedQty <= 0) continue;
+
             let previouslyClaimed = 0;
             existingClaims.forEach(claim => {
                 const match = claim.items.find(i => i.productId === newItem.productId);
                 if (match) previouslyClaimed += Number(match.qty || 0);
             });
 
-            // We need to know the original invoice qty for this product
+            // Get the original invoice quantity for this specific product
             const inv = await db.Invoice.findOne({
                 where: { invoiceNo, stockistId },
                 include: [{ model: db.InvoiceItem, as: 'items', where: { productId: newItem.productId } }]
             });
 
-            if (!inv || !inv.items[0]) continue; // Should not happen if UI is correct
+            if (!inv || !inv.items || inv.items.length === 0) continue; 
             
             const originalQty = Number(inv.items[0].qty || 0);
-            if ((previouslyClaimed + Number(newItem.claimQty)) > originalQty) {
+            if ((previouslyClaimed + requestedQty) > originalQty) {
                 return res.status(400).json({ 
                     success: false, 
-                    message: `⚠️ OVER-CLAIM ERROR: Product '${newItem.name}' already has ${previouslyClaimed} units claimed. Only ${originalQty - previouslyClaimed} units remaining.` 
+                    message: `⚠️ OVER-CLAIM ERROR: Product '${newItem.name}' already has ${previouslyClaimed} units claimed. Only ${originalQty - previouslyClaimed} units remaining to claim.` 
                 });
             }
         }
