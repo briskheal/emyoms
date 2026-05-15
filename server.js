@@ -2375,6 +2375,32 @@ app.post('/api/admin/expenses', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+app.put('/api/admin/expenses/:id', async (req, res) => {
+    try {
+        const expense = await db.Expense.findByPk(req.params.id);
+        if (!expense) return res.status(404).json({ success: false, error: 'Expense not found' });
+        await expense.update({
+            type:          req.body.type          || expense.type,
+            categoryName:  req.body.categoryName  || expense.categoryName,
+            title:         req.body.title         || expense.title,
+            date:          req.body.date          || expense.date,
+            amount:        Number(req.body.amount) || expense.amount,
+            paymentMethod: req.body.paymentMethod || expense.paymentMethod,
+            notes:         req.body.notes         !== undefined ? req.body.notes : expense.notes
+        });
+        res.json({ success: true, expense });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.delete('/api/admin/expenses/:id', async (req, res) => {
+    try {
+        const expense = await db.Expense.findByPk(req.params.id);
+        if (!expense) return res.status(404).json({ success: false, error: 'Expense not found' });
+        await expense.destroy();
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 // --- JOURNAL ENTRIES (JV) ---
 
 app.get('/api/admin/journal-vouchers', async (req, res) => {
