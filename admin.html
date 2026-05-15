@@ -1605,7 +1605,12 @@
             <div id="tab-system" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title" style="margin: 0;">🛠️  System Health & Logs</h2>
-                    <button class="btn btn-ghost" onclick="loadFailedEmails()">🔄 Refresh Logs</button>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn" onclick="resetSystemDatabase()" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 800; padding: 8px 15px;">
+                            ⚠️ RESET DATABASE (TEST PHASE)
+                        </button>
+                        <button class="btn btn-ghost" onclick="loadFailedEmails()">🔄 Refresh Logs</button>
+                    </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">

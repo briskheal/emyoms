@@ -11,13 +11,21 @@ pg.types.setTypeParser(1700, function(val) {
     return val === null ? null : parseFloat(val);
 });
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+const NEON_HOST = "ep-green-mountain-aonjketm-pooler.c-2.ap-southeast-1.aws.neon.tech";
+const NEON_IP = "13.251.17.193";
+const NEON_USER = "neondb_owner";
+const NEON_PASS = "npg_bqJ3wQE8GWuX";
+const NEON_DB = "neondb";
+
+const sequelize = new Sequelize(`postgresql://${NEON_USER}:${NEON_PASS}@${NEON_IP}/${NEON_DB}`, {
     dialect: 'postgres',
     logging: false,
     dialectOptions: {
         ssl: {
             require: true,
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            servername: NEON_HOST,
+            checkServerIdentity: () => undefined
         }
     }
 });

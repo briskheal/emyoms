@@ -315,10 +315,6 @@ const PORT = process.env.PORT || 4000;
 db.sequelize.authenticate()
     .then(() => {
         console.log('✅ PostgreSQL Connected Successfully');
-        return db.sequelize.sync({ alter: true });
-    })
-    .then(() => {
-        console.log('✅ Database Models Synced');
         app.listen(PORT, () => {
             console.log(`🚀 EMYOMS Server running on http://localhost:${PORT}`);
         });
@@ -2321,5 +2317,48 @@ app.get('/api/admin/reports/gstr1', async (req, res) => {
 
         res.json(report);
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- SYSTEM ADMINISTRATION (TESTING PHASE ONLY) ---
+
+app.post('/api/admin/system/reset', async (req, res) => {
+    try {
+        console.log("🚀 Manual System Reset Triggered via API");
+        
+        // Use a more aggressive approach for testing reset
+        const modelsToPurge = [
+            db.PurchaseItem, db.PurchaseEntry,
+            db.InvoiceItem, db.Invoice,
+            db.OrderItem, db.Order,
+            db.PDCNClaimItem, db.PDCNClaim,
+            db.NoteItem, db.FinancialNote,
+            db.Payment, db.Expense,
+            db.Media
+        ];
+
+        for (const model of modelsToPurge) {
+            if (model) {
+                // Try truncate first, then delete
+                await model.destroy({ where: {}, truncate: true, cascade: true })
+                    .catch(() => model.destroy({ where: {}, cascade: true }));
+            }
+        }
+
+        // Reset Master Data States
+        await db.Product.update({ qtyAvailable: 0 }, { where: {} });
+        await db.Batch.update({ qtyAvailable: 0 }, { where: {} });
+        await db.Stockist.update({ outstandingBalance: 0 }, { where: {} });
+
+        // Reset Document Counters
+        const company = await db.Company.findOne();
+        if (company) {
+            await company.update({ documentCounters: {} });
+        }
+
+        res.json({ success: true, message: "System reset successful. All transactional data cleared." });
+    } catch (e) {
+        console.error("❌ Reset Failed:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 

@@ -492,7 +492,6 @@ async function saveSettings(e) {
 // Helper functions removed from here as they are defined at the top of the file.
 
 async function handleAdminLogin(e) {
-
     e.preventDefault();
     const adminId = document.getElementById('admin-id-input').value;
     const password = document.getElementById('admin-pass-input').value;
@@ -511,6 +510,48 @@ async function handleAdminLogin(e) {
             alert("Invalid Credentials");
         }
     } catch (e) { alert("Auth Error"); }
+}
+
+async function resetSystemDatabase() {
+    const confirmation = confirm("🚨 WARNING: This will PERMANENTLY DELETE all orders, invoices, purchases, payments, and resets inventory counts. This action CANNOT be undone.\n\nAre you sure you want to proceed?");
+    if (!confirmation) return;
+
+    // Use prompt for a more secure check
+    const securityCheck = prompt("FINAL CONFIRMATION: Type 'RESET' (all caps) to confirm deletion of all transactional data.");
+    if (securityCheck !== 'RESET') {
+        alert("Reset cancelled. Text did not match.");
+        return;
+    }
+
+    try {
+        // Find the button (it might be the event target)
+        const btn = document.querySelector('button[onclick="resetSystemDatabase()"]');
+        const originalText = btn ? btn.innerHTML : "RESET DATABASE";
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = "⏳ PURGING DATABASE...";
+        }
+
+        const res = await fetch(`${API_BASE}/admin/system/reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            alert("✅ System Reset Successful! All transactional data cleared and counters reset.");
+            window.location.reload();
+        } else {
+            alert("❌ Reset Failed: " + (result.error || "Unknown error"));
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+    } catch (e) {
+        alert("❌ Error: Could not connect to server.");
+        console.error(e);
+    }
 }
 
 // --- NAVIGATION ---
