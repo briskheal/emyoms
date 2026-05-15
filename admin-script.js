@@ -1477,7 +1477,8 @@ async function addMaster(type) {
             if (input) input.value = '';
             loadMasters();
         } else {
-            alert("Action Failed: " + (result.message || result.error || "Unknown error"));
+            const detailStr = result.details && result.details.length ? ("\nDetails: " + result.details.join(", ")) : "";
+            alert("Action Failed: " + (result.message || result.error || "Unknown error") + detailStr);
         }
     } catch (e) { alert("Operation failed."); }
 }

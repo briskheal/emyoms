@@ -507,7 +507,13 @@ app.post('/api/admin/categories', async (req, res) => {
     try {
         const item = await db.Category.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ 
+            success: false, 
+            error: e.message, 
+            details: e.errors ? e.errors.map(err => err.message) : [] 
+        }); 
+    }
 });
 
 app.delete('/api/admin/categories/:id', async (req, res) => {
@@ -528,7 +534,13 @@ app.post('/api/admin/hsns', async (req, res) => {
     try {
         const item = await db.HSN.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ 
+            success: false, 
+            error: e.message, 
+            details: e.errors ? e.errors.map(err => err.message) : [] 
+        }); 
+    }
 });
 
 app.delete('/api/admin/hsns/:id', async (req, res) => {
@@ -549,7 +561,13 @@ app.post('/api/admin/gst', async (req, res) => {
     try {
         const item = await db.GST.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ 
+            success: false, 
+            error: e.message, 
+            details: e.errors ? e.errors.map(err => err.message) : [] 
+        }); 
+    }
 });
 
 app.delete('/api/admin/gst/:id', async (req, res) => {
@@ -570,7 +588,13 @@ app.post('/api/admin/groups', async (req, res) => {
     try {
         const item = await db.Group.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ 
+            success: false, 
+            error: e.message, 
+            details: e.errors ? e.errors.map(err => err.message) : [] 
+        }); 
+    }
 });
 
 app.delete('/api/admin/groups/:id', async (req, res) => {
@@ -591,7 +615,13 @@ app.post('/api/admin/hq', async (req, res) => {
     try {
         const item = await db.HQ.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ 
+            success: false, 
+            error: e.message, 
+            details: e.errors ? e.errors.map(err => err.message) : [] 
+        }); 
+    }
 });
 
 app.delete('/api/admin/hq/:id', async (req, res) => {
@@ -612,7 +642,13 @@ app.post('/api/admin/expense-categories', async (req, res) => {
     try {
         const item = await db.ExpenseCategory.create(req.body);
         res.json({ success: true, item: addIdAlias(item) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ 
+            success: false, 
+            error: e.message, 
+            details: e.errors ? e.errors.map(err => err.message) : [] 
+        }); 
+    }
 });
 
 // --- PRODUCT MANAGEMENT ---
