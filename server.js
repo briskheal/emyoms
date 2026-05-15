@@ -2303,6 +2303,15 @@ app.get('/api/admin/expenses', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Preview next document number (read-only, does NOT consume it)
+app.get('/api/admin/next-doc-no', async (req, res) => {
+    try {
+        const type = req.query.type || 'expense';
+        const docNo = await getNextDocNo(type);
+        res.json({ docNo });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/admin/expenses', async (req, res) => {
     try {
         const expenseNo = await getNextDocNo('expense');

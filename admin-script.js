@@ -5949,6 +5949,28 @@ async function loadExpenseCategoryOptions() {
     }
 }
 
+async function openExpenseModal() {
+    const modal = document.getElementById('expenseModal');
+    modal.classList.remove('hidden');
+
+    // Reset fields
+    document.getElementById('expenseForm').reset();
+    document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('exp-category').innerHTML = '<option value="">-- Select Type First --</option>';
+
+    // Auto-fetch next Expense Reference Number from backend
+    try {
+        const res = await fetch(`${API_BASE}/admin/next-doc-no?type=expense`);
+        if (res.ok) {
+            const { docNo } = await res.json();
+            document.getElementById('exp-ref-display').innerText = docNo;
+            document.getElementById('exp-ref').value = docNo;
+        }
+    } catch(e) {
+        document.getElementById('exp-ref-display').innerText = 'Auto';
+    }
+}
+
 async function saveExpense(e) {
     e.preventDefault();
     const btn = e.submitter;
