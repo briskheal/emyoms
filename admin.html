@@ -3146,7 +3146,7 @@
 
     <!-- MODAL (Payment Entry) -->
     <div id="paymentModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 5000;">
-        <div class="glass-card" style="width: 700px; margin: 0; border-top: 5px solid var(--primary); padding: 0; overflow: hidden; border-radius: 24px;">
+        <div class="glass-card" style="width: min(98vw, 1400px); margin: 0; border-top: 5px solid var(--primary); padding: 0; overflow: hidden; border-radius: 24px;">
             <!-- Header -->
             <div style="background: rgba(255,255,255,0.03); padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
                 <div>
@@ -3166,7 +3166,7 @@
                 
                 <!-- ULTRA-DENSE HORIZONTAL VOUCHER BAR -->
                 <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: 180px 1fr 130px 130px 130px 150px; gap: 0.75rem; align-items: end;">
+                    <div style="display: grid; grid-template-columns: 140px 1.5fr 130px 130px 130px 180px; gap: 0.75rem; align-items: end;">
                         <div>
                             <label style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; display: block;">1. Type</label>
                             <select id="pay-type" required onchange="updatePaymentContext()" style="font-size: 0.8rem; padding: 8px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; width: 100%;">
@@ -3389,7 +3389,7 @@
 \n\n    <!-- MODAL (Expense Entry) -->
     <!-- MODAL: Expense Entry (High-Density Horizontal) -->
     <div id="expenseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;">
-        <div class="glass-card" style="width: min(98vw, 1200px); margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 20px;">
+        <div class="glass-card" style="width: min(98vw, 1500px); margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 20px;">
             <div style="background: rgba(255,255,255,0.03); padding: 1rem 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="font-size:0.5rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#ef4444; margin-bottom:2px;">FINANCIAL CONTROL</div>
@@ -3398,7 +3398,7 @@
                 <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width:36px; height:36px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-size:1rem;">&#10005;</button>
             </div>
             <form id="expenseForm" onsubmit="saveExpense(event)" style="padding: 1.5rem;">
-                <div style="display: grid; grid-template-columns: 120px 240px 1fr 140px 140px 110px; gap: 0.75rem; align-items: end; margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 120px 240px 1.5fr 140px 140px 140px; gap: 0.75rem; align-items: end; margin-bottom: 1rem;">
                     <div>
                         <label style="font-size:0.55rem; font-weight:800; color:var(--primary); display:block; margin-bottom:4px;">DATE</label>
                         <input type="date" id="exp-date" required style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.78rem;">
