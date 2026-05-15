@@ -496,7 +496,7 @@ const addIdAlias = (data) => {
     return data;
 };
 
-app.get('/api/categories', async (req, res) => {
+app.get('/api/admin/categories', async (req, res) => {
     try {
         const data = await db.Category.findAll();
         res.json(addIdAlias(data));
@@ -517,7 +517,7 @@ app.delete('/api/admin/categories/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/hsns', async (req, res) => {
+app.get('/api/admin/hsns', async (req, res) => {
     try {
         const data = await db.HSN.findAll();
         res.json(addIdAlias(data));
@@ -538,7 +538,7 @@ app.delete('/api/admin/hsns/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/gst', async (req, res) => {
+app.get('/api/admin/gst', async (req, res) => {
     try {
         const data = await db.GST.findAll();
         res.json(addIdAlias(data));
@@ -559,7 +559,7 @@ app.delete('/api/admin/gst/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/groups', async (req, res) => {
+app.get('/api/admin/groups', async (req, res) => {
     try {
         const data = await db.Group.findAll();
         res.json(addIdAlias(data));
@@ -639,7 +639,8 @@ app.get('/api/products', async (req, res) => {
 
 app.post('/api/admin/products', async (req, res) => {
     try {
-        const product = await db.Product.create(req.body);
+        const { name, manufacturer, hsn, category, group, packing, mrp, ptr, pts, purchaseRate, gstPercent, qtyAvailable, active, bonusBuy, bonusGet } = req.body;
+        const product = await db.Product.create({ name, manufacturer, hsn, category, group, packing, mrp, ptr, pts, purchaseRate, gstPercent, qtyAvailable, active, bonusBuy, bonusGet });
         if (req.body.batches && Array.isArray(req.body.batches)) {
             for (const b of req.body.batches) {
                 await db.Batch.create({
@@ -661,6 +662,7 @@ app.post('/api/admin/products', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             error: err.message, 
+            debug: { body: req.body, params: req.params },
             details: err.errors ? err.errors.map(e => e.message) : [] 
         }); 
     }
@@ -671,7 +673,8 @@ app.put('/api/admin/products/:id', async (req, res) => {
         const product = await db.Product.findByPk(req.params.id);
         if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
         
-        await product.update(req.body);
+        const { name, manufacturer, hsn, category, group, packing, mrp, ptr, pts, purchaseRate, gstPercent, qtyAvailable, active, bonusBuy, bonusGet } = req.body;
+        await product.update({ name, manufacturer, hsn, category, group, packing, mrp, ptr, pts, purchaseRate, gstPercent, qtyAvailable, active, bonusBuy, bonusGet });
         
         if (req.body.batches) {
             await db.Batch.destroy({ where: { productId: product.id } });
@@ -695,6 +698,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             error: err.message, 
+            debug: { body: req.body, params: req.params },
             details: err.errors ? err.errors.map(e => e.message) : [] 
         }); 
     }

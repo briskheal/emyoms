@@ -448,7 +448,7 @@ async function saveSettings(e) {
         dlNo: safeGetVal('set-dl-no'),
         fssaiNo: safeGetVal('set-fssai-no'),
         bankDetails: safeGetVal('set-bank-details'),
-        gstRate: Number(safeGetVal('set-gst-rate')),
+        gstRate: Math.floor(Number(safeGetVal('set-gst-rate'))),
         invoiceTerms: safeGetVal('set-invoice-terms'),
         cnTerms: safeGetVal('set-cn-terms'),
         dnTerms: safeGetVal('set-dn-terms'),
@@ -1128,7 +1128,7 @@ function renderProducts(list = allProducts) {
             <td style="color:var(--accent); font-weight:700;">₹${p.ptr}</td>
             <td>₹${p.pts}</td>
             <td style="color:#10b981; font-weight:700;">₹${p.purchaseRate || 0}</td>
-            <td>${p.gstPercent}%</td>
+            <td>${Math.round(p.gstPercent || 0)}%</td>
             <td>${p.qtyAvailable}</td>
             <td><span class="badge ${p.active ? 'badge-approved' : 'badge-pending'}">${p.active ? 'Active' : 'Inactive'}</span></td>
             <td style="white-space: nowrap;">
@@ -1179,7 +1179,7 @@ async function saveProduct(e) {
         group: document.getElementById('prod-group').value,
         packing: document.getElementById('prod-packing').value,
         mrp: Number(document.getElementById('prod-mrp').value),
-        gstPercent: Number(document.getElementById('prod-gst').value),
+        gstPercent: Math.floor(Number(document.getElementById('prod-gst').value || 12)),
         ptr: Number(document.getElementById('prod-ptr').value),
         pts: Number(document.getElementById('prod-pts').value),
         purchaseRate: Number(document.getElementById('prod-purchase-rate').value || 0),
@@ -1212,7 +1212,8 @@ async function saveProduct(e) {
             loadProducts();
         } else {
             const detailStr = result.details && result.details.length ? ("\nDetails: " + result.details.join(", ")) : "";
-            alert("Failed to save: " + (result.error || result.message || "Unknown error") + detailStr);
+            const debugStr = result.debug ? ("\nDebug: " + JSON.stringify(result.debug)) : "";
+            alert("Failed to save: " + (result.error || result.message || "Unknown error") + detailStr + debugStr);
         }
     } catch (e) { 
         console.error("Save error:", e);
@@ -1398,7 +1399,16 @@ function renderMasterLists() {
     render('master-cat-list', window.masters.categories, 'name', 'categories');
     render('master-group-list', window.masters.groups, 'name', 'groups');
     render('master-hsn-list', window.masters.hsns, 'code', 'hsns');
-    render('master-gst-list', window.masters.gst, 'rate', 'gst');
+    // Ensure GST is displayed as integer
+    const gstList = document.getElementById('master-gst-list');
+    if (gstList && window.masters.gst) {
+        gstList.innerHTML = window.masters.gst.map(item => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
+                <span>${Math.round(item.rate)}%</span>
+                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('gst', '${item._id}')">✖</button>
+            </div>
+        `).join('');
+    }
     render('master-hq-list', window.masters.hq || [], 'name', 'hq');
     render('master-exp-cat-list', window.masters.expenseCategories || [], 'name', 'expense-categories');
 }
@@ -1424,7 +1434,7 @@ async function addMaster(type) {
         inputIds = ['new-hsn-code', 'new-hsn-desc'];
     } else if (type === 'gst') {
         val = document.getElementById('new-gst-rate').value;
-        body = { rate: Number(val) };
+        body = { rate: Math.floor(Number(val)) };
         inputIds = ['new-gst-rate'];
     } else if (type === 'hq') {
         val = document.getElementById('new-hq-name').value.trim().toUpperCase();
