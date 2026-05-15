@@ -7771,6 +7771,10 @@ switchTab = function(tabId, el, ...args) {
     if (tabId === 'jvs') {
         loadTrialBalance(); // Default view in Accounts & Ledgers
     }
+    if (tabId === 'reports') {
+        loadExpenses();
+        refreshInventoryVal();
+    }
 };
 
 async function loadFinancialStatements() {
