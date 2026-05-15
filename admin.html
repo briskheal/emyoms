@@ -3160,77 +3160,70 @@
             </div>
 
             <div style="display: flex; flex: 1; overflow: hidden;">
+                
                 <form id="paymentForm" onsubmit="savePayment(event)" style="flex: 2; padding: 2rem; border-right: 1px solid var(--glass-border); overflow-y: auto; margin: 0; background: rgba(0,0,0,0.1);">
                 <input type="hidden" id="pay-id">
                 
-                <!-- HORIZONTAL VOUCHER INFO BAR -->
-                <div style="display: grid; grid-template-columns: 0.8fr 1.5fr 1fr 1fr 1fr; gap: 0.8rem; margin-bottom: 2rem; background: rgba(255,255,255,0.03); padding: 1.2rem; border-radius: 16px; border: 1px solid var(--glass-border); align-items: flex-end; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                    <div class="form-group">
-                        <label style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 6px; display: block; opacity: 0.8;">Voucher Type</label>
-                        <select id="pay-type" required onchange="updatePaymentContext()" style="font-size: 0.8rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; width: 100%;">
-                            <option value="RECEIPT">RECEIPT (In)</option>
-                            <option value="PAYMENT">PAYMENT (Out)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label id="pay-party-label" style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 6px; display: block; opacity: 0.8;">1. Select Party / Account</label>
-                        <select id="pay-party" required onchange="updatePartyBalanceDisplay()" style="font-size: 0.8rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; width: 100%;">
-                            <option value="">-- Choose Party --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 6px; display: block; opacity: 0.8;">Voucher Date</label>
-                        <input type="date" id="pay-date" required style="font-size: 0.8rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; width: 100%;">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 6px; display: block; opacity: 0.8;">Payment Method</label>
-                        <select id="pay-method" required style="font-size: 0.8rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; width: 100%;">
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="UPI">UPI / GPay</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Cheque">Cheque</option>
-                            <option value="Adjustment">Adjustment</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 6px; display: block; opacity: 0.8;">Ref / Txn No</label>
-                        <input type="text" id="pay-ref" placeholder="ID / Chq No" style="font-size: 0.8rem; padding: 10px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; width: 100%;">
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 2rem; align-items: stretch;">
-                    <!-- Amount Section -->
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column; justify-content: center; background: rgba(245, 158, 11, 0.03); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 24px; padding: 2rem; text-align: center;">
-                            <label style="font-size: 0.65rem; font-weight: 900; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem; display: block;">2. ENTER AMOUNT (₹)</label>
-                            <input type="number" id="pay-amount" required step="0.01" placeholder="0.00" 
-                                   oninput="previewBillAdjustment(); updateLinkedTotal()"
-                                   style="font-size: 3rem; font-weight: 950; color: var(--accent); background: transparent; border: none; text-align: center; width: 100%; outline: none; font-family: monospace;">
-                            <div id="party-total-due" style="font-size: 0.85rem; font-weight: 800; color: var(--text-muted); margin-top: 1.5rem; opacity: 0.7;">Current Outstanding: ₹0.00</div>
+                <!-- ULTRA-DENSE HORIZONTAL VOUCHER BAR -->
+                <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 180px 1fr 130px 130px 130px 150px; gap: 0.75rem; align-items: end;">
+                        <div>
+                            <label style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; display: block;">1. Type</label>
+                            <select id="pay-type" required onchange="updatePaymentContext()" style="font-size: 0.8rem; padding: 8px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; width: 100%;">
+                                <option value="RECEIPT">RECEIPT (In)</option>
+                                <option value="PAYMENT">PAYMENT (Out)</option>
+                            </select>
                         </div>
-                    </div>
-
-                    <!-- Auto-Adjustment Preview Area -->
-                    <div id="bill-adjustment-section" class="glass-card" style="background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); padding: 1.5rem; border-radius: 24px; display: flex; flex-direction: column;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.8rem;">
-                            <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1.5px; text-transform: uppercase;">🔄 FIFO ALLOCATION PREVIEW</span>
+                        <div>
+                            <label id="pay-party-label" style="font-size: 0.55rem; font-weight: 900; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; display: block;">2. Party / Account</label>
+                            <select id="pay-party" required onchange="updatePartyBalanceDisplay()" style="font-size: 0.8rem; padding: 8px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; width: 100%;">
+                                <option value="">-- Choose Party --</option>
+                            </select>
                         </div>
-                        <div id="bill-preview-list" style="flex: 1; max-height: 200px; overflow-y: auto; font-size: 0.85rem;">
-                            <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; font-style: italic; opacity: 0.5;">
-                                System will automatically link this payment to oldest pending invoices...
-                            </div>
+                        <div>
+                            <label style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Date</label>
+                            <input type="date" id="pay-date" required style="font-size: 0.8rem; padding: 8px; background: transparent; border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Method</label>
+                            <select id="pay-method" required style="font-size: 0.8rem; padding: 8px; background: transparent; border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; width: 100%;">
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="UPI">UPI / GPay</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="Adjustment">Adjustment</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display: block;">Ref No</label>
+                            <input type="text" id="pay-ref" placeholder="Ref ID" style="font-size: 0.8rem; padding: 8px; background: transparent; border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; width: 100%;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.55rem; font-weight: 900; color: #ef4444; text-transform: uppercase; margin-bottom: 4px; display: block;">Amount (&#8377;)</label>
+                            <input type="number" id="pay-amount" required step="0.01" oninput="previewBillAdjustment()" placeholder="0.00" style="font-size: 1rem; font-weight: 900; padding: 8px; background: rgba(239,68,68,0.1); border: 2px solid #ef4444; border-radius: 6px; color: #ef4444; width: 100%; text-align: right;">
                         </div>
                     </div>
                 </div>
 
-                <!-- Action Footer -->
-                <div style="display: flex; justify-content: flex-end; gap: 1.5rem; margin-top: 3rem; border-top: 1px solid var(--glass-border); padding-top: 2rem;">
-                    <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="font-weight: 900; padding: 12px 35px; letter-spacing: 1px; color: #94a3b8;">✕ DISCARD</button>
-                    <button type="submit" id="pay-submit-btn" class="btn btn-primary" style="padding: 15px 70px; font-weight: 950; font-size: 1.1rem; letter-spacing: 1.5px; box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4); background: var(--grad-primary); border: none;">
+                <div id="bill-adjustment-section" class="glass-card" style="background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); padding: 1.5rem; border-radius: 24px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.8rem;">
+                        <span style="font-size: 0.6rem; font-weight: 900; color: var(--primary); letter-spacing: 1.5px; text-transform: uppercase;">🔄 FIFO ALLOCATION PREVIEW</span>
+                        <div id="party-total-due" style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted);">Outstanding: ₹0.00</div>
+                    </div>
+                    <div id="bill-preview-list" style="flex: 1; max-height: 300px; overflow-y: auto; font-size: 0.85rem;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; font-style: italic; opacity: 0.5;">
+                            Select a party to see and link pending invoices...
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-ghost" onclick="closePaymentModal()" style="font-weight: 900; padding: 10px 30px;">✕ DISCARD</button>
+                    <button type="submit" id="pay-submit-btn" class="btn btn-primary" style="padding: 10px 50px; font-weight: 950; font-size: 1rem; background: var(--grad-primary); border: none;">
                         ✓ CONFIRM & POST
                     </button>
                 </div>
-            </form>
+                </form>
                 <!-- Bill-wise Allocation Sidebar -->
                 <div id="pending-bills-sidebar" style="flex: 1; padding: 2rem; background: rgba(255,255,255,0.02); overflow-y: auto; display: flex; flex-direction: column;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -3394,63 +3387,34 @@
         </div>
     </div>
 \n\n    <!-- MODAL (Expense Entry) -->
-    <!-- MODAL: Expense Entry (Horizontal Layout) -->
+    <!-- MODAL: Expense Entry (High-Density Horizontal) -->
     <div id="expenseModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(20px); display: flex; align-items: center; justify-content: center; z-index: 4000; padding: 1rem;">
-        <div class="glass-card" style="width: min(98vw, 1100px); margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 20px;">
-
-            <!-- Header -->
+        <div class="glass-card" style="width: min(98vw, 1200px); margin: 0; border-top: 5px solid #ef4444; padding: 0; overflow: hidden; border-radius: 20px;">
             <div style="background: rgba(255,255,255,0.03); padding: 1rem 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div>
-                        <div style="font-size:0.5rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#ef4444; margin-bottom:2px;">EXPENSE MANAGEMENT</div>
-                        <h2 style="font-size:1.1rem; font-weight:900; color:#fff; margin:0;">&#128184; Log New Expense</h2>
-                    </div>
-                    <div style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 4px 12px;">
-                        <div style="font-size:0.55rem; color:var(--text-muted);">REF NO (AUTO)</div>
-                        <div id="exp-ref-display" style="font-size:0.85rem; font-weight:900; color:#ef4444; letter-spacing:1px;">Loading...</div>
-                    </div>
+                <div>
+                    <div style="font-size:0.5rem; font-weight:900; letter-spacing:0.15em; text-transform:uppercase; color:#ef4444; margin-bottom:2px;">FINANCIAL CONTROL</div>
+                    <h2 style="font-size:1.1rem; font-weight:900; color:#fff; margin:0;">&#128184; Log New Expense</h2>
                 </div>
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width:36px; height:36px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-size:1rem;" onmouseover="this.style.background='rgba(239,68,68,0.3)'; this.style.color='#ef4444';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#fff';">&#10005;</button>
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="width:36px; height:36px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-size:1rem;">&#10005;</button>
             </div>
-
-            <form id="expenseForm" onsubmit="saveExpense(event)" style="padding: 1.25rem 1.5rem;">
-
-                <!-- HORIZONTAL ENTRY ROW -->
-                <div style="display: grid; grid-template-columns: 110px 115px 185px 1fr 130px 140px 110px; gap: 0.75rem; align-items: end; margin-bottom: 0.75rem;">
-
+            <form id="expenseForm" onsubmit="saveExpense(event)" style="padding: 1.5rem;">
+                <div style="display: grid; grid-template-columns: 120px 240px 1fr 140px 140px 110px; gap: 0.75rem; align-items: end; margin-bottom: 1rem;">
                     <div>
-                        <label style="font-size:0.6rem; font-weight:800; color:#ef4444; display:block; margin-bottom:4px;">DATE</label>
+                        <label style="font-size:0.55rem; font-weight:800; color:var(--primary); display:block; margin-bottom:4px;">DATE</label>
                         <input type="date" id="exp-date" required style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.78rem;">
                     </div>
-
                     <div>
-                        <label style="font-size:0.6rem; font-weight:800; color:#ef4444; display:block; margin-bottom:4px;">TYPE</label>
-                        <select id="exp-type" required onchange="loadExpenseCategoryOptions()" style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.78rem;">
-                            <option value="">-- Type --</option>
-                            <option value="Direct">Direct</option>
-                            <option value="Indirect">Indirect</option>
+                        <label style="font-size:0.55rem; font-weight:800; color:var(--primary); display:block; margin-bottom:4px;">EXPENSE HEAD (CATEGORY)</label>
+                        <select id="exp-category" required style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.8rem; font-weight:700;">
+                            <option value="">-- Choose Head --</option>
                         </select>
                     </div>
-
                     <div>
-                        <label style="font-size:0.6rem; font-weight:800; color:#ef4444; display:block; margin-bottom:4px;">EXPENSE HEAD</label>
-                        <select id="exp-category" required style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.78rem;">
-                            <option value="">-- Select Type First --</option>
-                        </select>
+                        <label style="font-size:0.55rem; font-weight:800; display:block; margin-bottom:4px; color:var(--text-muted);">DESCRIPTION / NARRATION</label>
+                        <input type="text" id="exp-title" required placeholder="e.g. Shop Rent, Electricity, Staff Tea..." style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.8rem;">
                     </div>
-
                     <div>
-                        <label style="font-size:0.6rem; font-weight:800; display:block; margin-bottom:4px;">NARRATION / DESCRIPTION</label>
-                        <input type="text" id="exp-title" required placeholder="e.g. Office Rent April 2026, Salary - Ramesh Kumar..." style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.78rem;">
-                    </div>
-
-                    <div>
-                        <label style="font-size:0.6rem; font-weight:800; color:#ef4444; display:block; margin-bottom:4px;">AMOUNT (&#8377;)</label>
-                        <input type="number" id="exp-amount" required step="0.01" placeholder="0.00" style="width:100%; padding:8px; font-size:1rem; font-weight:900; color:#ef4444; background:rgba(239,68,68,0.05); border:2px solid #ef4444; border-radius:8px; text-align:right;">
-                    </div>
-
-                    <div>
-                        <label style="font-size:0.6rem; font-weight:800; display:block; margin-bottom:4px;">PAYMENT MODE</label>
+                        <label style="font-size:0.55rem; font-weight:800; display:block; margin-bottom:4px; color:var(--text-muted);">PAYMENT MODE</label>
                         <select id="exp-method" style="width:100%; padding:8px; background:rgba(0,0,0,0.4); border:1.5px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.78rem;">
                             <option value="Cash">Cash</option>
                             <option value="Bank Transfer">Bank Transfer</option>
@@ -3458,22 +3422,23 @@
                             <option value="Cheque">Cheque</option>
                         </select>
                     </div>
-
                     <div>
-                        <label style="font-size:0.6rem; color: transparent; display:block; margin-bottom:4px;">-</label>
-                        <button type="submit" id="save-expense-btn" class="btn btn-primary" style="width:100%; background: linear-gradient(135deg,#ef4444,#f97316); border:none; padding:9px 8px; font-weight:900; font-size:0.8rem; border-radius:8px;">
+                        <label style="font-size:0.55rem; font-weight:900; color:#ef4444; display:block; margin-bottom:4px;">AMOUNT (&#8377;)</label>
+                        <input type="number" id="exp-amount" required step="0.01" placeholder="0.00" style="width:100%; padding:8px; font-size:1.1rem; font-weight:900; color:#ef4444; background:rgba(239,68,68,0.05); border:2.5px solid #ef4444; border-radius:8px; text-align:right;">
+                    </div>
+                    <div>
+                        <button type="submit" id="save-expense-btn" class="btn btn-primary" style="width:100%; background: linear-gradient(135deg,#ef4444,#f97316); border:none; padding:10px 8px; font-weight:900; font-size:0.85rem; border-radius:8px;">
                             &#128184; POST
                         </button>
                     </div>
                 </div>
-
-                <!-- Optional Notes inline -->
-                <div style="border-top: 1px solid var(--glass-border); padding-top: 0.75rem; display: flex; align-items: center; gap: 1rem;">
-                    <label style="font-size:0.6rem; font-weight:800; color:var(--text-muted); white-space: nowrap;">NOTES (Optional):</label>
-                    <input type="text" id="exp-notes" placeholder="Any additional details or remarks..." style="flex:1; padding:6px 10px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:6px; color:#fff; font-size:0.75rem;">
-                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="padding: 6px 16px; font-size:0.75rem; color: var(--text-muted); white-space:nowrap;">CANCEL</button>
+                <div style="border-top: 1px solid var(--glass-border); padding-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                    <label style="font-size:0.6rem; font-weight:800; color:var(--text-muted); white-space: nowrap;">NOTES / REF:</label>
+                    <input type="text" id="exp-notes" placeholder="Optional reference info..." style="flex:1; padding:6px 12px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:6px; color:#fff; font-size:0.75rem;">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('expenseModal').classList.add('hidden')" style="padding: 6px 20px; font-size:0.75rem; color: var(--text-muted);">CANCEL</button>
                 </div>
                 <input type="hidden" id="exp-ref">
+                <input type="hidden" id="exp-type">
             </form>
         </div>
     </div>

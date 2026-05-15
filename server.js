@@ -2301,9 +2301,105 @@ app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- AUTO JOURNAL POSTING ENGINE ---
+
+async function autoPostSalesJV(invoice, stockist) {
+    console.log(`[DEBUG] Triggering Auto JV for Sales: ${invoice.invoiceNo}`);
+    const jvNo = await getNextDocNo('jv');
+    const jv = await db.JournalVoucher.create({
+        jvNo,
+        date: invoice.createdAt || new Date(),
+        narration: `Auto JV: Sales Invoice ${invoice.invoiceNo} to ${stockist ? stockist.name : 'Unknown Party'}`,
+        totalAmount: invoice.grandTotal,
+        refType: 'Sales',
+        refId: invoice.id
+    });
+
+    const lines = [
+        {
+            jvId: jv.id,
+            type: 'DR',
+            amount: invoice.grandTotal,
+            entityType: 'Stockist',
+            entityId: stockist ? stockist.id : null,
+            entityName: stockist ? stockist.name : 'Unknown Party',
+            notes: 'Sales Billing'
+        },
+        {
+            jvId: jv.id,
+            type: 'CR',
+            amount: invoice.subTotal,
+            entityType: 'Ledger',
+            entityName: 'Sales Account',
+            notes: 'Goods Sold'
+        }
+    ];
+
+    if (Number(invoice.gstAmount) > 0) {
+        lines.push({
+            jvId: jv.id,
+            type: 'CR',
+            amount: invoice.gstAmount,
+            entityType: 'Ledger',
+            entityName: 'GST Payable',
+            notes: 'Output GST'
+        });
+    }
+
+    await db.JournalEntryLine.bulkCreate(lines);
+}
+
+async function autoPostPurchaseJV(purchase, stockist) {
+    console.log(`[DEBUG] Triggering Auto JV for Purchase: ${purchase.purchaseNo}`);
+    const jvNo = await getNextDocNo('jv');
+    const jv = await db.JournalVoucher.create({
+        jvNo,
+        date: purchase.invoiceDate || new Date(),
+        narration: `Auto JV: Purchase Entry ${purchase.purchaseNo} from ${stockist ? stockist.name : 'Unknown Supplier'}`,
+        totalAmount: purchase.grandTotal,
+        refType: 'Purchase',
+        refId: purchase.id
+    });
+
+    const lines = [
+        {
+            jvId: jv.id,
+            type: 'DR',
+            amount: purchase.subTotal,
+            entityType: 'Ledger',
+            entityName: 'Purchase Account',
+            notes: 'Goods Purchased'
+        },
+        {
+            jvId: jv.id,
+            type: 'CR',
+            amount: purchase.grandTotal,
+            entityType: 'Stockist',
+            entityId: stockist ? stockist.id : null,
+            entityName: stockist ? stockist.name : 'Unknown Supplier',
+            notes: 'Purchase Billing'
+        }
+    ];
+
+    if (Number(purchase.gstAmount) > 0) {
+        lines.push({
+            jvId: jv.id,
+            type: 'DR',
+            amount: purchase.gstAmount,
+            entityType: 'Ledger',
+            entityName: 'GST Payable',
+            notes: 'Input GST'
+        });
+    }
+
+    await db.JournalEntryLine.bulkCreate(lines);
+}
+
 // --- PAYMENTS & EXPENSES ---
 
+
 async function autoPostPaymentJV(payment, stockist, t) {
+    console.log(`[DEBUG] Triggering Auto JV for Payment: ${payment.paymentNo}`);
     let bankLedgerName = 'Cash Account';
     if (['Bank Transfer', 'UPI', 'Cheque'].includes(payment.method)) bankLedgerName = 'Bank Account (HDFC)';
     const bankLedger = await db.Ledger.findOne({ where: { name: bankLedgerName } });
@@ -2516,8 +2612,17 @@ app.post('/api/admin/expenses', async (req, res) => {
     const t = await db.sequelize.transaction();
     try {
         const expenseNo = await getNextDocNo('expense');
+        
+        // Find category to get the type if not provided
+        let type = req.body.type;
+        if (!type && req.body.categoryName) {
+            const cat = await db.ExpenseCategory.findOne({ where: { name: req.body.categoryName } });
+            if (cat) type = cat.expenseType;
+        }
+
         const expense = await db.Expense.create({
             ...req.body,
+            type: type || 'Indirect',
             amount: Number(req.body.amount) || 0,
             expenseNo
         }, { transaction: t });

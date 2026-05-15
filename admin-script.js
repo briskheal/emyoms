@@ -4969,7 +4969,7 @@ async function generateReport(type) {
     
     // Default dates: First day of current month to today
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const firstDay = new Date('2024-04-01'); // Wide default range
     
     document.getElementById('report-to-date').value = today.toISOString().split('T')[0];
     document.getElementById('report-from-date').value = firstDay.toISOString().split('T')[0];
@@ -5929,23 +5929,32 @@ async function fetchExpenseCategories() {
 }
 
 async function loadExpenseCategoryOptions() {
-    const type = document.getElementById('exp-type').value;
     const catSelect = document.getElementById('exp-category');
-    if (!type) { catSelect.innerHTML = '<option value="">-- Select Type First --</option>'; return; }
-
     catSelect.innerHTML = '<option value="">Loading...</option>';
 
-    // Always fetch fresh categories from database
+    // Fetch fresh categories from database
     await fetchExpenseCategories();
 
-    const cats = EXPENSE_CATEGORIES_CACHE[type] || [];
-    catSelect.innerHTML = '<option value="">-- Select Category --</option>';
-    if (cats.length === 0) {
-        catSelect.innerHTML += '<option disabled>No categories. Add in Global Masters.</option>';
-    } else {
-        cats.forEach(c => {
-            catSelect.innerHTML += '<option value="' + c + '">' + c + '</option>';
-        });
+    // Show ALL categories (Direct and Indirect)
+    const direct = EXPENSE_CATEGORIES_CACHE.Direct || [];
+    const indirect = EXPENSE_CATEGORIES_CACHE.Indirect || [];
+    
+    catSelect.innerHTML = '<option value="">-- Select Head --</option>';
+    
+    if (direct.length > 0) {
+        catSelect.innerHTML += '<optgroup label="DIRECT EXPENSES">';
+        direct.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
+        catSelect.innerHTML += '</optgroup>';
+    }
+    
+    if (indirect.length > 0) {
+        catSelect.innerHTML += '<optgroup label="INDIRECT EXPENSES">';
+        indirect.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
+        catSelect.innerHTML += '</optgroup>';
+    }
+
+    if (direct.length === 0 && indirect.length === 0) {
+        catSelect.innerHTML += '<option disabled>No categories found. Add in Global Masters.</option>';
     }
 }
 
@@ -5956,18 +5965,19 @@ async function openExpenseModal() {
     // Reset fields
     document.getElementById('expenseForm').reset();
     document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('exp-category').innerHTML = '<option value="">-- Select Type First --</option>';
+    
+    // Load all categories into the single dropdown
+    await loadExpenseCategoryOptions();
 
-    // Auto-fetch next Expense Reference Number from backend
+    // Auto-fetch next Expense Reference Number
     try {
         const res = await fetch(`${API_BASE}/admin/next-doc-no?type=expense`);
         if (res.ok) {
             const { docNo } = await res.json();
-            document.getElementById('exp-ref-display').innerText = docNo;
             document.getElementById('exp-ref').value = docNo;
         }
     } catch(e) {
-        document.getElementById('exp-ref-display').innerText = 'Auto';
+        document.getElementById('exp-ref').value = 'EXP-' + Date.now();
     }
 }
 
@@ -5977,7 +5987,6 @@ async function saveExpense(e) {
     const originalText = btn.innerHTML;
 
     const data = {
-        type: document.getElementById('exp-type').value,
         categoryName: document.getElementById('exp-category').value,
         title: document.getElementById('exp-title').value,
         date: document.getElementById('exp-date').value,
@@ -5987,8 +5996,7 @@ async function saveExpense(e) {
         notes: document.getElementById('exp-notes').value
     };
 
-    if (!data.type) return alert('Please select an Expense Type.');
-    if (!data.categoryName) return alert('Please select a Category.');
+    if (!data.categoryName) return alert('Please select an Expense Head.');
     if (data.amount <= 0) return alert('Amount must be greater than zero.');
 
     try {
@@ -6003,9 +6011,9 @@ async function saveExpense(e) {
         const result = await res.json();
 
         if (result.success) {
-            alert(`Expense posted successfully!`);
+            alert(`✅ Expense posted successfully!`);
             document.getElementById('expenseModal').classList.add('hidden');
-                loadExpenses();
+            loadExpenses();
             document.getElementById('expenseForm').reset();
         } else {
             alert('Error: ' + (result.error || 'Unknown error'));
