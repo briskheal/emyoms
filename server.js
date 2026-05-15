@@ -654,6 +654,56 @@ app.post('/api/admin/expense-categories', async (req, res) => {
     }
 });
 
+// --- LEDGER MASTER (Chart of Accounts) ---
+
+app.get('/api/admin/ledgers', async (req, res) => {
+    try {
+        const ledgers = await db.Ledger.findAll({ order: [['group', 'ASC'], ['name', 'ASC']] });
+        res.json(ledgers);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/ledgers', async (req, res) => {
+    try {
+        const ledger = await db.Ledger.create(req.body);
+        res.json({ success: true, ledger });
+    } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+});
+
+app.put('/api/admin/ledgers/:id', async (req, res) => {
+    try {
+        const ledger = await db.Ledger.findByPk(req.params.id);
+        if (!ledger) return res.status(404).json({ success: false, error: 'Ledger not found' });
+        await ledger.update(req.body);
+        res.json({ success: true, ledger });
+    } catch (e) { res.status(400).json({ success: false, error: e.message }); }
+});
+
+app.delete('/api/admin/ledgers/:id', async (req, res) => {
+    try {
+        const ledger = await db.Ledger.findByPk(req.params.id);
+        if (!ledger) return res.status(404).json({ success: false, error: 'Ledger not found' });
+        await ledger.destroy();
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Combined search: returns Stockists + Ledgers + Expense Categories (for JV entry autocomplete)
+app.get('/api/admin/all-ledger-entities', async (req, res) => {
+    try {
+        const [stockists, ledgers, expCats] = await Promise.all([
+            db.Stockist.findAll({ attributes: ['id', 'name', 'partyType'] }),
+            db.Ledger.findAll({ attributes: ['id', 'name', 'group', 'nature'] }),
+            db.ExpenseCategory.findAll({ attributes: ['id', 'name', 'expenseType'] })
+        ]);
+        res.json({
+            stockists: stockists.map(s => ({ id: s.id, name: s.name, entityType: 'Stockist', group: s.partyType || 'STOCKIST' })),
+            ledgers:   ledgers.map(l =>   ({ id: l.id, name: l.name, entityType: 'Ledger',   group: l.group })),
+            expCats:   expCats.map(c =>   ({ id: c.id, name: c.name, entityType: 'ExpenseCategory', group: `${c.expenseType} Expense` }))
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- PRODUCT MANAGEMENT ---
 
 app.get('/api/admin/products', async (req, res) => {
