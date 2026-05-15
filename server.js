@@ -2093,7 +2093,7 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
             if (isNaN(newTotal)) {
                 throw new Error("Calculation error: New total is not a number (NaN). Please check item values.");
             }
-            await claim.update({ totalAmount: newTotal });
+            await claim.update({ totalAmount: Math.round(newTotal) });
         }
 
         await claim.reload(); // Ensure we have the latest totalAmount after edits

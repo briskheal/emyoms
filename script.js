@@ -1891,26 +1891,21 @@ function updatePDCNGrandTotals() {
 
             const unitTaxableDiff = billedPrice - splPrice;
             const unitTaxDiff     = unitTaxableDiff * (gstPct / 100);
-            const unitSaleDiff    = unitTaxableDiff + unitTaxDiff; // Diff/Unit incl. GST
-
-            // Stockist Margin = 10% of Special Price
-            const unitMargin = splPrice * 0.10;
-
+            
             totalTaxable += Number((unitTaxableDiff * claimQty).toFixed(2));
             totalTax     += Number((unitTaxDiff     * claimQty).toFixed(2));
-            totalMargin  += Number((unitMargin      * claimQty).toFixed(2));
+            totalMargin  += Number((splPrice * 0.10      * claimQty).toFixed(2));
         });
     });
 
-    const netAmount = Number((totalTaxable + totalTax + totalMargin).toFixed(2));
-
-    const finalGrandTotal = netAmount;
-    const roundOffValue = "0.00";
+    const netAmount = totalTaxable + totalTax + totalMargin;
+    const finalGrandTotal = Math.round(netAmount);
+    const roundOffValue = finalGrandTotal - netAmount;
 
     document.getElementById('pdcn-total-taxable').innerText = `₹${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     document.getElementById('pdcn-total-tax').innerText = `₹${totalTax.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('pdcn-total-roundoff').innerText = `₹${roundOffValue}`;
-    document.getElementById('pdcn-grand-total').innerText = `₹${finalGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-total-roundoff').innerText = `${roundOffValue >= 0 ? '+' : ''}₹${roundOffValue.toFixed(2)}`;
+    document.getElementById('pdcn-grand-total').innerText = `₹${finalGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 0})}`;
 }
 
 async function submitPDCNClaim() {
@@ -2080,7 +2075,7 @@ async function fetchPDCNHistory() {
                                                 ${c.adminRemarks ? `<div style="font-size: 0.6rem; color: #ef4444; margin-top: 5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;">Note: ${c.adminRemarks}</div>` : ''}
                                             </td>
                                             <td style="padding: 12px 20px; text-align: center; color: var(--text-muted); font-size: 0.8rem;">${new Date(c.createdAt).toLocaleDateString('en-IN', {day:'2-digit', month:'2-digit', year:'numeric'})}</td>
-                                            <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${parseFloat(c.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                            <td style="padding: 12px 20px; text-align: right; font-weight: 900; color: var(--primary); font-size: 1rem;">₹${Math.round(parseFloat(c.totalAmount || 0)).toLocaleString('en-IN')}</td>
                                             <td style="padding: 12px 20px; text-align: center;">
                                                 <button class="btn" onclick="openPDCNViewModal(${c.id})" 
                                                     style="padding: 6px 14px; font-size: 0.65rem; font-weight: 800; background: rgba(99, 102, 241, 0.15); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px;">
@@ -2193,7 +2188,7 @@ async function openPDCNViewModal(id) {
     }).join('');
 
     // Overwrite grand total with recalculated sum (fixes stale/corrupt stored totalAmount)
-    document.getElementById('pdcn-view-total').innerText = `₹${recalcTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('pdcn-view-total').innerText = `₹${Math.round(recalcTotal).toLocaleString('en-IN')}`;
 
 
     // Store for printing
