@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         mrp: { type: DataTypes.FLOAT, defaultValue: 0 },
         pts: { type: DataTypes.FLOAT, defaultValue: 0 },
         ptr: { type: DataTypes.FLOAT, defaultValue: 0 },
+        purchaseRate: { type: DataTypes.FLOAT, defaultValue: 0 },
         qtyAvailable: { type: DataTypes.INTEGER, defaultValue: 0 },
         productId: {
             type: DataTypes.INTEGER,

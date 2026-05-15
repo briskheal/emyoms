@@ -712,6 +712,7 @@ app.post('/api/admin/products/bulk', async (req, res) => {
                         mrp: p.mrp || 0,
                         pts: p.pts || 0,
                         ptr: p.ptr || 0,
+                        purchaseRate: p.purchaseRate || p.rate || 0,
                         productId: product.id
                     });
                 }
@@ -1201,7 +1202,7 @@ app.post('/api/admin/invoices/bulk', async (req, res) => {
 
 app.post('/api/admin/direct-sale', async (req, res) => {
     try {
-        const { party, items, subTotal, gstAmount, grandTotal, channel, paymentMode, remarks, date } = req.body;
+        const { party, items, subTotal, gstAmount, grandTotal, channel, paymentMode, remarks, date, additionalCharges, otherChargesTotal } = req.body;
         
         const invoiceNo = await getNextDocNo('invoice');
         const orderNo = await getNextDocNo('order');
@@ -1211,6 +1212,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
         const numSubTotal = Number(subTotal) || 0;
         const numGstAmount = Number(gstAmount) || 0;
         const numGrandTotal = Number(grandTotal) || 0;
+        const numOtherCharges = Number(otherChargesTotal) || 0;
 
         // 1. Create Order
         const newOrder = await db.Order.create({
@@ -1233,6 +1235,8 @@ app.post('/api/admin/direct-sale', async (req, res) => {
             stockistId,
             subTotal: numSubTotal,
             gstAmount: numGstAmount,
+            otherChargesTotal: numOtherCharges,
+            additionalCharges: additionalCharges || [],
             grandTotal: numGrandTotal,
             outstandingAmount: numGrandTotal,
             placeOfSupply: req.body.placeOfSupply || 'Telangana',
@@ -1618,6 +1622,7 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
                         mrp: item.mrp || product.mrp,
                         pts: item.pts || product.pts,
                         ptr: item.ptr || product.ptr,
+                        purchaseRate: item.rate || item.purchaseRate || product.purchaseRate || 0,
                         qtyAvailable: 0
                     }
                 });
@@ -1628,7 +1633,8 @@ app.post('/api/admin/purchase-entries', async (req, res) => {
                     expDate: item.exp || item.expDate || batch.expDate,
                     mrp: item.mrp || batch.mrp,
                     pts: item.pts || batch.pts,
-                    ptr: item.ptr || batch.ptr
+                    ptr: item.ptr || batch.ptr,
+                    purchaseRate: item.rate || item.purchaseRate || batch.purchaseRate || product.purchaseRate || 0
                 });
                 
                 await batch.increment('qtyAvailable', { by: item.qty });

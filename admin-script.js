@@ -202,6 +202,7 @@ function renderProductBatches() {
                     <td style="padding: 8px 12px; text-align: right;">₹${Number(b.mrp||0).toFixed(2)}</td>
                     <td style="padding: 8px 12px; text-align: right;">₹${Number(b.pts||0).toFixed(2)}</td>
                     <td style="padding: 8px 12px; text-align: right;">₹${Number(b.ptr||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right; color: var(--accent); font-weight: 700;">₹${Number(b.purchaseRate||0).toFixed(2)}</td>
                     <td style="padding: 8px 12px; text-align: center; font-weight: 800; color: var(--accent); background: rgba(16, 185, 129, 0.05);">${b.qtyAvailable}</td>
                     <td style="padding: 8px 12px; text-align: center;"><button type="button" class="btn btn-ghost" style="padding: 4px 8px; border-radius: 6px; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="removeProductBatch(${i})">✕</button></td>
                 </tr>
@@ -221,6 +222,7 @@ function addProductBatch() {
     const bMrp = document.getElementById('new-batch-mrp').value;
     const bPts = document.getElementById('new-batch-pts').value;
     const bPtr = document.getElementById('new-batch-ptr').value;
+    const bPur = document.getElementById('new-batch-purchase-rate').value;
     const bQty = document.getElementById('new-batch-qty').value;
     
     currentProductBatches.push({
@@ -229,6 +231,7 @@ function addProductBatch() {
         mrp: Number(bMrp || document.getElementById('prod-mrp').value || 0),
         pts: Number(bPts || document.getElementById('prod-pts').value || 0),
         ptr: Number(bPtr || document.getElementById('prod-ptr').value || 0),
+        purchaseRate: Number(bPur || document.getElementById('prod-purchase-rate').value || 0),
         qtyAvailable: Number(bQty || 0)
     });
     
@@ -237,6 +240,7 @@ function addProductBatch() {
     document.getElementById('new-batch-mrp').value = '';
     document.getElementById('new-batch-pts').value = '';
     document.getElementById('new-batch-ptr').value = '';
+    document.getElementById('new-batch-purchase-rate').value = '';
     document.getElementById('new-batch-qty').value = '';
     
     renderProductBatches();
@@ -1123,6 +1127,7 @@ function renderProducts(list = allProducts) {
             <td>₹${p.mrp}</td>
             <td style="color:var(--accent); font-weight:700;">₹${p.ptr}</td>
             <td>₹${p.pts}</td>
+            <td style="color:#10b981; font-weight:700;">₹${p.purchaseRate || 0}</td>
             <td>${p.gstPercent}%</td>
             <td>${p.qtyAvailable}</td>
             <td><span class="badge ${p.active ? 'badge-approved' : 'badge-pending'}">${p.active ? 'Active' : 'Inactive'}</span></td>
@@ -1177,6 +1182,7 @@ async function saveProduct(e) {
         gstPercent: Number(document.getElementById('prod-gst').value),
         ptr: Number(document.getElementById('prod-ptr').value),
         pts: Number(document.getElementById('prod-pts').value),
+        purchaseRate: Number(document.getElementById('prod-purchase-rate').value || 0),
         qtyAvailable: Number(document.getElementById('prod-qty').value),
         batches: currentProductBatches,
         bonusBuy: Number(document.getElementById('prod-buy').value),
@@ -1232,6 +1238,7 @@ function editProduct(id) {
     document.getElementById('prod-gst').value = p.gstPercent;
     document.getElementById('prod-ptr').value = p.ptr;
     document.getElementById('prod-pts').value = p.pts;
+    document.getElementById('prod-purchase-rate').value = p.purchaseRate || 0;
     document.getElementById('prod-qty').value = p.qtyAvailable;
     document.getElementById('prod-buy').value = p.bonusBuy || 0;
     document.getElementById('prod-get').value = p.bonusGet || 0;
@@ -3097,6 +3104,10 @@ function openDirectSaleModal(type, preserveEdit = false) {
         if (modalTitle) modalTitle.innerText = 'Generate Direct Invoice';
         if (submitBtn) submitBtn.innerText = '✓ POST FINAL SALE';
         
+        // Reset Additional Charges
+        saleCharges = [];
+        renderSaleCharges();
+        
         // Explicitly clear non-standard fields if not preserving edit
         if (!preserveEdit) {
             safeSetVal('sale-party-search', '');
@@ -3504,6 +3515,46 @@ function updateDirectSaleLine(index, field, value) {
     updateSaleStripTotals();
 }
 
+// --- DIRECT SALE ADDITIONAL CHARGES ---
+let saleCharges = [];
+
+function addSaleCharge() {
+    const name = document.getElementById('sale-charge-name').value.trim();
+    const amount = parseFloat(document.getElementById('sale-charge-amount').value) || 0;
+    const gstPct = parseFloat(document.getElementById('sale-charge-gst').value) || 0;
+
+    if (!name || amount <= 0) return alert('⚠️ Please enter charge name and amount');
+
+    const gstAmount = Number((amount * (gstPct / 100)).toFixed(2));
+    const total = Number((amount + gstAmount).toFixed(2));
+
+    saleCharges.push({ name, amount, gstPct, gstAmount, total });
+    
+    document.getElementById('sale-charge-name').value = '';
+    document.getElementById('sale-charge-amount').value = '';
+    
+    renderSaleCharges();
+}
+
+function renderSaleCharges() {
+    const tbody = document.getElementById('sale-charges-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = saleCharges.map((c, idx) => `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 4px 8px;">${c.name}</td>
+            <td style="padding: 4px 8px; text-align: right;">₹${c.amount.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: center;">${c.gstPct}%</td>
+            <td style="padding: 4px 8px; text-align: right; font-weight: 700;">₹${c.total.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: center;">
+                <button type="button" onclick="saleCharges.splice(${idx}, 1); renderSaleCharges();" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;">✕</button>
+            </td>
+        </tr>
+    `).join('');
+
+    updateSaleStripTotals();
+}
+
 function updateSaleStripTotals() {
     let subTotal = 0;
     let gstTotal = 0;
@@ -3514,6 +3565,12 @@ function updateSaleStripTotals() {
         subTotal += val;
         gstTotal += gst;
     });
+
+    // Add Additional Charges
+    const chargesTaxable = saleCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
+    const chargesGst = saleCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
+    subTotal += chargesTaxable;
+    gstTotal += chargesGst;
     
     const total = subTotal + gstTotal;
     const rounded = Math.round(total);
@@ -3571,8 +3628,15 @@ async function saveDirectSale(e) {
         btn.innerText = '⌛ SAVING SALE...';
     }
 
-    const subTotal = Number(directSaleItems.reduce((s, i) => s + (Number(i.totalValue) || 0), 0).toFixed(2));
-    const gstAmount = Number(directSaleItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (Number(i.gstPercent) || 0) / 100), 0).toFixed(2));
+    const subTotalItems = directSaleItems.reduce((s, i) => s + (Number(i.totalValue) || 0), 0);
+    const gstAmountItems = directSaleItems.reduce((s, i) => s + ((Number(i.totalValue) || 0) * (Number(i.gstPercent) || 0) / 100), 0);
+    
+    const chargesTaxable = saleCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
+    const chargesGst = saleCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
+    const otherChargesTotal = saleCharges.reduce((acc, c) => acc + (c.total || 0), 0);
+
+    const subTotal = Number((subTotalItems + chargesTaxable).toFixed(2));
+    const gstAmount = Number((gstAmountItems + chargesGst).toFixed(2));
     const grandTotal = Math.round(subTotal + gstAmount);
 
     const data = {
@@ -3586,6 +3650,8 @@ async function saveDirectSale(e) {
         placeOfSupply: (document.getElementById('sale-supply') ? document.getElementById('sale-supply').value : '') || companyProfile.defaultPlaceOfSupply,
         dueDate: document.getElementById('sale-due-date') ? document.getElementById('sale-due-date').value : '',
         items: directSaleItems,
+        additionalCharges: saleCharges,
+        otherChargesTotal,
         subTotal,
         gstAmount,
         grandTotal,
@@ -4488,7 +4554,7 @@ function numberToWords(num) {
 }
 
 async function generateStandardPDF({ 
-    doc: passedDoc, title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, grandTotal, terms, showBank, extraFields = [], filename = null
+    doc: passedDoc, title, subTitle = "Original For Recipient", docNo, docTypeLabel = "Invoice No", date, party, items, additionalCharges = [], grandTotal, terms, showBank, extraFields = [], filename = null
 }) {
     const PDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || window.jspdf);
     const doc = passedDoc || new PDFLib('p', 'mm', 'a4');
@@ -4497,7 +4563,7 @@ async function generateStandardPDF({
     if (style === 'sample' || style === 'classic') {
         // Use the comprehensive version defined later in the file
         return await generateSampleMatchedPDF({ 
-            doc, title, subTitle, docNo, docTypeLabel, date, party, items, grandTotal, terms, showBank, extraFields, filename 
+            doc, title, subTitle, docNo, docTypeLabel, date, party, items, additionalCharges, grandTotal, terms, showBank, extraFields, filename 
         });
     }
 
@@ -4578,6 +4644,7 @@ async function viewInvoicePDF(id) {
                 dl: partyData.dlNo || partyData.dl || '' 
             },
             items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
+            additionalCharges: inv.additionalCharges || [],
             grandTotal: Number(inv.grandTotal || 0), extraFields
         });
         window.open(doc.output('bloburl'), '_blank');
@@ -4605,6 +4672,7 @@ async function downloadInvoicePDF(id) {
                 dl: partyData.dlNo || partyData.dl || '' 
             },
             items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
+            additionalCharges: inv.additionalCharges || [],
             grandTotal: Number(inv.grandTotal || 0), extraFields, filename: `Invoice_${inv.invoiceNo}.pdf`
         });
     } catch (e) { 
@@ -4847,7 +4915,7 @@ function updateProductEntryMeta(id) {
     safeSetVal('pur-pack', p.packing || p.pack || '');
     safeSetVal('pur-ptr', p.ptr || 0);
     safeSetVal('pur-pts', p.pts || 0);
-    safeSetVal('pur-rate', p.pts || 0);
+    safeSetVal('pur-rate', p.purchaseRate || p.pts || 0);
     safeSetVal('pur-mrp', p.mrp || 0);
     safeSetVal('pur-gst-pct', p.gstPercent || p.gst || (window.companyProfile ? window.companyProfile.gstRate : 5));
     // Focus qty for fast entry
