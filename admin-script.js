@@ -5905,36 +5905,48 @@ function downloadExcel(data, fileName, sheetName = "Report") {
 
 // --- EXPENSE MODULE ---
 
-const EXPENSE_CATEGORIES = {
-    Direct: [
-        'Freight Inward',
-        'Loading & Unloading Charges',
-        'Packing Materials'
-    ],
-    Indirect: [
-        'Courier & Postage (Outward)',
-        'Staff Salaries & Wages',
-        'Travel & Conveyance',
-        'Office Rent',
-        'Electricity & Water Bills',
-        'Internet & Telephone Bills',
-        'Printing & Stationery',
-        'Staff Welfare',
-        'Marketing & Promotional Expenses',
-        'Bank Charges & Interest',
-        'Repairs & Maintenance',
-        'Accounting & Legal Fees'
-    ]
-};
+// Live Expense Category Cache - populated from DB on demand
+let EXPENSE_CATEGORIES_CACHE = { Direct: [], Indirect: [] };
 
-function loadExpenseCategoryOptions() {
+async function fetchExpenseCategories() {
+    try {
+        const res = await fetch('/api/expense-categories');
+        const data = await res.json();
+        EXPENSE_CATEGORIES_CACHE = { Direct: [], Indirect: [] };
+        data.forEach(cat => {
+            const type = cat.expenseType || 'Indirect';
+            if (!EXPENSE_CATEGORIES_CACHE[type]) EXPENSE_CATEGORIES_CACHE[type] = [];
+            EXPENSE_CATEGORIES_CACHE[type].push(cat.name);
+        });
+        // Populate JV expense-head datalist for autocomplete
+        const headList = document.getElementById('expense-head-list');
+        if (headList) {
+            headList.innerHTML = data.map(c => '<option value="' + c.name + '"></option>').join('');
+        }
+    } catch(e) {
+        console.warn('Could not fetch expense categories from DB:', e);
+    }
+}
+
+async function loadExpenseCategoryOptions() {
     const type = document.getElementById('exp-type').value;
     const catSelect = document.getElementById('exp-category');
+    if (!type) { catSelect.innerHTML = '<option value="">-- Select Type First --</option>'; return; }
+
+    catSelect.innerHTML = '<option value="">Loading...</option>';
+
+    // Always fetch fresh categories from database
+    await fetchExpenseCategories();
+
+    const cats = EXPENSE_CATEGORIES_CACHE[type] || [];
     catSelect.innerHTML = '<option value="">-- Select Category --</option>';
-    if (!type) return;
-    (EXPENSE_CATEGORIES[type] || []).forEach(c => {
-        catSelect.innerHTML += `<option value="${c}">${c}</option>`;
-    });
+    if (cats.length === 0) {
+        catSelect.innerHTML += '<option disabled>No categories. Add in Global Masters.</option>';
+    } else {
+        cats.forEach(c => {
+            catSelect.innerHTML += '<option value="' + c + '">' + c + '</option>';
+        });
+    }
 }
 
 async function saveExpense(e) {
