@@ -1075,8 +1075,8 @@ app.get('/api/stockist/invoice/:invoiceNo', async (req, res) => {
             });
         });
 
-        // Attach claimed quantity to each invoice item
-        const invoiceData = invoice.toJSON();
+        // Attach claimed quantity to each invoice item (using deep clone to prevent Sequelize from stripping non-schema fields)
+        const invoiceData = JSON.parse(JSON.stringify(invoice));
         invoiceData.items.forEach(item => {
             item.alreadyClaimedQty = claimedSummary[item.productId] || 0;
             item.availableQty = Math.max(0, Number(item.qty || 0) - item.alreadyClaimedQty);
