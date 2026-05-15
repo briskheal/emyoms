@@ -2914,23 +2914,23 @@ function renderPurchaseItems() {
 
     tbody.innerHTML = purchaseItems.map((item, index) => `
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-            <td style="text-align: center; white-space: nowrap; padding: 6px 4px;">
-                <button type="button" onclick="editPurchaseLineItem(${index})" style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 0.85rem; margin-right: 5px;" title="Edit Row">✎</button>
-                <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.85rem;" title="Delete Row">✕</button>
+            <td style="text-align: center; white-space: nowrap; padding: 4px 2px;">
+                <button type="button" onclick="editPurchaseLineItem(${index})" style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 0.8rem; margin-right: 4px;" title="Edit Row">✎</button>
+                <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Delete Row">✕</button>
             </td>
-            <td style="font-weight: 700; padding: 6px 8px; color: #fff;">${item.productName || 'N/A'}</td>
-            <td style="padding: 6px 8px;">${item.hsn || '-'}</td>
-            <td style="padding: 6px 8px;">${item.pack || '-'}</td>
-            <td style="padding: 6px 8px;">${item.batch || '-'}</td>
-            <td style="padding: 6px 8px; text-align: center;">${item.mfg || '-'}</td>
-            <td style="padding: 6px 8px; text-align: center;">${item.exp || '-'}</td>
-            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${Number(item.mrp || 0).toFixed(2)}</td>
-            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${Number(item.ptr || 0).toFixed(2)}</td>
-            <td style="padding: 6px 8px; text-align: right; font-family: monospace;">₹${Number(item.pts || 0).toFixed(2)}</td>
-            <td style="padding: 6px 8px; text-align: right; font-family: monospace; font-weight: 700; color: var(--accent);">₹${Number(item.rate || 0).toFixed(2)}</td>
-            <td style="text-align: center; font-weight: 800; color: #fff; padding: 6px 8px;">${item.qty}</td>
-            <td style="text-align: center; padding: 6px 8px;">${item.gstPercent}%</td>
-            <td style="text-align: right; padding: 6px 15px 6px 8px; font-weight: 900; color: var(--primary); font-family: monospace;">₹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="font-weight: 700; padding: 4px 5px; color: #fff;">${item.productName || 'N/A'}</td>
+            <td style="padding: 4px 5px;">${item.hsn || '-'}</td>
+            <td style="padding: 4px 5px;">${item.pack || '-'}</td>
+            <td style="padding: 4px 5px;">${item.batch || '-'}</td>
+            <td style="padding: 4px 5px; text-align: center;">${item.mfg || '-'}</td>
+            <td style="padding: 4px 5px; text-align: center;">${item.exp || '-'}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">₹${Number(item.mrp || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">₹${Number(item.ptr || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">₹${Number(item.pts || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace; font-weight: 700; color: var(--accent);">₹${Number(item.rate || 0).toFixed(2)}</td>
+            <td style="text-align: center; font-weight: 800; color: #fff; padding: 4px 5px;">${item.qty}</td>
+            <td style="text-align: center; padding: 4px 5px;">${item.gstPercent}%</td>
+            <td style="text-align: right; padding: 4px 10px 4px 5px; font-weight: 900; color: var(--primary); font-family: monospace;">₹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
     `).join('');
     updatePurchaseFooter();
