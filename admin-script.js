@@ -3000,15 +3000,14 @@ function editPurchaseLineItem(index) {
 function updatePurchaseFooter() {
     const prodTaxable = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0);
     const prodGst = purchaseItems.reduce((acc, i) => acc + (i.gstAmount || 0), 0);
+    const prodGross = purchaseItems.reduce((acc, i) => acc + (i.lineTotal || 0), 0);
     
     const chargesTaxable = purchaseCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
     const chargesGst = purchaseCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
     const chargesTotal = purchaseCharges.reduce((acc, c) => acc + (c.total || 0), 0);
 
-    const subTotal = prodTaxable + chargesTaxable;
-    const gstTotal = prodGst + chargesGst;
-
-    const rawTotal = subTotal + gstTotal;
+    const totalGst = prodGst + chargesGst;
+    const rawTotal = prodGross + chargesTotal;
     const grandTotal = Math.round(rawTotal);
     const roundOff = grandTotal - rawTotal;
 
@@ -3016,9 +3015,9 @@ function updatePurchaseFooter() {
     const format = (v) => '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     safeEl('strip-pur-count', purchaseItems.length);
-    safeEl('strip-pur-prod-total', format(prodTaxable));
+    safeEl('strip-pur-prod-total', format(prodGross));
     safeEl('strip-pur-charges', format(chargesTotal));
-    safeEl('strip-pur-gst', format(gstTotal));
+    safeEl('strip-pur-gst', format(totalGst));
     safeEl('strip-pur-roundoff', (roundOff >= 0 ? '+' : '-') + '₹' + Math.abs(roundOff).toFixed(2));
     safeEl('strip-pur-total', format(grandTotal));
 }
