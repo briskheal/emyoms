@@ -2162,7 +2162,8 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// --- EXTERNAL INVOICE Rapp.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
+// --- EXTERNAL INVOICE REGISTRY ENDPOINTS ---
+app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
