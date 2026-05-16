@@ -2421,11 +2421,7 @@ async function uploadExtInvoice() {
     btn.disabled = true;
 
     // --- RESET PREVIEW UI FOR NEW UPLOAD ---
-    document.getElementById('ext-inv-no').value = '';
-    document.getElementById('ext-inv-date').value = '';
-    document.getElementById('ext-inv-pos').value = '';
-    document.getElementById('ext-preview-body').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; opacity:0.5;">Reading new invoice...</td></tr>';
-    lastExtractedData = null;
+    clearInvoiceRegistry(true);
 
     try {
         const formData = new FormData();
@@ -2595,7 +2591,28 @@ function renderExtTable() {
 }
 
 function cancelUpload() {
-    document.getElementById('ext-preview-section').classList.add('hidden');
-    document.getElementById('ext-inv-file').value = '';
+    clearInvoiceRegistry();
+}
+
+function clearInvoiceRegistry(silent = false) {
+    document.getElementById('ext-preview-section')?.classList.add('hidden');
+    const fileInput = document.getElementById('ext-inv-file');
+    if (!silent && fileInput) fileInput.value = '';
+
+    const fields = [
+        'ext-inv-no', 'ext-inv-date', 'ext-inv-pos',
+        'prof-name', 'prof-phone', 'prof-email', 'prof-address', 'prof-pin', 
+        'prof-fssai', 'prof-city', 'prof-state', 'prof-dl', 'prof-gst', 
+        'prof-bank', 'prof-ifsc'
+    ];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
     lastExtractedData = null;
+    const tbody = document.getElementById('ext-preview-body');
+    if (tbody) tbody.innerHTML = '';
+    
+    if (!silent) showCenteredMessage("Invoice Registry cleared. Ready for new upload.", "info");
 }
