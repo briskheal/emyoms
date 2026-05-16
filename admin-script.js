@@ -1,4 +1,4 @@
-// EMYRIS OMS - Admin Logic
+﻿// EMYRIS OMS - Admin Logic
 const API_BASE = '/api';
 let allProducts = [];
 let currentProductBatches = [];
@@ -3519,35 +3519,8 @@ function renderSaleItems() {
     }).join('');
 
 
-    updateSaleStripTotals();
-    // GST Split Monitoring (Telangana Compliance)
-    const supplyState = (document.getElementById('sale-supply')?.value || '').toLowerCase();
-    const partyId = document.getElementById('sale-party')?.value || '';
-    const party = allStockists.find(s => (s._id || s.id) == partyId);
-    const partyGst = (party?.gst || party?.gstNo || '').substring(0, 2);
-    
-    // Intra if state is Telangana (36) or Supply contains 'telangana'
-    const isIntra = (partyGst === '36') || (supplyState.includes('telangana'));
-    
-    const labelEl = document.getElementById('label-sale-gst');
-    const splitEl = document.getElementById('strip-sale-gst-split');
-    
-    if (gstTotal > 0) {
-        if (isIntra) {
-            if (labelEl) labelEl.innerText = "CGST+SGST:";
-            if (splitEl) splitEl.innerText = `(C:${(gstTotal/2).toFixed(2)}|S:${(gstTotal/2).toFixed(2)})`;
-        } else {
-            if (labelEl) labelEl.innerText = "IGST:";
-            if (splitEl) splitEl.innerText = `(INTER-STATE)`;
-        }
-    } else {
-        if (labelEl) labelEl.innerText = "GST:";
-        if (splitEl) splitEl.innerText = "";
-    }
 
-    setVal('strip-sale-gst', 'â‚¹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + 'â‚¹' + roundOff.toFixed(2));
-    setVal('strip-sale-total', 'â‚¹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    updateSaleStripTotals();
 }
 
 function updateDirectSaleLine(index, field, value) {
