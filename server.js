@@ -2263,12 +2263,12 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     const rText = row.map(t => t.text).join(" ").toUpperCase();
 
                     if (rText.includes("HSN") || rText.includes("BATCH")) inTable = true;
-                    if (rText.includes("TOTAL") || rText.includes("TAXABLE")) inTable = false;
+                    if (rText.includes("TOTAL") || rText.includes("TAXABLE") || rText.includes("SUMMARY")) inTable = false;
 
                     const hasPrice = row.some(t => t.text.match(/^\d+\.\d{2}$/));
-                    const hasName = row.some(t => t.text.length > 8 && isNaN(t.text[0]));
+                    const hasName = row.some(t => t.text.length > 3 && isNaN(t.text[0]));
 
-                    if ((inTable || (hasPrice && hasName)) && row.length >= 3) {
+                    if ((inTable || hasPrice) && hasName && row.length >= 3) {
                         let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
                         
                         let prices = [];
@@ -2282,7 +2282,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                             else if (val.match(/^\d+$/) && parseInt(val) < 10000 && !val.match(/^0/)) {
                                 if (item.qty === 0) item.qty = parseInt(val);
                             }
-                            else if (val.length > 4 && isNaN(val[0]) && !item.name) item.name = val;
+                            else if (val.length > 2 && isNaN(val[0]) && !item.name) item.name = val;
                             else if (val.length >= 3 && !item.batch && isNaN(val[0]) && item.name && val !== item.name) item.batch = val;
                         });
 
