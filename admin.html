@@ -2771,18 +2771,20 @@
                         <input type="text" id="pur-grid-search" placeholder="Quick Search Product..." oninput="renderPurchaseGrid()" style="width: 250px; font-size: 0.8rem; height: 32px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 12px; color: #fff;">
                     </div>
                     <div class="table-container" style="flex: 1; overflow: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <div id="pur-grid-search-results" class="search-results" style="display:none; position:fixed; width:700px; z-index:99999;"></div>
                         <table class="excel-table" style="width: 100%; font-size: 0.72rem;">
                             <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10;">
                                 <tr>
-                                    <th style="text-align: left; padding: 8px 12px;">Product Details</th>
-                                    <th style="width: 60px;">HSN</th>
-                                    <th style="width: 50px;">Pack</th>
-                                    <th style="width: 90px;">Batch</th>
-                                    <th style="width: 70px;">Exp</th>
-                                    <th style="width: 70px;">MRP</th>
-                                    <th style="width: 70px;">PTS</th>
-                                    <th style="width: 70px;">Rate</th>
-                                    <th style="width: 70px;">Qty Entry</th>
+                                    <th style="width: 30px;">#</th>
+                                    <th style="text-align: left; padding: 8px 12px;">Product (Type to Search)</th>
+                                    <th style="width: 70px;">HSN</th>
+                                    <th style="width: 60px;">Pack</th>
+                                    <th style="width: 100px;">Batch</th>
+                                    <th style="width: 80px;">Exp</th>
+                                    <th style="width: 80px;">MRP</th>
+                                    <th style="width: 80px;">PTS</th>
+                                    <th style="width: 80px;">Rate</th>
+                                    <th style="width: 80px;">Qty</th>
                                     <th style="width: 100px; text-align: right;">Total</th>
                                 </tr>
                             </thead>
@@ -2983,16 +2985,18 @@
                         <input type="text" id="sale-grid-search" placeholder="Quick Search Product..." oninput="renderSaleGrid()" style="width: 250px; font-size: 0.8rem; height: 32px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 12px; color: #fff;">
                     </div>
                     <div class="table-container" style="flex: 1; overflow: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <div id="sale-grid-search-results" class="search-results" style="display:none; position:fixed; width:700px; z-index:99999;"></div>
                         <table class="excel-table" style="width: 100%; font-size: 0.75rem;">
                             <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10;">
                                 <tr>
-                                    <th style="text-align: left; padding: 8px 12px;">Product Details</th>
-                                    <th style="width: 120px;">Batch No</th>
+                                    <th style="width: 30px;">#</th>
+                                    <th style="text-align: left; padding: 8px 12px;">Product (Type to Search)</th>
+                                    <th style="width: 120px;">Batch</th>
                                     <th style="width: 80px;">Exp</th>
                                     <th style="width: 80px;">Stock</th>
                                     <th style="width: 90px;">Rate</th>
                                     <th style="width: 100px;">Qty Entry</th>
-                                    <th style="width: 110px; text-align: right;">Line Total</th>
+                                    <th style="width: 110px; text-align: right;">Total</th>
                                 </tr>
                             </thead>
                             <tbody id="sale-grid-body"></tbody>
