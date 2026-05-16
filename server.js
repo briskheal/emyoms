@@ -2242,30 +2242,18 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     x: t.x, y: t.y, text: decodeURIComponent(t.R[0].T).trim()
                 })).filter(t => t.text);
 
-                // --- PASS 1: MAP GLOBAL COLUMN CENTERS ---
-                let centers = { hsn: [], exp: [], mrp: [], qty: [] };
-                hTexts.forEach(t => {
-                    if (t.text.match(/^\d{6,8}$/)) centers.hsn.push(t.x);
-                    if (t.text.match(/\d{2}[-/]\d{2,4}/)) centers.exp.push(t.x);
-                    if (t.text.match(/^\d+\.\d{2}$/)) centers.mrp.push(t.x);
-                    if (t.text.match(/^\d+$/) && t.text.length < 4) centers.qty.push(t.x);
-                });
-
-                const getAvg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : -1;
-                const colMap = {
-                    hsn: getAvg(centers.hsn),
-                    exp: getAvg(centers.exp),
-                    mrp: getAvg(centers.mrp),
-                    qty: getAvg(centers.qty)
-                };
-
-                // --- PASS 2: RECONSTRUCT ROWS & MAP TO CENTERS ---
+                // --- PASS 1: FUZZY ROW GROUPING ---
                 let hRowsMap = {};
-                hTexts.forEach(t => {
-                    const yKey = Math.round(t.y * 10);
-                    if (!hRowsMap[yKey]) hRowsMap[yKey] = [];
-                    hRowsMap[yKey].push(t);
+                hTexts.sort((a,b) => a.y - b.y).forEach(t => {
+                    let foundKey = Object.keys(hRowsMap).find(k => Math.abs(parseFloat(k) - t.y) < 0.5);
+                    if (!foundKey) {
+                        foundKey = t.y;
+                        hRowsMap[foundKey] = [];
+                    }
+                    hRowsMap[foundKey].push(t);
                 });
+
+                // --- PASS 2: RECONSTRUCT ROWS & EXTRACT DATA ---
 
                 const hSortedY = Object.keys(hRowsMap).sort((a,b)=>a-b);
                 let inTable = false;
@@ -2283,26 +2271,33 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     if ((inTable || (hasPrice && hasName)) && row.length >= 3) {
                         let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
                         
+                        let prices = [];
                         row.forEach(t => {
                             const val = t.text;
-                            const dist = (target) => Math.abs(t.x - target);
-
-                            // Map to closest statistical center
-                            if (colMap.hsn > 0 && dist(colMap.hsn) < 2 && val.match(/^\d{6,8}$/)) item.hsn = val;
-                            else if (colMap.exp > 0 && dist(colMap.exp) < 2 && val.match(/\d{2}[-/]\d{2,4}/)) item.expDate = val;
-                            else if (colMap.mrp > 0 && dist(colMap.mrp) < 3 && val.match(/^\d+\.\d{2}$/)) {
-                                const f = parseFloat(val);
-                                if (f > item.mrp) { item.rate = item.mrp; item.mrp = f; }
-                                else item.rate = f;
+                            if (val.match(/^\d{6,8}$/)) item.hsn = val;
+                            else if (val.match(/\d{2}[-/]\d{2,4}/)) item.expDate = val;
+                            else if (val.match(/^\d+\.\d{2}$/)) {
+                                prices.push(parseFloat(val));
                             }
-                            else if (colMap.qty > 0 && dist(colMap.qty) < 2 && val.match(/^\d+$/)) item.qty = parseInt(val);
-                            else if (val.length > 5 && isNaN(val[0]) && !item.name) item.name = val;
-                            else if (val.length >= 3 && !item.batch && isNaN(val[0])) item.batch = val;
+                            else if (val.match(/^\d+$/) && parseInt(val) < 10000 && !val.match(/^0/)) {
+                                if (item.qty === 0) item.qty = parseInt(val);
+                            }
+                            else if (val.length > 4 && isNaN(val[0]) && !item.name) item.name = val;
+                            else if (val.length >= 3 && !item.batch && isNaN(val[0]) && item.name && val !== item.name) item.batch = val;
                         });
 
+                        if (prices.length > 0) {
+                            prices.sort((a,b) => b - a); // Highest first
+                            item.mrp = prices[0];
+                            item.rate = prices.length > 1 ? prices[1] : prices[0];
+                        }
+
                         if (item.name && (item.qty > 0 || item.mrp > 0)) {
-                            if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
-                                extractedData.items.push(item);
+                            // Avoid adding column headers accidentally
+                            if (!item.name.includes("PRODUCT") && !item.name.includes("DESCRIPTION") && item.mrp > 0) {
+                                if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
+                                    extractedData.items.push(item);
+                                }
                             }
                         }
                     }
