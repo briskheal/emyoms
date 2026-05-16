@@ -2179,6 +2179,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             placeOfSupply: "",
             pincode: "",
             fssaiNo: "",
+            email: "",
             items: []
         };
 
@@ -2230,6 +2231,9 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
             const fssaiMatch = blockText.match(/FSSAI No\.:\s*(\d+)/i) || blockText.match(/FOOD:\s*(\d+)/i);
             if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1] || fssaiMatch[0].replace(/[^0-9]/g,'');
+
+            const emailMatch = blockText.match(/Email:\s*([^\n\r\s@]+@[^\n\r\s@]+\.[^\n\r\s@]+)/i);
+            if (emailMatch) extractedData.email = emailMatch[1].trim().toLowerCase();
         }
 
         // VALIDATION: Check if the invoice belongs to the logged-in stockist

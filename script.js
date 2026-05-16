@@ -2442,6 +2442,7 @@ async function uploadExtInvoice() {
             if (result.profile) {
                 document.getElementById('prof-name').value = result.profile.name;
                 document.getElementById('prof-phone').value = result.data.phone || result.profile.phone || '';
+                document.getElementById('prof-email').value = result.data.email || result.profile.email || '';
                 document.getElementById('prof-address').value = result.data.address || result.profile.address || '';
                 document.getElementById('prof-pin').value = result.data.pincode || result.profile.pincode || '';
                 document.getElementById('prof-fssai').value = result.data.fssaiNo || result.profile.fssaiNo || '';
@@ -2502,13 +2503,14 @@ async function postToRegistry() {
         dlNo: document.getElementById('prof-dl').value.trim().toUpperCase(),
         gstNo: document.getElementById('prof-gst').value.trim().toUpperCase(),
         fssaiNo: document.getElementById('prof-fssai').value.trim().toUpperCase(),
+        email: document.getElementById('prof-email').value.trim().toLowerCase(),
         bankName: document.getElementById('prof-bank').value.trim().toUpperCase(),
         bankIfsc: document.getElementById('prof-ifsc').value.trim().toUpperCase(),
         phone: document.getElementById('prof-phone').value.trim()
     };
 
     // --- STRICT VALIDATION FOR FIRST-TIME CODE OPENING ---
-    const mandatory = ['address', 'city', 'state', 'pincode', 'dlNo', 'gstNo', 'fssaiNo', 'phone'];
+    const mandatory = ['address', 'city', 'state', 'pincode', 'dlNo', 'gstNo', 'fssaiNo', 'phone', 'email'];
     const missing = mandatory.filter(key => !profileUpdate[key]);
     
     if (missing.length > 0) {
