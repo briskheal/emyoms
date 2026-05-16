@@ -2336,6 +2336,7 @@ async function uploadExtInvoice() {
             lastExtractedData = result.data;
             document.getElementById('ext-inv-no').value = result.data.invoiceNo;
             document.getElementById('ext-inv-date').value = result.data.date;
+            document.getElementById('ext-inv-pos').value = result.data.placeOfSupply || '';
             
             // Populate Profile Enrichment Form (Prefer EXTRACTED data over old master data)
             if (result.profile) {
@@ -2354,10 +2355,13 @@ async function uploadExtInvoice() {
             tbody.innerHTML = result.data.items.map((item, idx) => `
                 <tr>
                     <td><input type="text" value="${item.name}" oninput="lastExtractedData.items[${idx}].name=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;"></td>
+                    <td><input type="text" value="${item.hsn||''}" oninput="lastExtractedData.items[${idx}].hsn=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:90px;"></td>
                     <td><input type="text" value="${item.batch}" oninput="lastExtractedData.items[${idx}].batch=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
-                    <td><input type="number" value="${item.qty}" oninput="lastExtractedData.items[${idx}].qty=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:70px; text-align:center;"></td>
-                    <td><input type="number" step="0.01" value="${item.rate}" oninput="lastExtractedData.items[${idx}].rate=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:90px; text-align:right;"></td>
-                    <td><input type="number" value="${item.gst}" oninput="lastExtractedData.items[${idx}].gst=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:60px; text-align:center;"></td>
+                    <td><input type="text" value="${item.expDate||''}" oninput="lastExtractedData.items[${idx}].expDate=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:80px;"></td>
+                    <td><input type="number" step="0.01" value="${item.mrp||0}" oninput="lastExtractedData.items[${idx}].mrp=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:75px; text-align:right;"></td>
+                    <td><input type="number" value="${item.qty}" oninput="lastExtractedData.items[${idx}].qty=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:65px; text-align:center;"></td>
+                    <td><input type="number" step="0.01" value="${item.rate}" oninput="lastExtractedData.items[${idx}].rate=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:85px; text-align:right;"></td>
+                    <td><input type="number" value="${item.gst}" oninput="lastExtractedData.items[${idx}].gst=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:55px; text-align:center;"></td>
                 </tr>
             `).join('');
             

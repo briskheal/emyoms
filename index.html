@@ -629,15 +629,25 @@
                             <p style="font-size: 0.7rem; color: var(--text-muted);">Please verify the items and values read from the PDF.</p>
                         </div>
                         <div style="display: flex; gap: 1rem;">
-                            <div class="form-group" style="margin:0;"><label>Invoice No</label><input type="text" id="ext-inv-no" style="width: 150px; background: rgba(0,0,0,0.3);"></div>
-                            <div class="form-group" style="margin:0;"><label>Date</label><input type="date" id="ext-inv-date" style="width: 150px; background: rgba(0,0,0,0.3);"></div>
+                            <div class="form-group" style="margin:0;"><label>Invoice No</label><input type="text" id="ext-inv-no" style="width: 120px; background: rgba(0,0,0,0.3);"></div>
+                            <div class="form-group" style="margin:0;"><label>Date</label><input type="date" id="ext-inv-date" style="width: 130px; background: rgba(0,0,0,0.3);"></div>
+                            <div class="form-group" style="margin:0;"><label>Place of Supply</label><input type="text" id="ext-inv-pos" style="width: 120px; background: rgba(0,0,0,0.3);"></div>
                         </div>
                     </div>
 
                     <div class="excel-container" style="min-height: auto; margin-bottom: 2rem;">
                         <table class="excel-table">
                             <thead>
-                                <tr><th>Product Name</th><th>Batch</th><th>Qty</th><th>Rate (₹)</th><th>GST%</th></tr>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>HSN</th>
+                                    <th>Batch</th>
+                                    <th>Exp</th>
+                                    <th>MRP</th>
+                                    <th>Qty</th>
+                                    <th>Rate (₹)</th>
+                                    <th>GST%</th>
+                                </tr>
                             </thead>
                             <tbody id="ext-preview-body"></tbody>
                         </table>

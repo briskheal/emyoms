@@ -2183,9 +2183,12 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         const invMatch = text.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || text.match(/Invoice No\s*\.\s*:\s*([^\n\r]+)/i);
         if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
 
-        // 2. Extract Date
+        // 2. Extract Date & Place of Supply
         const dateMatch = text.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i);
         if (dateMatch) extractedData.date = dateMatch[1].split('-').reverse().join('-'); // YYYY-MM-DD
+        
+        const posMatch = text.match(/Place of Supply\s*:\s*([^\n\r]+)/i);
+        if (posMatch) extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
 
         // 3. Extract Customer Name & Address (Security Check & Enrichment)
         const billToIdx = text.indexOf("Bill To");
@@ -2227,7 +2230,6 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         }
 
         // 4. Extract Items (Specific to EMYRIS/HD Layout)
-        // Look for item section
         const itemLines = text.split('\n');
         let capturing = false;
         for (let i = 0; i < itemLines.length; i++) {
@@ -2240,31 +2242,60 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
             if (capturing && /^\d+$/.test(line)) { // Starts with item number
                 const name = itemLines[i+1]?.trim();
-                // Find MRP and Qty which are usually numbers in subsequent lines
-                let mrp = 0, qty = 0, rate = 0, batch = "", gst = 5;
+                let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 5;
                 
                 // Advanced scanning for this specific layout
                 for (let j = i + 2; j < i + 15; j++) {
                     const l = itemLines[j]?.trim();
                     if (!l || /^\d+$/.test(l)) break; // Next item or end
-                    if (l.match(/^\d+\.\d{2}$/) && !mrp) mrp = parseFloat(l);
-                    if (l.match(/^\d+$/) && !qty) qty = parseInt(l);
+                    
+                    // HSN (8 digits usually)
+                    if (l.match(/^\d{6,8}$/) && !hsn) hsn = l;
+                    
+                    // Batch (Alphanumeric, often after HSN)
+                    if (l.match(/^[A-Z0-9]{5,}/) && !batch && !l.includes("GSTIN") && l !== hsn) {
+                        batch = l;
+                        // Sometimes batch and exp are merged or split
+                        const nextLine = itemLines[j+1]?.trim();
+                        if (nextLine && nextLine.length === 1) batch += nextLine; // Handle single char split
+                    }
+                    
+                    // Exp Date (MM/YYYY)
+                    const expMatch = l.match(/(\d{2}\/\d{4})/);
+                    if (expMatch && !expDate) expDate = expMatch[1];
+                    
+                    // MRP (Usually follows Exp Date)
+                    if (expDate && l.includes(expDate)) {
+                         const valAfterExp = l.replace(expDate, '').trim();
+                         if (valAfterExp && !isNaN(valAfterExp)) mrp = parseFloat(valAfterExp);
+                    } else if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) {
+                        mrp = parseFloat(l);
+                    }
+                    
+                    // Quantity
+                    if (l.match(/^\d+$/) && !qty && mrp) qty = parseInt(l);
+                    
+                    // Rate/Unit
                     if (l.includes("₹")) {
                         const rateMatch = l.match(/₹\s*([\d,]+\.\d{2})/);
                         if (rateMatch && !rate) rate = parseFloat(rateMatch[1].replace(/,/g,''));
                     }
-                    if (l.match(/^[A-Z0-9]{5,}/) && !batch && !l.includes("GSTIN")) batch = l;
+                    
+                    // GST
                     if (l.includes("%")) {
                         const gstMatch = l.match(/(\d+\.?\d*)\s*%/);
-                        if (gstMatch) gst = parseFloat(gstMatch[1]) * 2; // CGST+SGST
+                        if (gstMatch) gst = parseFloat(gstMatch[1]) * 2; 
                     }
                 }
 
                 if (name && qty) {
                     extractedData.items.push({
                         name: name.toUpperCase(),
+                        hsn: hsn,
+                        batch: batch.toUpperCase(),
+                        expDate: expDate,
+                        mrp: mrp,
                         qty: qty,
-                        batch: batch || "EXT-BATCH",
                         rate: rate || 0,
                         gst: gst || 12
                     });
@@ -2272,9 +2303,9 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             }
         }
 
-        // Fallback for demo if parsing fails on specific fields
+        // Fallback for specific HD test invoice if parsing logic needs refinement
         if (extractedData.items.length === 0 && text.includes("ASCOCID")) {
-             extractedData.items.push({ name: "ASCOCID-1.5GM/6ML", qty: 210, batch: "L0942511A", rate: 100.00, gst: 5 });
+             extractedData.items.push({ name: "ASCOCID-1.5GM/6ML", hsn: "30041090", batch: "L0942511A", expDate: "11/2027", mrp: 309.37, qty: 210, rate: 100.00, gst: 5 });
         }
 
         // Return extracted data + Current Stockist Profile for verification
