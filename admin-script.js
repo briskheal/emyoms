@@ -7721,7 +7721,9 @@ async function loadTrialBalance() {
     tfoot.innerHTML = '';
 
     try {
-        const res = await fetch('/api/admin/trial-balance');
+        const from = document.getElementById('tb-from')?.value || '';
+        const to = document.getElementById('tb-to')?.value || '';
+        const res = await fetch(`/api/admin/trial-balance?from=${from}&to=${to}`);
         const data = await res.json();
         
         if (!data.success) throw new Error(data.error);
@@ -7910,7 +7912,11 @@ switchTab = function(tabId, el, ...args) {
 
 async function loadFinancialStatements() {
     try {
-        const res = await fetch('/api/admin/financial-statements');
+        // Try to get dates from P&L or Balance Sheet inputs (they are synced)
+        const from = document.getElementById('pl-from')?.value || document.getElementById('bs-from')?.value || '';
+        const to = document.getElementById('pl-to')?.value || document.getElementById('bs-to')?.value || '';
+        
+        const res = await fetch(`/api/admin/financial-statements?from=${from}&to=${to}`);
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
 

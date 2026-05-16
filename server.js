@@ -2696,12 +2696,23 @@ app.delete('/api/admin/expenses/:id', async (req, res) => {
 
 app.get('/api/admin/financial-statements', async (req, res) => {
     try {
+        const { from, to } = req.query;
         const [ledgers, stockists, expCats, lines] = await Promise.all([
             db.Ledger.findAll(),
             db.Stockist.findAll(),
             db.ExpenseCategory.findAll(),
-            db.JournalEntryLine.findAll()
+            db.JournalEntryLine.findAll({
+                include: [{ model: db.JournalVoucher, attributes: ['date'] }]
+            })
         ]);
+
+        const dateFilter = (line) => {
+            if (!from && !to) return true;
+            const d = new Date(line.JournalVoucher?.date || line.createdAt);
+            if (from && d < new Date(from)) return false;
+            if (to && d > new Date(to)) return false;
+            return true;
+        };
 
         const getNetBal = (type, id, nature) => {
             let dr = 0, cr = 0;
@@ -2711,59 +2722,59 @@ app.get('/api/admin/financial-statements', async (req, res) => {
                 else cr += Number(l.openingBalance || 0);
             }
             lines.filter(x => x.entityType === type && x.entityId === id).forEach(line => {
+                if (!dateFilter(line)) return;
                 if (line.type === 'DR') dr += Number(line.amount);
                 else cr += Number(line.amount);
             });
             return dr - cr;
         };
 
-        // P&L
         const income = [];
         const expenses = [];
-        
-        // Sales
-        const salesLedger = ledgers.find(x => x.name === 'Sales Account');
-        if (salesLedger) {
-            const bal = getNetBal('Ledger', salesLedger.id, 'CR');
-            if (bal !== 0) income.push({ name: 'Sales Revenue', amount: Math.abs(bal) });
-        }
+        const assets = [];
+        const liabilities = [];
 
-        // Expenses
+        // 1. Process All Ledgers
+        ledgers.forEach(l => {
+            const bal = getNetBal('Ledger', l.id, l.nature);
+            if (bal === 0) return;
+
+            const grp = (l.group || '').toUpperCase();
+            // Income Detection
+            if (l.nature === 'CR' && (grp.includes('INCOME') || grp.includes('REVENUE') || grp.includes('SALES'))) {
+                income.push({ name: l.name, amount: Math.abs(bal) });
+            } 
+            // Expense Detection
+            else if (l.nature === 'DR' && (grp.includes('EXPENSE') || grp.includes('COST') || grp.includes('PURCHASE'))) {
+                expenses.push({ name: l.name, amount: Math.abs(bal) });
+            }
+            // Balance Sheet Items
+            else {
+                if (bal > 0) assets.push({ name: l.name, amount: Math.abs(bal) });
+                else liabilities.push({ name: l.name, amount: Math.abs(bal) });
+            }
+        });
+
+        // 2. Process Expense Categories (Explicitly P&L)
         expCats.forEach(c => {
             const bal = getNetBal('ExpenseCategory', c.id, 'DR');
             if (bal !== 0) expenses.push({ name: c.name, amount: Math.abs(bal) });
+        });
+
+        // 3. Process Stockists (Explicitly Balance Sheet)
+        stockists.forEach(s => {
+            const bal = getNetBal('Stockist', s.id, 'DR');
+            if (bal === 0) return;
+            if (bal > 0) assets.push({ name: `Debtor: ${s.name}`, amount: Math.abs(bal) });
+            else liabilities.push({ name: `Creditor: ${s.name}`, amount: Math.abs(bal) });
         });
 
         const totalIncome = income.reduce((s, x) => s + x.amount, 0);
         const totalExpenses = expenses.reduce((s, x) => s + x.amount, 0);
         const netProfit = totalIncome - totalExpenses;
 
-        // Balance Sheet
-        const assets = [];
-        const liabilities = [];
-
-        ledgers.forEach(l => {
-            if (l.name === 'Sales Account') return; // Income statement item
-            const bal = getNetBal('Ledger', l.id, l.nature);
-            if (bal === 0) return;
-
-            if (['Bank', 'Cash', 'Stock', 'Fixed Assets'].includes(l.group)) {
-                assets.push({ name: l.name, amount: Math.abs(bal), type: bal >= 0 ? 'DR' : 'CR' });
-            } else {
-                liabilities.push({ name: l.name, amount: Math.abs(bal), type: bal <= 0 ? 'CR' : 'DR' });
-            }
-        });
-
-        // Add Stockists
-        stockists.forEach(s => {
-            const bal = getNetBal('Stockist', s.id, 'DR');
-            if (bal === 0) return;
-            if (bal > 0) assets.push({ name: `Debtor: ${s.name}`, amount: bal });
-            else liabilities.push({ name: `Creditor: ${s.name}`, amount: Math.abs(bal) });
-        });
-
-        // Add Net Profit to Liabilities (as part of Capital)
-        liabilities.push({ name: 'Net Profit (Current Year)', amount: netProfit });
+        // Add Net Profit to Liabilities (Equity section)
+        liabilities.push({ name: 'Net Profit / Loss (Selected Period)', amount: netProfit });
 
         res.json({
             success: true,
@@ -2777,12 +2788,23 @@ app.get('/api/admin/financial-statements', async (req, res) => {
 
 app.get('/api/admin/trial-balance', async (req, res) => {
     try {
+        const { from, to } = req.query;
         const [stockists, ledgers, expCats, lines] = await Promise.all([
-            db.Stockist.findAll({ attributes: ['id', 'name', 'outstandingBalance'] }),
-            db.Ledger.findAll({ attributes: ['id', 'name', 'group', 'nature', 'openingBalance'] }),
-            db.ExpenseCategory.findAll({ attributes: ['id', 'name', 'expenseType'] }),
-            db.JournalEntryLine.findAll()
+            db.Stockist.findAll(),
+            db.Ledger.findAll(),
+            db.ExpenseCategory.findAll(),
+            db.JournalEntryLine.findAll({
+                include: [{ model: db.JournalVoucher, attributes: ['date'] }]
+            })
         ]);
+
+        const dateFilter = (line) => {
+            if (!from && !to) return true;
+            const d = new Date(line.JournalVoucher?.date || line.createdAt);
+            if (from && d < new Date(from)) return false;
+            if (to && d > new Date(to)) return false;
+            return true;
+        };
 
         const tb = [];
 
@@ -2794,6 +2816,7 @@ app.get('/api/admin/trial-balance', async (req, res) => {
 
             const myLines = lines.filter(x => x.entityType === 'Ledger' && x.entityId === l.id);
             myLines.forEach(line => {
+                if (!dateFilter(line)) return;
                 if (line.type === 'DR') dr += Number(line.amount);
                 else cr += Number(line.amount);
             });
@@ -2816,6 +2839,7 @@ app.get('/api/admin/trial-balance', async (req, res) => {
             let dr = 0, cr = 0;
             const myLines = lines.filter(x => x.entityType === 'Stockist' && x.entityId === s.id);
             myLines.forEach(line => {
+                if (!dateFilter(line)) return;
                 if (line.type === 'DR') dr += Number(line.amount);
                 else cr += Number(line.amount);
             });
@@ -2837,6 +2861,7 @@ app.get('/api/admin/trial-balance', async (req, res) => {
             let dr = 0, cr = 0;
             const myLines = lines.filter(x => x.entityType === 'ExpenseCategory' && x.entityId === c.id);
             myLines.forEach(line => {
+                if (!dateFilter(line)) return;
                 if (line.type === 'DR') dr += Number(line.amount);
                 else cr += Number(line.amount);
             });
@@ -2856,6 +2881,7 @@ app.get('/api/admin/trial-balance', async (req, res) => {
         res.json({ success: true, trialBalance: tb });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
+
 
 app.get('/api/admin/ledger-statement', async (req, res) => {
     try {
