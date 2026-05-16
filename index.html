@@ -608,15 +608,21 @@
                     <p style="font-size: 0.8rem; color: var(--text-muted);">Upload invoices from your Super Distributor to automate your PDCN claims and update your profile.</p>
                 </div>
 
-                <div style="background: rgba(99, 102, 241, 0.05); border: 2px dashed var(--glass-border); border-radius: 20px; padding: 3rem; text-align: center; transition: 0.3s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
-                    <i class="fas fa-file-invoice" style="font-size: 3rem; color: var(--primary); margin-bottom: 1.5rem; opacity: 0.5;"></i>
-                    <h3 style="margin-bottom: 1rem; color: #fff;">Upload External Supplier Invoice</h3>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2rem;">Select PDF, JPG or PNG format. Our AI will automatically read items and totals.</p>
+                <div style="background: rgba(99, 102, 241, 0.03); border: 1px dashed var(--glass-border); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 2rem; transition: 0.3s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(99, 102, 241, 0.05)';" onmouseout="this.style.borderColor='var(--glass-border)'; this.style.background='rgba(99, 102, 241, 0.03)';" id="upload-zone">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 45px; height: 45px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-file-invoice" style="font-size: 1.2rem; color: var(--primary);"></i>
+                        </div>
+                        <div style="text-align: left;">
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin: 0;">Upload Supplier Invoice</h3>
+                            <p style="font-size: 0.65rem; color: var(--text-muted); margin: 0;">PDF, JPG or PNG formats supported</p>
+                        </div>
+                    </div>
                     
-                    <div style="max-width: 400px; margin: 0 auto;">
-                        <input type="file" id="ext-inv-file" accept="application/pdf,image/*" style="margin-bottom: 1.5rem;">
-                        <button class="btn-primary" id="upload-btn" onclick="uploadExtInvoice()">
-                            <i class="fas fa-magic"></i> READ INVOICE DATA
+                    <div style="display: flex; align-items: center; gap: 1rem; flex: 1; max-width: 500px;">
+                        <input type="file" id="ext-inv-file" accept="application/pdf,image/*" style="font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 8px; flex: 1; border: 1px solid rgba(255,255,255,0.05);">
+                        <button class="btn-primary" id="upload-btn" onclick="uploadExtInvoice()" style="width: auto; padding: 10px 24px; font-size: 0.75rem; white-space: nowrap;">
+                            <i class="fas fa-magic"></i> READ DATA
                         </button>
                     </div>
                 </div>
