@@ -2325,10 +2325,9 @@ async function autoPostInvoiceJV(invoice, stockist, t) {
             jvId: jv.id,
             type: 'DR',
             amount: invoice.grandTotal,
-            entityType: 'Stockist',
-            entityId: stockist ? stockist.id : null,
-            entityName: stockist ? stockist.name : 'Unknown Party',
-            notes: 'Sales Billing'
+            entityType: 'Ledger',
+            entityName: 'Sundry Debtors',
+            notes: `Sales Billing - Party: ${stockist ? stockist.name : 'Unknown'}`
         },
         {
             jvId: jv.id,
@@ -2379,10 +2378,9 @@ async function autoPostPurchaseJV(purchase, stockist, t) {
             jvId: jv.id,
             type: 'CR',
             amount: purchase.grandTotal,
-            entityType: 'Stockist',
-            entityId: stockist ? stockist.id : null,
-            entityName: stockist ? stockist.name : 'Unknown Supplier',
-            notes: 'Purchase Billing'
+            entityType: 'Ledger',
+            entityName: 'Sundry Creditors',
+            notes: `Purchase Billing - Supplier: ${stockist ? stockist.name : 'Unknown'}`
         }
     ];
 
@@ -2414,7 +2412,14 @@ async function autoPostNoteJV(note, t) {
         refId: note.id
     }, { transaction: t });
     const lines = [
-        { jvId: jv.id, type: isCN ? 'CR' : 'DR', amount: note.amount, entityType: 'Stockist', entityId: stockist ? stockist.id : null, entityName: stockist ? stockist.name : 'Unknown Party', notes: note.reason || 'Financial Adjustment' },
+        { 
+            jvId: jv.id, 
+            type: isCN ? 'CR' : 'DR', 
+            amount: note.amount, 
+            entityType: 'Ledger', 
+            entityName: isCN ? 'Sundry Debtors' : 'Sundry Creditors', 
+            notes: `${isCN ? 'CN' : 'DN'} - Party: ${stockist ? stockist.name : 'Unknown'}` 
+        },
         { jvId: jv.id, type: isCN ? 'DR' : 'CR', amount: note.amount, entityType: 'Ledger', entityName: 'Adjustment Account', notes: note.description || '' }
     ];
     await db.JournalEntryLine.bulkCreate(lines, { transaction: t });
@@ -2457,10 +2462,9 @@ async function autoPostPaymentJV(payment, stockist, t) {
             jvId: jv.id,
             type: isReceipt ? 'CR' : 'DR',
             amount: payment.amount,
-            entityType: 'Stockist',
-            entityId: stockist ? stockist.id : null,
-            entityName: stockist ? stockist.name : 'Unknown Party',
-            notes: `${isReceipt ? 'Receipt' : 'Payment'}`
+            entityType: 'Ledger',
+            entityName: isReceipt ? 'Sundry Debtors' : 'Sundry Creditors',
+            notes: `${isReceipt ? 'Receipt' : 'Payment'} - Party: ${stockist ? stockist.name : 'Unknown'}`
         }
     ], { transaction: t });
 }

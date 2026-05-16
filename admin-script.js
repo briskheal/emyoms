@@ -2816,12 +2816,31 @@ function openPurchaseModal(id = null) {
     try {
         const form = document.getElementById('purchaseForm');
         if (form) form.reset();
+        
+        // Reset IDs and Search fields
         safeSetVal('pur-id', id || '');
         safeSetVal('pur-party-search', '');
         safeSetVal('pur-supplier', '');
         safeSetVal('pur-prod-search', '');
         safeSetVal('pur-prod-select', '');
         safeSetVal('pur-supplier-inv-no', '');
+        
+        // Reset Integrated Row Inputs (Memory Clean)
+        safeSetVal('pur-hsn', '');
+        safeSetVal('pur-pack', '');
+        safeSetVal('pur-batch', '');
+        safeSetVal('pur-mfg', '');
+        safeSetVal('pur-exp', '');
+        safeSetVal('pur-mrp', '');
+        safeSetVal('pur-ptr', '');
+        safeSetVal('pur-pts', '');
+        safeSetVal('pur-rate', '');
+        safeSetVal('pur-qty', '');
+        safeSetVal('pur-gst-pct', '');
+        if (document.getElementById('pur-line-total')) {
+            document.getElementById('pur-line-total').innerText = '₹0.00';
+        }
+
         // Set Today's Date
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
@@ -2837,6 +2856,17 @@ function openPurchaseModal(id = null) {
 
         purchaseItems = [];
         purchaseCharges = [];
+        
+        // Reset Bulk Grid State
+        purGridActive = false;
+        purGridCat = 'ALL';
+        const gridView = document.getElementById('pur-grid-view');
+        const formView = document.getElementById('purchaseForm');
+        const toggleBtn = document.getElementById('pur-grid-toggle');
+        if (gridView) gridView.classList.add('hidden');
+        if (formView) formView.classList.remove('hidden');
+        if (toggleBtn) toggleBtn.innerText = '⚡ BULK GRID MODE';
+
         renderPurchaseItems();
         renderPurchaseCharges();
         document.getElementById('purchaseModal').classList.remove('hidden');
@@ -3182,6 +3212,16 @@ function openDirectSaleModal(type, preserveEdit = false) {
 
             directSaleItems = [];
         }
+        // Reset Bulk Grid State
+        saleGridActive = false;
+        saleGridCat = 'ALL';
+        const gridView = document.getElementById('sale-grid-view');
+        const formView = document.getElementById('saleForm');
+        const toggleBtn = document.getElementById('sale-grid-toggle');
+        if (gridView) gridView.classList.add('hidden');
+        if (formView) formView.classList.remove('hidden');
+        if (toggleBtn) toggleBtn.innerText = '⚡ BULK GRID MODE';
+
         renderSaleItems();
 
         // UI Adjustments based on type
@@ -8095,4 +8135,268 @@ function autoAllocatePayment() {
         }
     });
     updateLinkedTotal();
+}
+
+// ==========================================
+// BULK GRID ENTRY SYSTEM (Enhanced Convenience)
+// ==========================================
+let saleGridActive = false;
+let purGridActive = false;
+let saleGridCat = 'ALL';
+let purGridCat = 'ALL';
+
+window.saleGridCat = 'ALL';
+window.purGridCat = 'ALL';
+
+function toggleSaleGridMode() {
+    saleGridActive = !saleGridActive;
+    const gridView = document.getElementById('sale-grid-view');
+    const formView = document.getElementById('saleForm');
+    const toggleBtn = document.getElementById('sale-grid-toggle');
+
+    if (saleGridActive) {
+        gridView.classList.remove('hidden');
+        formView.classList.add('hidden');
+        toggleBtn.innerText = '⬅ BACK TO FORM';
+        renderGridCategories('sale-grid-cats', 'saleGridCat', renderSaleGrid);
+        renderSaleGrid();
+    } else {
+        gridView.classList.add('hidden');
+        formView.classList.remove('hidden');
+        toggleBtn.innerText = '⚡ BULK GRID MODE';
+    }
+}
+
+function togglePurchaseGridMode() {
+    purGridActive = !purGridActive;
+    const gridView = document.getElementById('pur-grid-view');
+    const formView = document.getElementById('purchaseForm');
+    const toggleBtn = document.getElementById('pur-grid-toggle');
+
+    if (purGridActive) {
+        gridView.classList.remove('hidden');
+        formView.classList.add('hidden');
+        toggleBtn.innerText = '⬅ BACK TO FORM';
+        renderGridCategories('pur-grid-cats', 'purGridCat', renderPurchaseGrid);
+        renderPurchaseGrid();
+    } else {
+        gridView.classList.add('hidden');
+        formView.classList.remove('hidden');
+        toggleBtn.innerText = '⚡ BULK GRID MODE';
+    }
+}
+
+function renderGridCategories(containerId, stateVarName, renderFunc) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const cats = ['ALL', ...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+    const current = window[stateVarName];
+    
+    container.innerHTML = cats.map(c => `
+        <span onclick="window['${stateVarName}']='${c}'; renderGridCategories('${containerId}', '${stateVarName}', ${renderFunc.name}); ${renderFunc.name}();" 
+              style="padding: 4px 10px; border-radius: 4px; font-size: 0.6rem; cursor: pointer; border: 1px solid ${c === current ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}; background: ${c === current ? 'rgba(99,102,241,0.1)' : 'transparent'}; color: ${c === current ? '#fff' : 'var(--text-muted)'}; white-space: nowrap;">
+            ${c}
+        </span>
+    `).join('');
+}
+
+function renderSaleGrid() {
+    const tbody = document.getElementById('sale-grid-body');
+    const searchInput = document.getElementById('sale-grid-search');
+    const search = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let html = '';
+    allProducts.forEach(p => {
+        if (saleGridCat !== 'ALL' && p.category !== saleGridCat) return;
+        if (search && !p.name.toLowerCase().includes(search)) return;
+        
+        const batches = p.batches || [];
+        batches.forEach(b => {
+            if (b.qtyAvailable <= 0) return;
+            
+            const existing = saleItems.find(item => item.productId === (p._id || p.id) && item.batchNo === b.batchNo);
+            const qty = existing ? existing.qty : '';
+            const rate = existing ? existing.rate : p.pts;
+            const total = qty ? (qty * rate).toFixed(2) : '0.00';
+            
+            html += `
+                <tr>
+                    <td style="padding: 6px 12px;">
+                        <div style="font-weight: 800; color: #fff;">${p.name}</div>
+                        <div style="font-size: 0.6rem; color: var(--text-muted);">${p.packing || '-'} | ${p.category || 'General'}</div>
+                    </td>
+                    <td><span style="font-family: monospace; color: var(--accent); font-weight: 700;">${b.batchNo}</span></td>
+                    <td style="font-size: 0.7rem; opacity: 0.8;">${formatBatchExp(b.expDate)}</td>
+                    <td style="font-weight: 700; color: #fff;">${b.qtyAvailable}</td>
+                    <td>
+                        <input type="number" step="0.01" value="${rate}" 
+                            oninput="updateSaleGridItem('${p._id || p.id}', '${b.batchNo}', null, this.value)" 
+                            style="width: 70px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; font-size: 0.75rem; border-radius: 4px;">
+                    </td>
+                    <td>
+                        <input type="number" value="${qty}" placeholder="0"
+                            oninput="updateSaleGridItem('${p._id || p.id}', '${b.batchNo}', this.value, null)" 
+                            style="width: 80px; background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary); color: #fff; text-align: center; font-weight: 800; font-size: 0.85rem; border-radius: 4px;">
+                    </td>
+                    <td style="text-align: right; padding-right: 12px; font-weight: 800; color: var(--accent); font-family: monospace;">₹${total}</td>
+                </tr>
+            `;
+        });
+    });
+    tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">No products found in this category.</td></tr>';
+}
+
+function updateSaleGridItem(productId, batchNo, qtyStr, rateStr) {
+    const p = allProducts.find(x => (x._id || x.id) == productId);
+    if (!p) return;
+    const b = p.batches.find(x => x.batchNo === batchNo);
+    if (!b) return;
+    
+    let existing = saleItems.find(item => item.productId === productId && item.batchNo === batchNo);
+    
+    const qty = qtyStr !== null ? parseInt(qtyStr) || 0 : (existing ? existing.qty : 0);
+    const rate = rateStr !== null ? parseFloat(rateStr) || 0 : (existing ? existing.rate : p.pts);
+
+    if (qty <= 0 && existing) {
+        saleItems = saleItems.filter(item => !(item.productId === productId && item.batchNo === batchNo));
+    } else if (qty > 0) {
+        if (!existing) {
+            existing = {
+                productId,
+                name: p.name,
+                hsn: p.hsn,
+                packing: p.packing,
+                batchNo: b.batchNo,
+                expDate: b.expDate,
+                mfgDate: b.mfgDate,
+                mrp: p.mrp,
+                ptr: p.ptr,
+                pts: p.pts,
+                gstPercent: p.gstPercent,
+                qty: qty,
+                rate: rate
+            };
+            saleItems.push(existing);
+        } else {
+            existing.qty = qty;
+            existing.rate = rate;
+        }
+    }
+    
+    renderSaleItems(); // Update main UI and footer
+    
+    // Update the line total in the grid row without full re-render
+    const gridTbody = document.getElementById('sale-grid-body');
+    if (gridTbody) {
+        const rows = gridTbody.querySelectorAll('tr');
+        for (let row of rows) {
+            if (row.innerHTML.includes(batchNo)) {
+                const totalCell = row.querySelector('.total-cell') || row.cells[row.cells.length-1];
+                if (totalCell) totalCell.innerText = `₹${(qty * rate).toFixed(2)}`;
+                break;
+            }
+        }
+    }
+}
+
+function renderPurchaseGrid() {
+    const tbody = document.getElementById('pur-grid-body');
+    const searchInput = document.getElementById('pur-grid-search');
+    const search = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let html = '';
+    allProducts.forEach(p => {
+        if (purGridCat !== 'ALL' && p.category !== purGridCat) return;
+        if (search && !p.name.toLowerCase().includes(search)) return;
+        
+        const existing = purchaseItems.find(item => item.productId === (p._id || p.id));
+        const qty = existing ? existing.qty : '';
+        const batch = existing ? existing.batch : '';
+        const exp = existing ? existing.exp : '';
+        const rate = existing ? existing.rate : p.pts;
+        const total = qty ? (qty * rate).toFixed(2) : '0.00';
+        
+        html += `
+            <tr>
+                <td style="padding: 6px 12px;">
+                    <div style="font-weight: 800; color: #fff;">${p.name}</div>
+                    <div style="font-size: 0.6rem; color: var(--text-muted);">${p.packing || '-'} | ${p.category || 'General'}</div>
+                </td>
+                <td><input type="text" value="${p.hsn || ''}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: center;"></td>
+                <td><input type="text" value="${p.packing || ''}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: center;"></td>
+                <td>
+                    <input type="text" value="${batch}" placeholder="Batch"
+                        oninput="updatePurchaseGridItem('${p._id || p.id}', 'batch', this.value)" 
+                        style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.7rem; border-radius: 4px; padding: 2px;">
+                </td>
+                <td>
+                    <input type="text" value="${exp}" placeholder="MM-YY" maxlength="5"
+                        oninput="formatMMYY(this); updatePurchaseGridItem('${p._id || p.id}', 'exp', this.value)" 
+                        style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.7rem; border-radius: 4px; padding: 2px; text-align: center;">
+                </td>
+                <td><input type="number" value="${p.mrp}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: right;"></td>
+                <td><input type="number" value="${p.pts}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: right;"></td>
+                <td>
+                    <input type="number" step="0.01" value="${rate}" 
+                        oninput="updatePurchaseGridItem('${p._id || p.id}', 'rate', this.value)" 
+                        style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.75rem; border-radius: 4px;">
+                </td>
+                <td>
+                    <input type="number" value="${qty}" placeholder="0"
+                        oninput="updatePurchaseGridItem('${p._id || p.id}', 'qty', this.value)" 
+                        style="width: 100%; background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary); color: #fff; text-align: center; font-weight: 800; font-size: 0.85rem; border-radius: 4px;">
+                </td>
+                <td style="text-align: right; padding-right: 12px; font-weight: 800; color: var(--primary); font-family: monospace;">₹${total}</td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html || '<tr><td colspan="10" style="text-align:center; padding: 20px; color: var(--text-muted);">No products found.</td></tr>';
+}
+
+function updatePurchaseGridItem(productId, field, value) {
+    const p = allProducts.find(x => (x._id || x.id) == productId);
+    if (!p) return;
+    
+    let existing = purchaseItems.find(item => item.productId === productId);
+    
+    if (!existing) {
+        existing = {
+            productId,
+            productName: p.name,
+            hsn: p.hsn,
+            pack: p.packing,
+            batch: '',
+            mfg: '',
+            exp: '',
+            mrp: p.mrp,
+            ptr: p.ptr,
+            pts: p.pts,
+            rate: p.pts,
+            qty: 0,
+            gstPercent: p.gstPercent || 12,
+            lineTotal: 0
+        };
+        purchaseItems.push(existing);
+    }
+    
+    if (field === 'qty') existing.qty = parseInt(value) || 0;
+    else if (field === 'rate') existing.rate = parseFloat(value) || 0;
+    else if (field === 'batch') existing.batch = value;
+    else if (field === 'exp') existing.exp = value;
+    
+    // Calculate line total
+    existing.lineTotal = Number(existing.qty) * Number(existing.rate);
+    
+    // Remove if qty 0 and no data
+    if (existing.qty <= 0 && !existing.batch) {
+        purchaseItems = purchaseItems.filter(item => item.productId !== productId);
+    }
+
+    renderPurchaseItems(); // Update main UI and footer
+}
+
+function formatBatchExp(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear().toString().substring(2)}`;
 }
