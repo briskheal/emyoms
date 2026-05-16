@@ -2214,14 +2214,13 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
 
                 // 3. STATISTICAL HEAT MAP PARSER (LAYOUT AGNOSTIC)
-                const page = pdfData.Pages[0];
-                const texts = page.Texts.map(t => ({
+                const hTexts = page.Texts.map(t => ({
                     x: t.x, y: t.y, text: decodeURIComponent(t.R[0].T).trim()
                 })).filter(t => t.text);
 
                 // --- PASS 1: MAP GLOBAL COLUMN CENTERS ---
                 let centers = { hsn: [], exp: [], mrp: [], qty: [] };
-                texts.forEach(t => {
+                hTexts.forEach(t => {
                     if (t.text.match(/^\d{6,8}$/)) centers.hsn.push(t.x);
                     if (t.text.match(/\d{2}[-/]\d{2,4}/)) centers.exp.push(t.x);
                     if (t.text.match(/^\d+\.\d{2}$/)) centers.mrp.push(t.x);
@@ -2237,18 +2236,18 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 };
 
                 // --- PASS 2: RECONSTRUCT ROWS & MAP TO CENTERS ---
-                let rowsMap = {};
-                texts.forEach(t => {
+                let hRowsMap = {};
+                hTexts.forEach(t => {
                     const yKey = Math.round(t.y * 10);
-                    if (!rowsMap[yKey]) rowsMap[yKey] = [];
-                    rowsMap[yKey].push(t);
+                    if (!hRowsMap[yKey]) hRowsMap[yKey] = [];
+                    hRowsMap[yKey].push(t);
                 });
 
-                const sortedY = Object.keys(rowsMap).sort((a,b)=>a-b);
+                const hSortedY = Object.keys(hRowsMap).sort((a,b)=>a-b);
                 let inTable = false;
 
-                sortedY.forEach(y => {
-                    const row = rowsMap[y].sort((a,b)=>a.x-b.x);
+                hSortedY.forEach(y => {
+                    const row = hRowsMap[y].sort((a,b)=>a.x-b.x);
                     const rText = row.map(t => t.text).join(" ").toUpperCase();
 
                     if (rText.includes("HSN") || rText.includes("BATCH")) inTable = true;
