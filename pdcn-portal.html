@@ -75,6 +75,7 @@ td input,td select{margin:0;padding:4px 6px;font-size:0.7rem;}
   <!-- Tabs -->
   <div style="display:flex;gap:6px;margin-bottom:1.25rem;background:rgba(0,0,0,0.3);padding:4px;border-radius:8px;width:fit-content;">
     <button id="tab-new" onclick="showTab('new')" style="padding:6px 18px;border-radius:6px;font-size:0.68rem;font-weight:800;border:none;cursor:pointer;background:rgba(99,102,241,0.25);color:#fff;letter-spacing:0.05em;">NEW CLAIM</button>
+    <button id="tab-upload" onclick="showTab('upload')" style="padding:6px 18px;border-radius:6px;font-size:0.68rem;font-weight:800;border:none;cursor:pointer;background:transparent;color:#64748b;letter-spacing:0.05em;">UPLOAD REGISTRY</button>
     <button id="tab-history" onclick="showTab('history')" style="padding:6px 18px;border-radius:6px;font-size:0.68rem;font-weight:800;border:none;cursor:pointer;background:transparent;color:#64748b;letter-spacing:0.05em;">MY CLAIMS</button>
   </div>
 
@@ -110,6 +111,69 @@ td input,td select{margin:0;padding:4px 6px;font-size:0.7rem;}
 
       <button class="btn btn-primary" onclick="submitClaim()">✓ SUBMIT PDCN CLAIM FOR APPROVAL</button>
       <div style="font-size:0.6rem;color:#475569;margin-top:0.5rem;text-align:center;">Your claim will be reviewed by admin. CN will be issued upon approval.</div>
+    </div>
+  </div>
+
+  <!-- Upload Registry Tab Content -->
+  <div id="tab-upload-content" style="display:none;">
+    <div class="card" style="max-width:100%; background: rgba(99,102,241,0.05); border-color: rgba(99,102,241,0.2);">
+      <div class="section-label" style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.2rem;">📂</span> UPLOAD INVOICE REGISTRY (FOR PDCN WORKOUT)
+      </div>
+      <p style="font-size:0.65rem; color:#94a3b8; margin-bottom:1rem;">Upload external invoices to read products and add them to your history for PDCN processing.</p>
+      
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:1rem;">
+        <div style="flex:1;">
+          <input type="file" id="ext-inv-file" style="margin-bottom:0; padding:6px; font-size:0.7rem;">
+        </div>
+        <button class="btn btn-primary" style="width:auto; padding:8px 20px; white-space:nowrap;" id="upload-btn" onclick="uploadExtInvoice()">
+          📤 UPLOAD & READ
+        </button>
+      </div>
+
+        <div id="ext-preview-section" style="display:none; margin-top:1.5rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1.5rem;">
+        <!-- PROFILE ENRICHMENT -->
+        <div style="background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.2); padding:1rem; border-radius:12px; margin-bottom:1.5rem;">
+          <div class="section-label" style="color:#10b981; margin-bottom:0.5rem;">👤 VERIFY CUSTOMER MASTER DETAILS</div>
+          <p style="font-size:0.6rem; color:#94a3b8; margin-bottom:1rem;">Ensure all your official details are accurate for financial recording. ALL DATA WILL BE SAVED IN CAPITAL LETTERS.</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div><label>Full Name</label><input type="text" id="prof-name" readonly style="opacity:0.6;"></div>
+            <div><label>Phone / Contact</label><input type="text" id="prof-phone" readonly style="opacity:0.6;"></div>
+            <div style="grid-column: span 2;"><label>Full Address (Shop/Office)</label><input type="text" id="prof-address" style="text-transform:uppercase;" placeholder="ENTER COMPLETE ADDRESS"></div>
+            <div><label>City</label><input type="text" id="prof-city" style="text-transform:uppercase;" placeholder="CITY"></div>
+            <div><label>State</label><input type="text" id="prof-state" style="text-transform:uppercase;" placeholder="STATE"></div>
+            <div><label>DL No.</label><input type="text" id="prof-dl" style="text-transform:uppercase;" placeholder="DRUG LICENSE NO"></div>
+            <div><label>GST No.</label><input type="text" id="prof-gst" style="text-transform:uppercase;" placeholder="GSTIN"></div>
+            <div><label>Bank Name</label><input type="text" id="prof-bank" style="text-transform:uppercase;" placeholder="BANK NAME"></div>
+            <div><label>IFSC Code</label><input type="text" id="prof-ifsc" style="text-transform:uppercase;" placeholder="IFSC"></div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1rem;">
+          <div><label style="color:var(--accent); font-weight:800;">VERIFY INVOICE NO</label><input type="text" id="ext-inv-no" style="border-color:var(--accent); font-weight:900; background:rgba(99,102,241,0.1);"></div>
+          <div><label>Invoice Date</label><input type="date" id="ext-inv-date"></div>
+        </div>
+        
+        <div style="border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden; margin-bottom:1rem;">
+          <table style="margin-bottom:0;">
+            <thead>
+              <tr>
+                <th style="width:40%;">Product Name</th>
+                <th>Batch</th>
+                <th>Qty</th>
+                <th>Rate</th>
+                <th>GST%</th>
+              </tr>
+            </thead>
+            <tbody id="ext-preview-body"></tbody>
+          </table>
+        </div>
+
+        <button class="btn btn-primary" style="background:linear-gradient(135deg,#10b981,#059669);" onclick="postToRegistry()">
+          ✓ POST TO FINAL ORDER INVOICED REGISTRY
+        </button>
+        <button class="btn btn-ghost" onclick="cancelUpload()">CANCEL</button>
+      </div>
     </div>
   </div>
 
@@ -301,17 +365,143 @@ async function loadHistory() {
 // -- TABS -------------------------------------------------------------------
 function showTab(t) {
     document.getElementById('tab-new-content').style.display     = t==='new' ? 'block' : 'none';
+    document.getElementById('tab-upload-content').style.display  = t==='upload' ? 'block' : 'none';
     document.getElementById('tab-history-content').style.display = t==='history' ? 'block' : 'none';
+    
     const act = 'background:rgba(99,102,241,0.25);color:#fff;';
     const ina = 'background:transparent;color:#64748b;';
-    document.getElementById('tab-new').style.cssText     += t==='new' ? act : ina;
-    document.getElementById('tab-history').style.cssText += t==='history' ? act : ina;
+    
+    document.getElementById('tab-new').style.cssText     = t==='new' ? act : ina;
+    document.getElementById('tab-upload').style.cssText  = t==='upload' ? act : ina;
+    document.getElementById('tab-history').style.cssText = t==='history' ? act : ina;
+    
     if (t==='history') loadHistory();
 }
 
 function showErr(id,msg){ const el=document.getElementById(id); el.innerText=msg; el.style.display='block'; }
 function showOk(id,msg) { const el=document.getElementById(id); el.innerText=msg; el.style.display='block'; }
 function hideMsg(){ ['claim-err','claim-ok'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';}); }
+
+// --- EXTERNAL INVOICE REGISTRY LOGIC ---
+let lastExtractedData = null;
+
+async function uploadExtInvoice() {
+    const fileInput = document.getElementById('ext-inv-file');
+    if (!fileInput.files[0]) return alert("Please select an invoice file (PDF/JPG/PNG).");
+
+    const btn = document.getElementById('upload-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "⌛ READING...";
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('invoice', fileInput.files[0]);
+        formData.append('stockistName', sessionParty.name);
+
+        const res = await fetch(`${API}/api/stockist/upload-invoice-read`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            lastExtractedData = result.data;
+            document.getElementById('ext-inv-no').value = result.data.invoiceNo;
+            document.getElementById('ext-inv-date').value = result.data.date;
+            
+            // Populate Profile Enrichment Form
+            if (result.profile) {
+                document.getElementById('prof-name').value = result.profile.name;
+                document.getElementById('prof-phone').value = result.profile.phone;
+                document.getElementById('prof-address').value = result.profile.address || '';
+                document.getElementById('prof-city').value = result.profile.city || '';
+                document.getElementById('prof-state').value = result.profile.state || '';
+                document.getElementById('prof-dl').value = result.profile.dlNo || '';
+                document.getElementById('prof-gst').value = result.profile.gstNo || '';
+                document.getElementById('prof-bank').value = result.profile.bankName || '';
+                document.getElementById('prof-ifsc').value = result.profile.bankIfsc || '';
+            }
+            
+            const tbody = document.getElementById('ext-preview-body');
+            tbody.innerHTML = result.data.items.map((item, idx) => `
+                <tr>
+                    <td><input type="text" value="${item.name}" oninput="lastExtractedData.items[${idx}].name=this.value" style="font-size:0.65rem; padding:4px;"></td>
+                    <td><input type="text" value="${item.batch}" oninput="lastExtractedData.items[${idx}].batch=this.value" style="font-size:0.65rem; padding:4px; width:60px;"></td>
+                    <td><input type="number" value="${item.qty}" oninput="lastExtractedData.items[${idx}].qty=this.value" style="font-size:0.65rem; padding:4px; width:45px; text-align:center;"></td>
+                    <td><input type="number" step="0.01" value="${item.rate}" oninput="lastExtractedData.items[${idx}].rate=this.value" style="font-size:0.65rem; padding:4px; width:65px; text-align:right;"></td>
+                    <td><input type="number" value="${item.gst}" oninput="lastExtractedData.items[${idx}].gst=this.value" style="font-size:0.65rem; padding:4px; width:40px; text-align:center;"></td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('ext-preview-section').style.display = 'block';
+        } else {
+            alert(result.message || "Failed to read invoice.");
+        }
+    } catch (e) {
+        alert("Server error during upload.");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function postToRegistry() {
+    if (!lastExtractedData) return;
+    
+    const invNo = document.getElementById('ext-inv-no').value.trim();
+    const invDate = document.getElementById('ext-inv-date').value;
+    
+    if (!invNo) return alert("Invoice No is required.");
+
+    const payload = {
+        invoiceNo: invNo,
+        date: invDate,
+        stockistId: sessionParty._id || sessionParty.id,
+        items: lastExtractedData.items,
+        grandTotal: lastExtractedData.items.reduce((sum, i) => {
+            const line = parseFloat(i.qty) * parseFloat(i.rate);
+            return sum + line + (line * parseFloat(i.gst || 0) / 100);
+        }, 0),
+        profileUpdate: {
+            address: document.getElementById('prof-address').value,
+            city: document.getElementById('prof-city').value,
+            state: document.getElementById('prof-state').value,
+            dlNo: document.getElementById('prof-dl').value,
+            gstNo: document.getElementById('prof-gst').value,
+            bankName: document.getElementById('prof-bank').value,
+            bankIfsc: document.getElementById('prof-ifsc').value
+        }
+    };
+
+    try {
+        const res = await fetch(`${API}/api/stockist/invoice-external`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            alert("✓ Invoice successfully posted to final registry!");
+            document.getElementById('ext-preview-section').style.display = 'none';
+            document.getElementById('ext-inv-file').value = '';
+            lastExtractedData = null;
+            // No need to reload everything, just informative alert.
+            // The user will find this invoice when they go to "MY CLAIMS" or "NEW CLAIM" (if integrated there)
+        } else {
+            alert(result.error || "Failed to post invoice.");
+        }
+    } catch (e) {
+        alert("Server error during posting.");
+    }
+}
+
+function cancelUpload() {
+    document.getElementById('ext-preview-section').style.display = 'none';
+    document.getElementById('ext-inv-file').value = '';
+    lastExtractedData = null;
+}
 </script>
 </body>
 </html>

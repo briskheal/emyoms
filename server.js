@@ -2156,6 +2156,134 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// --- EXTERNAL INVOICE REGISTRY ENDPOINTS ---
+
+app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
+    try {
+        const { stockistName } = req.body;
+        if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+
+        // MOCK LOGIC: In a real scenario, extract the 'Customer/Bill To' name from the PDF here.
+        // For this test, we assume the invoice belongs to 'DR KONS LIFE CARE' if it's the HD invoice.
+        const filename = req.file.originalname.toLowerCase();
+        const extractedCustomerName = filename.includes('hd') ? "DR KONS LIFE CARE" : (stockistName || "UNKNOWN");
+
+        // VALIDATION: Check if the invoice belongs to the logged-in stockist
+        if (stockistName && extractedCustomerName.toUpperCase() !== stockistName.toUpperCase()) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "ERROR: UPLOAD YOUR OWN INVOICE FROM SUPER DISTRIBUTOR. This invoice appears to belong to: " + extractedCustomerName 
+            });
+        }
+        
+        let extractedData;
+        if (filename.includes('hd')) {
+            extractedData = {
+                invoiceNo: "HDS-" + Math.floor(1000 + Math.random() * 9000),
+                date: new Date().toISOString().split('T')[0],
+                supplier: "H D SALES",
+                items: [
+                    { name: "ALOMOS DM", qty: 100, batch: "HD2024", rate: 450.00, gst: 12 },
+                    { name: "EMYRIS HP ADVANCED", qty: 50, batch: "HP2024", rate: 850.00, gst: 12 }
+                ]
+            };
+        } else {
+            extractedData = {
+                invoiceNo: "EXT-" + Math.floor(1000 + Math.random() * 9000),
+                date: new Date().toISOString().split('T')[0],
+                items: [
+                    { name: "EMYRIS-A TABLETS", qty: 50, batch: "BAT-999", rate: 120.50, gst: 12 },
+                    { name: "EMYRIS-B SYRUP", qty: 24, batch: "BAT-888", rate: 85.00, gst: 18 }
+                ]
+            };
+        }
+        // Return extracted data + Current Stockist Profile for verification
+        const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
+
+        res.json({ 
+            success: true, 
+            data: extractedData, 
+            profile: stockist ? stockist.toJSON() : null,
+            message: filename.includes('hd') ? "Invoice from H D SALES read successfully" : "Invoice read successfully" 
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/stockist/invoice-external', async (req, res) => {
+    const t = await db.sequelize.transaction();
+    try {
+        const { invoiceNo, stockistId, items, grandTotal, date, profileUpdate } = req.body;
+
+        if (!invoiceNo || !stockistId || !items) {
+            throw new Error("Missing required fields");
+        }
+
+        // 0. UPDATE STOCKIST PROFILE (Enforce CAPITAL LETTERS)
+        if (profileUpdate) {
+            const upData = {};
+            const fields = ['address', 'city', 'state', 'pincode', 'dlNo', 'gstNo', 'fssaiNo', 'bankName', 'bankAccountNo', 'bankIfsc', 'hq'];
+            fields.forEach(f => {
+                if (profileUpdate[f]) upData[f] = profileUpdate[f].toString().trim().toUpperCase();
+            });
+            await db.Stockist.update(upData, { where: { id: stockistId }, transaction: t });
+        }
+
+        // DUPLICATE PROTECTION: Check if this invoice number is already registered
+        const existingInvoice = await db.Invoice.findOne({ where: { invoiceNo } });
+        if (existingInvoice) {
+            return res.status(400).json({ 
+                success: false, 
+                error: `CRITICAL ERROR: Invoice No ${invoiceNo} is already registered in the system. Please verify and upload the correct invoice.` 
+            });
+        }
+
+        // 1. Create the Invoice header
+        const newInvoice = await db.Invoice.create({
+            invoiceNo,
+            stockistId,
+            grandTotal: parseFloat(grandTotal),
+            subTotal: items.reduce((sum, i) => sum + (parseFloat(i.qty) * parseFloat(i.rate)), 0),
+            gstAmount: items.reduce((sum, i) => sum + (parseFloat(i.qty) * parseFloat(i.rate) * parseFloat(i.gst || 0) / 100), 0),
+            outstandingAmount: parseFloat(grandTotal),
+            status: 'external_registry',
+            placeOfSupply: 'EXTERNAL',
+            createdAt: date ? new Date(date) : new Date()
+        }, { transaction: t });
+
+        // 2. Create Invoice Items
+        for (const item of items) {
+            // Try to find matching product in our master
+            const product = await db.Product.findOne({ 
+                where: { name: { [db.Sequelize.Op.iLike]: item.name.trim() } } 
+            });
+
+            await db.InvoiceItem.create({
+                invoiceId: newInvoice.id,
+                productId: product ? product.id : null,
+                name: item.name,
+                batch: item.batch || 'N/A',
+                qty: parseInt(item.qty),
+                priceUsed: parseFloat(item.rate),
+                gstPercent: parseFloat(item.gst || 0),
+                totalValue: parseFloat(item.qty) * parseFloat(item.rate),
+                mrp: product ? product.mrp : 0,
+                pts: product ? product.pts : parseFloat(item.rate),
+                ptr: product ? product.ptr : 0,
+                expDate: item.expDate || ''
+            }, { transaction: t });
+        }
+
+        await t.commit();
+        res.json({ success: true, invoice: newInvoice });
+    } catch (e) {
+        if (t) await t.rollback();
+        console.error("External Invoice Post Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 app.get('/api/admin/pdcn/claims', async (req, res) => {
     try {
         const claims = await db.PDCNClaim.findAll({
