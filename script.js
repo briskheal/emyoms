@@ -12,6 +12,57 @@ let negotiationNotes = {}; // Store authorization details
 let myOrdersHistory = []; // Store history for modal lookup
 let currentViewOrderId = null; // Track order for invoice downloading
 
+// --- GLOBAL CUSTOM ALERT SYSTEM ---
+function showAlert(message, type = 'info') {
+    const overlay = document.getElementById('globalAlertOverlay');
+    const box = document.getElementById('globalAlertBox');
+    const icon = document.getElementById('alertIcon');
+    const title = document.getElementById('alertTitle');
+    const msg = document.getElementById('alertMsg');
+    
+    if (!overlay || !box) return console.log("Alert:", message);
+
+    // Set Colors
+    box.className = ''; 
+    if (type === 'success') {
+        box.classList.add('alert-success');
+        icon.innerHTML = '<i class="fas fa-check-circle" style="color:#fff;"></i>';
+        title.innerText = "SUCCESS";
+    } else if (type === 'error') {
+        box.classList.add('alert-error');
+        icon.innerHTML = '<i class="fas fa-times-circle" style="color:#fff;"></i>';
+        title.innerText = "ERROR OCCURRED";
+    } else if (type === 'warning') {
+        box.classList.add('alert-warning');
+        icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#fff;"></i>';
+        title.innerText = "PLEASE CHECK";
+    } else {
+        box.classList.add('alert-info');
+        icon.innerHTML = '<i class="fas fa-info-circle" style="color:#fff;"></i>';
+        title.innerText = "NOTIFICATION";
+    }
+
+    msg.innerText = message;
+    overlay.classList.add('show-alert');
+    overlay.classList.remove('hidden');
+}
+
+function closeAlert() {
+    const overlay = document.getElementById('globalAlertOverlay');
+    if (overlay) overlay.classList.remove('show-alert');
+    setTimeout(() => { if (overlay) overlay.classList.add('hidden'); }, 300);
+}
+
+// Override standard window.alert
+window.alert = function(message) {
+    let type = 'info';
+    if (message.toUpperCase().includes('FAILED') || message.toUpperCase().includes('ERROR') || message.toUpperCase().includes('INVALID')) type = 'error';
+    if (message.toUpperCase().includes('SUCCESS') || message.includes('✓')) type = 'success';
+    if (message.toUpperCase().includes('REQUIRED') || message.toUpperCase().includes('CHECK') || message.toUpperCase().includes('MANDATORY') || message.includes('⚠️')) type = 'warning';
+    
+    showAlert(message, type);
+};
+
 
 async function syncProfile() {
     if (!currentUser || !currentUser._id) return;
