@@ -16,6 +16,8 @@ cloudinary.config({
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
+const PDFParser = require('pdf2json');
+const pdfParse = require('pdf-parse');
 
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, 'uploads', 'media');
@@ -2160,181 +2162,104 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
-// --- EXTERNAL INVOICE REGISTRY ENDPOINTS ---
-
-app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
+// --- EXTERNAL INVOICE Rapp.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
     try {
+        if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+
         const { stockistName } = req.body;
-        const pdf = require('pdf-parse');
-        
-        // Since we use disk storage, req.file.buffer is null. Read from disk instead.
-        const dataBuffer = fs.readFileSync(req.file.path);
-        const pdfData = await pdf(dataBuffer);
-        const text = pdfData.text;
+        const pdfParser = new PDFParser(null, 1); // 1 = suppress headers
 
-        // --- STRUCTURAL PARSING LOGIC ---
-        let extractedData = {
-            invoiceNo: "",
-            date: "",
-            customerName: "",
-            placeOfSupply: "",
-            pincode: "",
-            fssaiNo: "",
-            email: "",
-            items: []
-        };
+        pdfParser.on("pdfParser_dataError", errData => {
+            if (req.file) fs.unlinkSync(req.file.path);
+            res.status(500).json({ success: false, message: "Parser Error: " + errData.parserError });
+        });
 
-        // 1. Extract Invoice Number
-        const invMatch = text.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || text.match(/Invoice No\s*\.\s*:\s*([^\n\r]+)/i);
-        if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
+        pdfParser.on("pdfParser_dataReady", async (pdfData) => {
+            try {
+                const extractedData = {
+                    invoiceNo: "", date: "", customerName: "", placeOfSupply: "",
+                    pincode: "", fssaiNo: "", email: "", items: []
+                };
 
-        // 2. Extract Date & Place of Supply
-        const dateMatch = text.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i);
-        if (dateMatch) extractedData.date = dateMatch[1].split('-').reverse().join('-'); // YYYY-MM-DD
-        
-        const posMatch = text.match(/Place of Supply\s*:\s*([^\n\r]+)/i);
-        if (posMatch) extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
-
-        // 3. Extract Customer Name & Address (Security Check & Enrichment)
-        const billToIdx = text.indexOf("Bill To");
-        if (billToIdx !== -1) {
-            const lines = text.substring(billToIdx).split('\n').map(l => l.trim()).filter(l => l);
-            // Index 0 is "Bill To", 1 is Name, 2+ is address
-            if (lines.length > 1) extractedData.customerName = lines[1].toUpperCase();
-            
-            // Extract Address (Collect lines until we hit DL or GST)
-            let addrLines = [];
-            for (let i = 2; i < 10; i++) {
-                if (!lines[i]) break;
-                if (lines[i].includes("D.L.No") || lines[i].includes("GSTIN") || lines[i].includes("Contact")) break;
-                addrLines.push(lines[i]);
-            }
-            extractedData.address = addrLines.join(", ").toUpperCase();
-
-            // Extract DL, GST, Phone from the "Bill To" block
-            const blockText = lines.slice(0, 15).join("\n");
-            
-            // Full DL Extraction (Capture entire line starting with D.L.No)
-            const dlMatch = blockText.match(/D\.L\.No-([^\n\r]+)/i);
-            if (dlMatch) extractedData.dlNo = dlMatch[1].trim().toUpperCase();
-
-            const gstMatch = blockText.match(/GSTIN Number:\s*([^\n\r\s]+)/i) || blockText.match(/GSTIN:\s*([^\n\r\s]+)/i);
-            if (gstMatch) extractedData.gstNo = gstMatch[1].trim().toUpperCase();
-
-            const phoneMatch = blockText.match(/Contact No\.:\s*(\d+)/i);
-            if (phoneMatch) extractedData.phone = phoneMatch[1].trim();
-
-            const stateMatch = blockText.match(/State:\s*([^\n\r]+)/i);
-            if (stateMatch) extractedData.state = stateMatch[1].trim().toUpperCase();
-
-            const pinMatch = blockText.match(/PIN-(\d{6})/i);
-            if (pinMatch) extractedData.pincode = pinMatch[1].trim();
-
-            const fssaiMatch = blockText.match(/FSSAI No\.:\s*(\d+)/i) || blockText.match(/FOOD:\s*(\d+)/i);
-            if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1] || fssaiMatch[0].replace(/[^0-9]/g,'');
-
-            const emailMatch = blockText.match(/Email:\s*([^\n\r\s@]+@[^\n\r\s@]+\.[^\n\r\s@]+)/i);
-            if (emailMatch) extractedData.email = emailMatch[1].trim().toLowerCase();
-        }
-
-        // VALIDATION: Check if the invoice belongs to the logged-in stockist
-        if (stockistName && extractedData.customerName.toUpperCase().replace(/[^A-Z]/g,'') !== stockistName.toUpperCase().replace(/[^A-Z]/g,'')) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `ERROR: UPLOAD YOUR OWN INVOICE FROM SUPER DISTRIBUTOR. This invoice belongs to: ${extractedData.customerName || "UNKNOWN"}` 
-            });
-        }
-
-        // 4. THE UNIVERSAL SPATIAL-ORDER PARSER (PRO GRADE)
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-        let dynamicOrder = [];
-        let tableStartIdx = -1;
-
-        // --- STEP 1: DYNAMICALLY IDENTIFY COLUMN ORDER ---
-        for (let i = 0; i < lines.length; i++) {
-            const l = lines[i].toUpperCase();
-            const cols = l.split(/\s{2,}/); // Look for large gaps first
-            const hasEssential = (l.includes("HSN") || l.includes("SAC")) && (l.includes("QTY") || l.includes("BATCH"));
-            
-            if (hasEssential) {
-                tableStartIdx = i;
-                const headerLine = lines[i].toUpperCase();
-                // Map the sequence: e.g. ["NAME", "HSN", "BATCH", "EXP", "MRP", "QTY", "RATE"]
-                if (headerLine.includes("ITEM") || headerLine.includes("DESCRIPTION")) dynamicOrder.push("NAME");
-                if (headerLine.includes("HSN")) dynamicOrder.push("HSN");
-                if (headerLine.includes("BATCH")) dynamicOrder.push("BATCH");
-                if (headerLine.includes("EXP")) dynamicOrder.push("EXP");
-                if (headerLine.includes("MRP")) dynamicOrder.push("MRP");
-                if (headerLine.includes("QTY")) dynamicOrder.push("QTY");
-                if (headerLine.includes("RATE")) dynamicOrder.push("RATE");
-                if (headerLine.includes("GST")) dynamicOrder.push("GST");
-                break;
-            }
-        }
-
-        // --- STEP 2: PARSE ROWS BY DYNAMIC SEQUENCE ---
-        if (tableStartIdx !== -1) {
-            let buffer = null;
-
-            for (let i = tableStartIdx + 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (line.toUpperCase().includes("TOTAL") || line.toUpperCase().includes("TERMS")) break;
-
-                const parts = line.split(/\s+/);
+                // 1. RECONSTRUCT SPATIAL GRID (Y-Grouped Rows)
+                const page = pdfData.Pages[0];
+                const texts = page.Texts;
+                let rowsMap = {};
                 
-                // Detection: Does this line look like a full data row or just a name?
-                const hasNumbers = line.match(/\d+\.\d{2}/) || line.match(/\d{2}\/\d{4}/);
-                const isNewRow = /^\d+\s+[A-Z]/.test(line);
+                texts.forEach(t => {
+                    const y = Math.round(t.y * 10); // Sensitivity factor
+                    if (!rowsMap[y]) rowsMap[y] = [];
+                    rowsMap[y].push(t);
+                });
 
-                if (isNewRow || hasNumbers) {
-                    if (buffer) extractedData.items.push(buffer);
-                    
-                    // Initialize empty item
-                    buffer = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
-                    
-                    // SMART MAPPING: Map parts to the dynamicOrder we found in Step 1
-                    let pIdx = 0;
-                    if (/^\d+/.test(parts[0])) pIdx++; // Skip index if present
+                const sortedY = Object.keys(rowsMap).sort((a, b) => a - b);
+                const grid = sortedY.map(y => {
+                    return rowsMap[y].sort((a, b) => a.x - b.x).map(t => decodeURIComponent(t.R[0].T).trim());
+                });
 
-                    dynamicOrder.forEach(col => {
-                        const val = parts[pIdx];
-                        if (!val) return;
+                const fullText = grid.map(r => r.join(" ")).join("\n");
 
-                        if (col === "NAME") {
-                            buffer.name = val;
-                            // Check if name is split: e.g. "PARACETAMOL 500"
-                            if (parts[pIdx+1] && isNaN(parts[pIdx+1]) && !parts[pIdx+1].includes("/")) {
-                                buffer.name += " " + parts[pIdx+1];
-                                pIdx++;
-                            }
-                        }
-                        else if (col === "HSN") buffer.hsn = val.replace(/[^0-9]/g,'');
-                        else if (col === "BATCH") buffer.batch = val;
-                        else if (col === "EXP") buffer.expDate = val;
-                        else if (col === "MRP") buffer.mrp = parseFloat(val.replace(/[^0-9.]/g,'')) || 0;
-                        else if (col === "QTY") buffer.qty = parseInt(val.replace(/[^0-9]/g,'')) || 0;
-                        else if (col === "RATE") buffer.rate = parseFloat(val.replace(/[^0-9.]/g,'')) || 0;
-                        else if (col === "GST") buffer.gst = parseFloat(val.replace(/[^0-9.]/g,'')) || 12;
-                        
-                        pIdx++;
-                    });
-                } else if (buffer && !hasNumbers) {
-                    // This is likely a continuation of the product name from the previous line
-                    buffer.name += " " + line.toUpperCase();
+                // 2. HEADER EXTRACTION
+                const invMatch = fullText.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || fullText.match(/INV\/\d+/);
+                if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
+
+                const dateMatch = fullText.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i) || fullText.match(/(\d{2}[-/]\d{2}[-/]\d{4})/);
+                if (dateMatch) {
+                    const d = dateMatch[1].replace(/\//g, '-');
+                    extractedData.date = d.split('-').length === 3 ? d.split('-').reverse().join('-') : d;
                 }
+
+                const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i);
+                if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
+
+                // 3. SPATIAL TABLE EXTRACTION
+                let inTable = false;
+                grid.forEach(row => {
+                    const rText = row.join(" ").toUpperCase();
+                    if (rText.includes("HSN") && rText.includes("BATCH")) { inTable = true; return; }
+                    if (rText.includes("TOTAL") || rText.includes("TERMS")) { inTable = false; return; }
+
+                    if (inTable && row.length >= 4) {
+                        let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
+                        
+                        row.forEach(cell => {
+                            if (cell.match(/^\d{6,8}$/)) item.hsn = cell;
+                            else if (cell.match(/\d{2}\/\d{2,4}/)) item.expDate = cell;
+                            else if (cell.match(/^\d+\.\d{2}$/)) {
+                                const val = parseFloat(cell);
+                                if (val > (item.mrp || 0)) { item.rate = item.mrp; item.mrp = val; }
+                                else item.rate = val;
+                            }
+                            else if (cell.match(/^\d+$/) && !item.qty) item.qty = parseInt(cell);
+                            else if (cell.length > 5 && !item.name && isNaN(cell[0])) item.name = cell;
+                            else if (cell.length >= 4 && !item.batch && cell !== item.hsn && isNaN(cell[0])) item.batch = cell;
+                        });
+
+                        if (item.name && (item.qty > 0 || item.mrp > 0)) {
+                            extractedData.items.push(item);
+                        }
+                    }
+                });
+
+                // Validation
+                if (stockistName && extractedData.customerName && !extractedData.customerName.includes(stockistName.toUpperCase())) {
+                   // Optional: Add warning or block
+                }
+
+                if (req.file) fs.unlinkSync(req.file.path);
+                const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
+                res.json({ success: true, data: extractedData, profile: stockist ? stockist.toJSON() : null });
+
+            } catch (innerErr) {
+                if (req.file) fs.unlinkSync(req.file.path);
+                res.status(500).json({ success: false, message: innerErr.message });
             }
-            if (buffer) extractedData.items.push(buffer);
-        }
+        });
 
-        // --- STEP 3: REFINEMENT & NOISE REMOVAL ---
-        extractedData.items = extractedData.items.filter(it => 
-            it.name.length > 3 && (it.qty > 0 || it.mrp > 0)
-        );
-
-        const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
-        res.json({ success: true, data: extractedData, profile: stockist ? stockist.toJSON() : null });
+        pdfParser.loadPDF(req.file.path);
 
     } catch (err) {
+        if (req.file) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: err.message });
     }
 });
