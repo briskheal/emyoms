@@ -2267,6 +2267,30 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 }
             });
 
+            // --- SECURITY & DATA VALIDATION ---
+            // 1. Cross-Party Invoice Protection
+            if (stockistName && extractedData.customerName) {
+                const sn = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const cn = extractedData.customerName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                
+                if (sn && cn && !cn.includes(sn) && !sn.includes(cn)) {
+                    if (req.file) fs.unlinkSync(req.file.path);
+                    return res.json({ 
+                        success: false, 
+                        message: `SECURITY BLOCK: Invoice billed to '${extractedData.customerName}', but your account is '${stockistName}'.` 
+                    });
+                }
+            }
+
+            // 2. Empty Extraction Protection
+            if (extractedData.items.length === 0) {
+                if (req.file) fs.unlinkSync(req.file.path);
+                return res.json({
+                    success: false,
+                    message: "EXTRACTION FAILED: No products found. Ensure the image/PDF is clear and is a valid invoice."
+                });
+            }
+
             if (req.file) fs.unlinkSync(req.file.path);
             const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
             res.json({ success: true, data: extractedData, profile: stockist ? stockist.toJSON() : null });
@@ -2286,8 +2310,8 @@ app.post('/api/stockist/invoice-external', async (req, res) => {
     try {
         const { invoiceNo, stockistId, items, grandTotal, date, profileUpdate } = req.body;
 
-        if (!invoiceNo || !stockistId || !items) {
-            throw new Error("Missing required fields");
+        if (!invoiceNo || !stockistId || !items || !Array.isArray(items) || items.length === 0) {
+            throw new Error("Validation Error: Missing required fields or empty invoice items.");
         }
 
         // 0. UPDATE STOCKIST PROFILE (Enforce CAPITAL LETTERS)
