@@ -7269,23 +7269,87 @@ function renderJvs() {
     });
 }
 
+let currentlyViewedJv = null;
+
 function viewJv(id) {
     const jv = jvDataList.find(j => j.id === id);
     if (!jv) return;
     
-    let linesHtml = jv.lines.map(l => `
-        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <div>
-                <span style="display:inline-block; width:30px; font-weight:bold; color: ${l.type==='DR'?'#ef4444':'#10b981'}">${l.type}</span>
-                <span style="color: var(--text-muted); font-size: 0.8rem; margin-right: 8px;">[${l.entityType}]</span>
-                <strong style="color: #fff;">${l.entityName}</strong>
-                ${l.notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-left: 38px;">Note: ${l.notes}</div>` : ''}
-            </div>
-            <div style="font-weight:bold; color: ${l.type==='DR'?'#ef4444':'#10b981'}">₹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
-        </div>
-    `).join('');
+    currentlyViewedJv = jv;
+    
+    document.getElementById('view-jv-no').innerText = jv.jvNo;
+    document.getElementById('view-jv-date').innerText = new Date(jv.date).toLocaleDateString();
+    document.getElementById('view-jv-total').innerText = `₹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('view-jv-narration').innerText = jv.narration || '-';
+    
+    const tbody = document.getElementById('view-jv-lines');
+    tbody.innerHTML = '';
+    
+    jv.lines.forEach(l => {
+        const isDr = l.type === 'DR';
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 12px 10px;">
+                    <div style="color: #fff; font-weight: 600;">${l.entityName}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 2px;">[${l.entityType}]</div>
+                </td>
+                <td style="padding: 12px 10px;">
+                    <span style="font-weight: 900; background: ${isDr ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)'}; color: ${isDr ? '#ef4444' : '#10b981'}; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">${l.type}</span>
+                </td>
+                <td style="padding: 12px 10px; color: var(--text-muted); font-size: 0.8rem;">${l.notes || '-'}</td>
+                <td style="padding: 12px 10px; text-align: right; color: ${isDr ? '#ef4444' : '#444'}; font-weight: ${isDr ? 'bold' : 'normal'};">
+                    ${isDr ? `₹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}` : '-'}
+                </td>
+                <td style="padding: 12px 10px; text-align: right; color: ${!isDr ? '#10b981' : '#444'}; font-weight: ${!isDr ? 'bold' : 'normal'};">
+                    ${!isDr ? `₹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}` : '-'}
+                </td>
+            </tr>
+        `;
+    });
+    
+    document.getElementById('jvViewModal').classList.remove('hidden');
+}
 
-    alert(`JV NO: ${jv.jvNo}\\nDate: ${new Date(jv.date).toLocaleDateString()}\\nNarration: ${jv.narration}\\n\\nLines:\\n${jv.lines.map(l => `${l.type} | ${l.entityType} | ${l.entityName} | Rs. ${l.amount}`).join('\\n')}`);
+function downloadAllJvs() {
+    if (!jvDataList || jvDataList.length === 0) return alert("No Journal Entries to download.");
+    
+    let csv = "JV NO,DATE,NARRATION,TOTAL AMOUNT,LINE TYPE,ACCOUNT TYPE,ACCOUNT NAME,LINE AMOUNT,LINE NOTES\n";
+    
+    jvDataList.forEach(jv => {
+        jv.lines.forEach((l, idx) => {
+            csv += `"${idx===0?jv.jvNo:''}","${idx===0?new Date(jv.date).toLocaleDateString():''}","${idx===0?(jv.narration||'').replace(/"/g, '""'):''}","${idx===0?jv.totalAmount:''}","${l.type}","${l.entityType}","${(l.entityName||'').replace(/"/g, '""')}","${l.amount}","${(l.notes||'').replace(/"/g, '""')}"\n`;
+        });
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Journal_Register_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+}
+
+function downloadSingleJv() {
+    if (!currentlyViewedJv) return;
+    const jv = currentlyViewedJv;
+    
+    let csv = "JV NO,DATE,NARRATION,TOTAL AMOUNT\n";
+    csv += `"${jv.jvNo}","${new Date(jv.date).toLocaleDateString()}","${(jv.narration||'').replace(/"/g, '""')}","${jv.totalAmount}"\n\n`;
+    
+    csv += "POSTING DETAILS\n";
+    csv += "ACCOUNT/ENTITY,TYPE,REMARKS,DEBIT (DR),CREDIT (CR)\n";
+    
+    jv.lines.forEach(l => {
+        const isDr = l.type === 'DR';
+        csv += `"${(l.entityName||'').replace(/"/g, '""')} [${l.entityType}]","${l.type}","${(l.notes||'').replace(/"/g, '""')}","${isDr ? l.amount : ''}","${!isDr ? l.amount : ''}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Journal_Voucher_${jv.jvNo}.csv`;
+    a.click();
 }
 
 // Hook into existing initialLoad function if possible, otherwise just call loadJvs()
