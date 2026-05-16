@@ -1243,7 +1243,10 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
             });
         }
 
-        await order.update({ status: 'invoiced' });
+        const tInv = await db.sequelize.transaction();
+        await order.update({ status: 'invoiced' }, { transaction: tInv });
+        await autoPostInvoiceJV(newInvoice, tInv);
+        await tInv.commit();
         res.json({ success: true, invoice: newInvoice });
     } catch (err) { 
         console.error("Invoice Generation Error:", err);
@@ -2234,6 +2237,8 @@ app.put('/api/admin/pdcn/claims/:id/approve', async (req, res) => {
             adminRemarks: remarks
         });
 
+        // Auto JV for PDCN
+        await autoPostNoteJV(financialNote);
         res.json({ success: true, financialNote });
     } catch (e) { 
         console.error("PDCN Approval Error:", e);
@@ -2397,6 +2402,49 @@ async function autoPostPurchaseJV(purchase, stockist) {
 
 // --- PAYMENTS & EXPENSES ---
 
+
+
+async function autoPostInvoiceJV(invoice, t) {
+    try {
+        const salesLedger = await db.Ledger.findOne({ where: { name: 'Sales Account' } });
+        const jvNo = await getNextDocNo('jv');
+        const jv = await db.JournalVoucher.create({
+            jvNo, date: invoice.createdAt, narration: `Sales Invoice ${invoice.invoiceNo}`, totalAmount: invoice.grandTotal, refType: 'Invoice', refId: invoice.id
+        }, { transaction: t });
+        await db.JournalEntryLine.bulkCreate([
+            { jvId: jv.id, type: 'DR', amount: invoice.grandTotal, entityType: 'Stockist', entityId: invoice.stockistId, entityName: 'Stockist', notes: 'Sales' },
+            { jvId: jv.id, type: 'CR', amount: invoice.grandTotal, entityType: 'Ledger', entityId: salesLedger ? salesLedger.id : null, entityName: 'Sales Account', notes: 'Revenue' }
+        ], { transaction: t });
+    } catch (e) { console.error("Invoice Auto JV Error:", e); }
+}
+
+async function autoPostPurchaseJV(purchase, t) {
+    try {
+        const purchaseLedger = await db.Ledger.findOne({ where: { name: 'Purchase Account' } });
+        const jvNo = await getNextDocNo('jv');
+        const jv = await db.JournalVoucher.create({
+            jvNo, date: purchase.invoiceDate || purchase.createdAt, narration: `Purchase Bill ${purchase.supplierInvoiceNo || purchase.purchaseNo}`, totalAmount: purchase.grandTotal, refType: 'Purchase', refId: purchase.id
+        }, { transaction: t });
+        await db.JournalEntryLine.bulkCreate([
+            { jvId: jv.id, type: 'DR', amount: purchase.grandTotal, entityType: 'Ledger', entityId: purchaseLedger ? purchaseLedger.id : null, entityName: 'Purchase Account', notes: 'Inventory Inward' },
+            { jvId: jv.id, type: 'CR', amount: purchase.grandTotal, entityType: 'Stockist', entityId: purchase.supplierId, entityName: 'Supplier', notes: 'Credit Purchase' }
+        ], { transaction: t });
+    } catch (e) { console.error("Purchase Auto JV Error:", e); }
+}
+
+async function autoPostNoteJV(note, t) {
+    try {
+        const jvNo = await getNextDocNo('jv');
+        const isCN = note.noteType === 'CN';
+        const jv = await db.JournalVoucher.create({
+            jvNo, date: note.createdAt, narration: `${isCN ? 'Credit Note' : 'Debit Note'} ${note.noteNo} - ${note.reason}`, totalAmount: note.amount, refType: 'FinancialNote', refId: note.id
+        }, { transaction: t });
+        await db.JournalEntryLine.bulkCreate([
+            { jvId: jv.id, type: isCN ? 'DR' : 'CR', amount: note.amount, entityType: 'Ledger', entityName: isCN ? 'Sales Returns' : 'Purchase Returns', notes: note.reason },
+            { jvId: jv.id, type: isCN ? 'CR' : 'DR', amount: note.amount, entityType: 'Stockist', entityId: note.stockistId, entityName: 'Party', notes: 'Adjustment' }
+        ], { transaction: t });
+    } catch (e) { console.error("Note Auto JV Error:", e); }
+}
 
 async function autoPostPaymentJV(payment, stockist, t) {
     console.log(`[DEBUG] Triggering Auto JV for Payment: ${payment.paymentNo}`);
@@ -2717,191 +2765,16 @@ app.get('/api/admin/financial-statements', async (req, res) => {
         const getNetBal = (type, id, nature) => {
             let dr = 0, cr = 0;
             if (type === 'Ledger') {
-                const l = ledgers.find(x => x.id === id);
-                if (l.nature === 'DR') dr += Number(l.openingBalance || 0);
-                else cr += Number(l.openingBalance || 0);
-            }
-            lines.filter(x => x.entityType === type && x.entityId === id).forEach(line => {
-                if (!dateFilter(line)) return;
-                if (line.type === 'DR') dr += Number(line.amount);
-                else cr += Number(line.amount);
-            });
-            return dr - cr;
-        };
-
-        const income = [];
-        const expenses = [];
-        const assets = [];
-        const liabilities = [];
-
-        // 1. Process All Ledgers
-        ledgers.forEach(l => {
-            const bal = getNetBal('Ledger', l.id, l.nature);
-            if (bal === 0) return;
-
-            const grp = (l.group || '').toUpperCase();
-            // Income Detection
-            if (l.nature === 'CR' && (grp.includes('INCOME') || grp.includes('REVENUE') || grp.includes('SALES'))) {
-                income.push({ name: l.name, amount: Math.abs(bal) });
-            } 
-            // Expense Detection
-            else if (l.nature === 'DR' && (grp.includes('EXPENSE') || grp.includes('COST') || grp.includes('PURCHASE'))) {
-                expenses.push({ name: l.name, amount: Math.abs(bal) });
-            }
-            // Balance Sheet Items
-            else {
-                if (bal > 0) assets.push({ name: l.name, amount: Math.abs(bal) });
-                else liabilities.push({ name: l.name, amount: Math.abs(bal) });
-            }
-        });
-
-        // 2. Process Expense Categories (Explicitly P&L)
-        expCats.forEach(c => {
-            const bal = getNetBal('ExpenseCategory', c.id, 'DR');
-            if (bal !== 0) expenses.push({ name: c.name, amount: Math.abs(bal) });
-        });
-
-        // 3. Process Stockists (Explicitly Balance Sheet)
-        stockists.forEach(s => {
-            const bal = getNetBal('Stockist', s.id, 'DR');
-            if (bal === 0) return;
-            if (bal > 0) assets.push({ name: `Debtor: ${s.name}`, amount: Math.abs(bal) });
-            else liabilities.push({ name: `Creditor: ${s.name}`, amount: Math.abs(bal) });
-        });
-
-        const totalIncome = income.reduce((s, x) => s + x.amount, 0);
-        const totalExpenses = expenses.reduce((s, x) => s + x.amount, 0);
-        const netProfit = totalIncome - totalExpenses;
-
-        // Add Net Profit to Liabilities (Equity section)
-        liabilities.push({ name: 'Net Profit / Loss (Selected Period)', amount: netProfit });
-
-        res.json({
-            success: true,
-            pl: { income, expenses, totalIncome, totalExpenses, netProfit },
-            bs: { assets, liabilities, totalAssets: assets.reduce((s,x)=>s+x.amount,0), totalLiabilities: liabilities.reduce((s,x)=>s+x.amount,0) }
-        });
-
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-
-app.get('/api/admin/trial-balance', async (req, res) => {
-    try {
-        const { from, to } = req.query;
-        const [stockists, ledgers, expCats, lines] = await Promise.all([
-            db.Stockist.findAll(),
-            db.Ledger.findAll(),
-            db.ExpenseCategory.findAll(),
-            db.JournalEntryLine.findAll({
-                include: [{ model: db.JournalVoucher, attributes: ['date'] }]
-            })
-        ]);
-
-        const dateFilter = (line) => {
-            if (!from && !to) return true;
-            const d = new Date(line.JournalVoucher?.date || line.createdAt);
-            if (from && d < new Date(from)) return false;
-            if (to && d > new Date(to)) return false;
-            return true;
-        };
-
-        const tb = [];
-
-        // 1. Process Ledgers
-        for (const l of ledgers) {
-            let dr = 0, cr = 0;
-            if (l.nature === 'DR') dr += Number(l.openingBalance || 0);
-            else cr += Number(l.openingBalance || 0);
-
-            const myLines = lines.filter(x => x.entityType === 'Ledger' && x.entityId === l.id);
-            myLines.forEach(line => {
-                if (!dateFilter(line)) return;
-                if (line.type === 'DR') dr += Number(line.amount);
-                else cr += Number(line.amount);
-            });
-
-            const net = dr - cr;
-            if (net !== 0 || myLines.length > 0 || l.openingBalance > 0) {
-                tb.push({
-                    entityType: 'Ledger',
-                    entityId: l.id,
-                    name: l.name,
-                    group: l.group,
-                    dr: net > 0 ? net : 0,
-                    cr: net < 0 ? Math.abs(net) : 0
-                });
-            }
-        }
-
-        // 2. Process Stockists
-        for (const s of stockists) {
-            let dr = 0, cr = 0;
-            const myLines = lines.filter(x => x.entityType === 'Stockist' && x.entityId === s.id);
-            myLines.forEach(line => {
-                if (!dateFilter(line)) return;
-                if (line.type === 'DR') dr += Number(line.amount);
-                else cr += Number(line.amount);
-            });
-            const net = dr - cr;
-            if (net !== 0 || myLines.length > 0) {
-                tb.push({
-                    entityType: 'Stockist',
-                    entityId: s.id,
-                    name: s.name,
-                    group: 'Sundry Debtors / Creditors',
-                    dr: net > 0 ? net : 0,
-                    cr: net < 0 ? Math.abs(net) : 0
-                });
-            }
-        }
-
-        // 3. Process Expense Categories
-        for (const c of expCats) {
-            let dr = 0, cr = 0;
-            const myLines = lines.filter(x => x.entityType === 'ExpenseCategory' && x.entityId === c.id);
-            myLines.forEach(line => {
-                if (!dateFilter(line)) return;
-                if (line.type === 'DR') dr += Number(line.amount);
-                else cr += Number(line.amount);
-            });
-            const net = dr - cr;
-            if (net !== 0 || myLines.length > 0) {
-                tb.push({
-                    entityType: 'ExpenseCategory',
-                    entityId: c.id,
-                    name: c.name,
-                    group: `${c.expenseType} Expenses`,
-                    dr: net > 0 ? net : 0,
-                    cr: net < 0 ? Math.abs(net) : 0
-                });
-            }
-        }
-
-        res.json({ success: true, trialBalance: tb });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-
-app.get('/api/admin/ledger-statement', async (req, res) => {
-    try {
-        const { type, id } = req.query;
-        if (!type || !id) return res.status(400).json({ error: 'Missing type or id' });
-
-        const lines = await db.JournalEntryLine.findAll({
-            where: { entityType: type, entityId: id },
-            include: [{ model: db.JournalVoucher, as: 'voucher' }],
-            order: [[{ model: db.JournalVoucher, as: 'voucher' }, 'date', 'ASC']]
-        });
-
-        // Determine Opening Balance
-        let ob = 0;
-        let obType = 'DR';
-        if (type === 'Ledger') {
             const l = await db.Ledger.findByPk(id);
             if (l) {
                 ob = Number(l.openingBalance || 0);
                 obType = l.nature;
+            }
+        } else if (type === 'Stockist') {
+            const s = await db.Stockist.findByPk(id);
+            if (s) {
+                ob = Number(s.openingBalance || 0);
+                obType = s.partyType === 'SUPPLIER' ? 'CR' : 'DR';
             }
         }
 

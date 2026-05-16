@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
         partyType: { type: DataTypes.ENUM('STOCKIST', 'SUPPLIER'), defaultValue: 'STOCKIST' },
         creditLimit: { type: DataTypes.FLOAT, defaultValue: 0 },
         outstandingBalance: { type: DataTypes.FLOAT, defaultValue: 0 },
+        openingBalance: { type: DataTypes.FLOAT, defaultValue: 0 },
         city: DataTypes.STRING,
         state: DataTypes.STRING,
         pincode: DataTypes.STRING,
