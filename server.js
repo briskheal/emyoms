@@ -2253,15 +2253,30 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         // --- STEP 1: DEFINE THE TABLE ZONE ---
         for (let i = 0; i < lines.length; i++) {
             const l = lines[i].toUpperCase();
-            // A table start is where we see a cluster of headers
+            // A table start is where we see a cluster of headers (Flexible Regex)
             const headerHits = [
-                l.includes("HSN"), l.includes("BATCH"), l.includes("EXP"), 
-                l.includes("QTY"), l.includes("RATE"), l.includes("MRP"), l.includes("ITEM")
+                l.match(/HSN|SAC/i), 
+                l.match(/BATCH|B\.?NO|LOT/i), 
+                l.match(/EXP|E\.?DT/i), 
+                l.match(/QTY|QUANTITY|Q\.?TY/i), 
+                l.match(/RATE|UNIT PRICE|PRICE/i), 
+                l.match(/MRP/i), 
+                l.match(/ITEM|PRODUCT|DESCRIPTION/i)
             ].filter(Boolean).length;
 
-            if (headerHits >= 3) {
+            if (headerHits >= 2) {
                 tableStartIdx = i;
                 break;
+            }
+        }
+
+        // FALLBACK: If no headers found, find the first line that looks like a product row
+        if (tableStartIdx === -1) {
+            for (let i = 0; i < lines.length; i++) {
+                if (/^\d+\s+[A-Z]/.test(lines[i])) {
+                    tableStartIdx = i - 1;
+                    break;
+                }
             }
         }
 
