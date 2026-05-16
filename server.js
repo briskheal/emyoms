@@ -2168,158 +2168,113 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
         const { stockistName } = req.body;
-        const pdfParser = new PDFParser(null, 1); // 1 = suppress headers
+        const dataBuffer = fs.readFileSync(req.file.path);
+        
+        try {
+            const data = await pdfParse(dataBuffer);
+            const fullText = data.text;
 
-        pdfParser.on("pdfParser_dataError", errData => {
-            if (req.file) fs.unlinkSync(req.file.path);
-            res.status(500).json({ success: false, message: "Parser Error: " + errData.parserError });
-        });
+            const extractedData = {
+                invoiceNo: "", date: "", customerName: "", placeOfSupply: "",
+                state: "", pincode: "", fssaiNo: "", email: "", phone: "", gstNo: "", dlNo: "", items: []
+            };
 
-        pdfParser.on("pdfParser_dataReady", async (pdfData) => {
-            try {
-                const extractedData = {
-                    invoiceNo: "", date: "", customerName: "", placeOfSupply: "",
-                    state: "", pincode: "", fssaiNo: "", email: "", phone: "", gstNo: "", dlNo: "", items: []
-                };
+            // 1. HEADER EXTRACTION
+            const invMatch = fullText.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || fullText.match(/INV\/\d+/);
+            if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
 
-                // 1. RECONSTRUCT SPATIAL GRID (Y-Grouped Rows)
-                const page = pdfData.Pages[0];
-                const texts = page.Texts;
-                let rowsMap = {};
-                
-                texts.forEach(t => {
-                    const y = Math.round(t.y * 10); // Sensitivity factor
-                    if (!rowsMap[y]) rowsMap[y] = [];
-                    rowsMap[y].push(t);
-                });
-
-                const sortedY = Object.keys(rowsMap).sort((a, b) => a - b);
-                const grid = sortedY.map(y => {
-                    return rowsMap[y].sort((a, b) => a.x - b.x).map(t => decodeURIComponent(t.R[0].T).trim());
-                });
-
-                const fullText = grid.map(r => r.join(" ")).join("\n");
-
-                // 2. HEADER EXTRACTION
-                const invMatch = fullText.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || fullText.match(/INV\/\d+/);
-                if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
-
-                const dateMatch = fullText.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i) || fullText.match(/(\d{2}[-/]\d{2}[-/]\d{4})/);
-                if (dateMatch) {
-                    const d = dateMatch[1].replace(/\//g, '-');
-                    extractedData.date = d.split('-').length === 3 ? d.split('-').reverse().join('-') : d;
-                }
-
-                const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i);
-                if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
-
-                const gstMatch = fullText.match(/GSTIN:\s*([A-Z0-9]{15})/i) || fullText.match(/GST:\s*([A-Z0-9]{15})/i);
-                if (gstMatch) extractedData.gstNo = gstMatch[1];
-
-                const phoneMatch = fullText.match(/Phone:\s*(\d+)/i) || fullText.match(/Mobile:\s*(\d+)/i) || fullText.match(/Contact:\s*(\d+)/i);
-                if (phoneMatch) extractedData.phone = phoneMatch[1];
-
-                const emailMatch = fullText.match(/Email:\s*([^\n\r\s@]+@[^\n\r\s@]+\.[^\n\r\s@]+)/i);
-                if (emailMatch) extractedData.email = emailMatch[1].toLowerCase();
-
-                const pinMatch = fullText.match(/PIN-(\d{6})/i) || fullText.match(/(\d{6})/);
-                if (pinMatch) extractedData.pincode = pinMatch[1];
-
-                const dlMatch = fullText.match(/D\.?L\.?[^\n:]*[:\-]?\s*([0-9A-Z\-\/\,\s]+)(?=\n|GST|FSSAI|PIN|Phone|Email)/i);
-                if (dlMatch) extractedData.dlNo = dlMatch[1].trim().replace(/\s{2,}/g, ' ');
-
-                const fssaiMatch = fullText.match(/(?:FSSAI|Food)[^\n\d]*(\d{14})/i);
-                if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1].trim();
-
-                const posMatch = fullText.match(/(?:Place of Supply|State)[^\n:]*[:\-]?\s*([0-9]{0,2}[\-\s]?[A-Za-z\s]{3,20})(?=\n|[A-Z]{2}|$)/i);
-                if (posMatch) {
-                    extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
-                    extractedData.state = posMatch[1].trim().toUpperCase();
-                }
-
-                // 3. STATISTICAL HEAT MAP PARSER (LAYOUT AGNOSTIC)
-                const hTexts = page.Texts.map(t => ({
-                    x: t.x, y: t.y, text: decodeURIComponent(t.R[0].T).trim()
-                })).filter(t => t.text);
-
-                // --- PASS 1: FUZZY ROW GROUPING ---
-                let hRowsMap = {};
-                hTexts.sort((a,b) => a.y - b.y).forEach(t => {
-                    let foundKey = Object.keys(hRowsMap).find(k => Math.abs(parseFloat(k) - t.y) < 0.5);
-                    if (!foundKey) {
-                        foundKey = t.y;
-                        hRowsMap[foundKey] = [];
-                    }
-                    hRowsMap[foundKey].push(t);
-                });
-
-                // --- PASS 2: RECONSTRUCT ROWS & EXTRACT DATA ---
-
-                const hSortedY = Object.keys(hRowsMap).sort((a,b)=>a-b);
-                let inTable = false;
-
-                hSortedY.forEach(y => {
-                    const row = hRowsMap[y].sort((a,b)=>a.x-b.x);
-                    const rText = row.map(t => t.text).join(" ").toUpperCase();
-
-                    if (rText.includes("HSN") || rText.includes("BATCH")) inTable = true;
-                    if (rText.includes("TOTAL") || rText.includes("TAXABLE") || rText.includes("SUMMARY")) inTable = false;
-
-                    const hasPrice = row.some(t => t.text.match(/^\d+\.\d{2}$/));
-                    const hasName = row.some(t => t.text.length > 3 && isNaN(t.text[0]));
-
-                    if ((inTable || hasPrice) && hasName && row.length >= 3) {
-                        let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
-                        
-                        let prices = [];
-                        row.forEach(t => {
-                            const val = t.text;
-                            if (val.match(/^\d{6,8}$/)) item.hsn = val;
-                            else if (val.match(/\d{2}[-/]\d{2,4}/)) item.expDate = val;
-                            else if (val.match(/^\d+\.\d{2}$/)) {
-                                prices.push(parseFloat(val));
-                            }
-                            else if (val.match(/^\d+$/) && parseInt(val) < 10000 && !val.match(/^0/)) {
-                                if (item.qty === 0) item.qty = parseInt(val);
-                            }
-                            else if (val.length > 2 && isNaN(val[0]) && !item.name) item.name = val;
-                            else if (val.length >= 3 && !item.batch && isNaN(val[0]) && item.name && val !== item.name) item.batch = val;
-                        });
-
-                        if (prices.length > 0) {
-                            prices.sort((a,b) => b - a); // Highest first
-                            item.mrp = prices[0];
-                            item.rate = prices.length > 1 ? prices[1] : prices[0];
-                        }
-
-                        if (item.name && (item.qty > 0 || item.mrp > 0)) {
-                            // Avoid adding column headers accidentally
-                            if (!item.name.includes("PRODUCT") && !item.name.includes("DESCRIPTION") && item.mrp > 0) {
-                                if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
-                                    extractedData.items.push(item);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Validation
-                if (stockistName && extractedData.customerName && !extractedData.customerName.includes(stockistName.toUpperCase())) {
-                   // Optional: Add warning or block
-                }
-
-                if (req.file) fs.unlinkSync(req.file.path);
-                const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
-                res.json({ success: true, data: extractedData, profile: stockist ? stockist.toJSON() : null });
-
-            } catch (innerErr) {
-                if (req.file) fs.unlinkSync(req.file.path);
-                res.status(500).json({ success: false, message: innerErr.message });
+            const dateMatch = fullText.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i) || fullText.match(/(\d{2}[-/]\d{2}[-/]\d{4})/);
+            if (dateMatch) {
+                const d = dateMatch[1].replace(/\//g, '-');
+                extractedData.date = d.split('-').length === 3 ? d.split('-').reverse().join('-') : d;
             }
-        });
 
-        pdfParser.loadPDF(req.file.path);
+            const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i);
+            if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
 
+            const gstMatch = fullText.match(/GSTIN:\s*([A-Z0-9]{15})/i) || fullText.match(/GST:\s*([A-Z0-9]{15})/i);
+            if (gstMatch) extractedData.gstNo = gstMatch[1];
+
+            const phoneMatch = fullText.match(/Phone:\s*(\d+)/i) || fullText.match(/Mobile:\s*(\d+)/i) || fullText.match(/Contact:\s*(\d+)/i);
+            if (phoneMatch) extractedData.phone = phoneMatch[1];
+
+            const emailMatch = fullText.match(/Email:\s*([^\n\r\s@]+@[^\n\r\s@]+\.[^\n\r\s@]+)/i);
+            if (emailMatch) extractedData.email = emailMatch[1].toLowerCase();
+
+            const pinMatch = fullText.match(/PIN-(\d{6})/i) || fullText.match(/(\d{6})/);
+            if (pinMatch) extractedData.pincode = pinMatch[1];
+
+            const dlMatch = fullText.match(/D\.?L\.?[^\n:]*[:\-]?\s*([0-9A-Z\-\/\,\s]+)(?=\n|GST|FSSAI|PIN|Phone|Email)/i);
+            if (dlMatch) extractedData.dlNo = dlMatch[1].trim().replace(/\s{2,}/g, ' ');
+
+            const fssaiMatch = fullText.match(/(?:FSSAI|Food)[^\n\d]*(\d{14})/i);
+            if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1].trim();
+
+            const posMatch = fullText.match(/(?:Place of Supply|State)[^\n:]*[:\-]?\s*([0-9]{0,2}[\-\s]?[A-Za-z\s]{3,20})(?=\n|[A-Z]{2}|$)/i);
+            if (posMatch) {
+                extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
+                extractedData.state = posMatch[1].trim().toUpperCase();
+            }
+
+            // 2. ITEM EXTRACTION (STRING BASED)
+            const lines = fullText.split('\n');
+            let inTable = false;
+
+            lines.forEach(line => {
+                const upperLine = line.toUpperCase();
+                if (upperLine.includes("HSN") || upperLine.includes("BATCH")) inTable = true;
+                if (upperLine.includes("TOTAL") || upperLine.includes("TAXABLE")) inTable = false;
+
+                if ((inTable || line.match(/\d+\.\d{2}/)) && line.match(/\d+\.\d{2}/)) {
+                    let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
+                    
+                    const prices = line.match(/\d+\.\d{2}/g);
+                    if (prices) {
+                        const parsed = prices.map(parseFloat).sort((a,b)=>b-a);
+                        item.mrp = parsed[0];
+                        item.rate = parsed.length > 1 ? parsed[1] : parsed[0];
+                    }
+
+                    const hsnMatch = line.match(/\b\d{6,8}\b/);
+                    if (hsnMatch) item.hsn = hsnMatch[0];
+
+                    const expMatch = line.match(/\b\d{2}[-/]\d{2,4}\b/);
+                    if (expMatch) item.expDate = expMatch[0];
+
+                    const parts = line.trim().split(/\s+/);
+                    const nums = parts.filter(p => p.match(/^\d+$/) && !p.match(/^0/));
+                    if (nums.length > 0) item.qty = parseInt(nums[nums.length-1]);
+
+                    const nameMatch = line.match(/^([A-Za-z0-9\-\s\.]+?)(?=\s[A-Z0-9]{4,12}\s|\s\d{2}[-/]|\s\d+\.\d{2}|\s\d+\s)/);
+                    if (nameMatch) {
+                        item.name = nameMatch[1].trim().toUpperCase();
+                    } else {
+                        const words = parts.filter(p => isNaN(p) || p.match(/^[0-9]+[A-Za-z]+$/));
+                        item.name = words.slice(0, 2).join(' ').toUpperCase();
+                    }
+
+                    const batchMatch = line.match(/\b([A-Z0-9]{4,12})\b/g);
+                    if (batchMatch) {
+                        const possibleBatches = batchMatch.filter(b => isNaN(b) && b !== item.name && !item.name.includes(b));
+                        if (possibleBatches.length > 0) item.batch = possibleBatches[0];
+                    }
+
+                    if (item.name && item.name.length > 2 && !item.name.includes("PRODUCT") && item.mrp > 0) {
+                        if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
+                            extractedData.items.push(item);
+                        }
+                    }
+                }
+            });
+
+            if (req.file) fs.unlinkSync(req.file.path);
+            const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
+            res.json({ success: true, data: extractedData, profile: stockist ? stockist.toJSON() : null });
+
+        } catch (innerErr) {
+            if (req.file) fs.unlinkSync(req.file.path);
+            res.status(500).json({ success: false, message: innerErr.message });
+        }
     } catch (err) {
         if (req.file) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: err.message });
