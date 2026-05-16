@@ -2187,11 +2187,35 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         const dateMatch = text.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i);
         if (dateMatch) extractedData.date = dateMatch[1].split('-').reverse().join('-'); // YYYY-MM-DD
 
-        // 3. Extract Customer Name (Security Check)
+        // 3. Extract Customer Name & Address (Security Check & Enrichment)
         const billToIdx = text.indexOf("Bill To");
         if (billToIdx !== -1) {
-            const lines = text.substring(billToIdx).split('\n');
-            if (lines.length > 1) extractedData.customerName = lines[1].trim().toUpperCase();
+            const lines = text.substring(billToIdx).split('\n').map(l => l.trim()).filter(l => l);
+            // Index 0 is "Bill To", 1 is Name, 2+ is address
+            if (lines.length > 1) extractedData.customerName = lines[1].toUpperCase();
+            
+            // Extract Address (Collect lines until we hit DL or GST)
+            let addrLines = [];
+            for (let i = 2; i < 10; i++) {
+                if (!lines[i]) break;
+                if (lines[i].includes("D.L.No") || lines[i].includes("GSTIN") || lines[i].includes("Contact")) break;
+                addrLines.push(lines[i]);
+            }
+            extractedData.address = addrLines.join(", ").toUpperCase();
+
+            // Extract DL, GST, Phone from the "Bill To" block
+            const blockText = lines.slice(0, 15).join("\n");
+            const dlMatch = blockText.match(/D\.L\.No-([^\n\r,]+)/i);
+            if (dlMatch) extractedData.dlNo = dlMatch[1].trim().toUpperCase();
+
+            const gstMatch = blockText.match(/GSTIN Number:\s*([^\n\r\s]+)/i) || blockText.match(/GSTIN:\s*([^\n\r\s]+)/i);
+            if (gstMatch) extractedData.gstNo = gstMatch[1].trim().toUpperCase();
+
+            const phoneMatch = blockText.match(/Contact No\.:\s*(\d+)/i);
+            if (phoneMatch) extractedData.phone = phoneMatch[1].trim();
+
+            const stateMatch = blockText.match(/State:\s*([^\n\r]+)/i);
+            if (stateMatch) extractedData.state = stateMatch[1].trim().toUpperCase();
         }
 
         // VALIDATION: Check if the invoice belongs to the logged-in stockist
