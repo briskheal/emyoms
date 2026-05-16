@@ -2234,17 +2234,28 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 }
 
                 // --- 3. HARD SECURITY CHECK ON BILLING NAME ---
-                if (!extractedData.customerName || extractedData.customerName.length < 3) {
-                     if (req.file) fs.unlinkSync(req.file.path);
-                     return res.json({ success: false, message: "SECURITY BLOCK: Could not detect 'Bill To' or 'Party' name on the invoice. Upload rejected to prevent cross-party data leaks." });
-                }
-
                 if (stockistName) {
                     const sn = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    const cn = extractedData.customerName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (!cn.includes(sn) && !sn.includes(cn) && !cn.includes("CASH")) {
-                        if (req.file) fs.unlinkSync(req.file.path);
-                        return res.json({ success: false, message: `SECURITY BLOCK: Invoice is billed to '${extractedData.customerName}', but your portal is registered as '${stockistName}'. Upload completely rejected.` });
+                    let authorized = false;
+
+                    if (extractedData.customerName && extractedData.customerName.length > 2) {
+                        const cn = extractedData.customerName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        if (cn.includes(sn) || sn.includes(cn) || cn.includes("CASH")) {
+                            authorized = true;
+                        } else {
+                            if (req.file) fs.unlinkSync(req.file.path);
+                            return res.json({ success: false, message: `SECURITY BLOCK: Invoice is billed to '${extractedData.customerName}', but your account is '${stockistName}'. Upload rejected.` });
+                        }
+                    } else {
+                        // Fallback: Full Text Verification
+                        const ft = fullText.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        if (ft.includes(sn)) {
+                            authorized = true;
+                            extractedData.customerName = stockistName; // Auto-fill since it was verified
+                        } else {
+                            if (req.file) fs.unlinkSync(req.file.path);
+                            return res.json({ success: false, message: `SECURITY BLOCK: Could not detect your name ('${stockistName}') anywhere on this invoice. Upload rejected to prevent cross-party data leaks.` });
+                        }
                     }
                 }
 
