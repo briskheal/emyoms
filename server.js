@@ -1718,6 +1718,11 @@ app.get('/api/admin/products/:id/timeline', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+
+function cancelUpload() {
+// ... existing functions
+
 app.get('/api/admin/purchase-entries', async (req, res) => {
     try {
         const entries = await db.PurchaseEntry.findAll({ 
@@ -2244,68 +2249,49 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             });
         }
 
-        // 4. Extract Items (ROBUST VERSION)
-        const itemLines = text.split('\n');
+        // 4. Extract Items (HEADER-DRIVEN ROBUST VERSION)
+        const itemLines = text.split('\n').map(l => l.trim()).filter(l => l);
         let capturing = false;
-        console.log("--- START PDF TEXT EXTRACTION ---");
-        console.log(text);
-        console.log("--- END PDF TEXT EXTRACTION ---");
-
+        
         for (let i = 0; i < itemLines.length; i++) {
-            const line = itemLines[i].trim();
-            if (line.includes("#Item name") || line.includes("HSN/ SAC") || line.includes("Product Description")) {
+            const line = itemLines[i];
+            
+            // Header detection
+            if (line.includes("#Item name") || line.includes("Product Description") || line.includes("HSN/ SAC")) {
                 capturing = true;
                 continue;
             }
             if (line.includes("Total") && capturing) break;
 
-            // Look for a line that looks like a new item (either a digit or a product name following a digit)
-            const isNewItem = /^\d+$/.test(line) || (capturing && /^\d+\s+[A-Z]/.test(line));
-
-            if (capturing && isNewItem) {
-                let name = "", hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
+            // Detect Item Row (Starts with digit index)
+            if (capturing && /^\d+$/.test(line)) {
+                let name = itemLines[i+1] || "";
+                let detailsLine = itemLines[i+2] || ""; // For H.D. Sales, details are often in a combined string below
                 
-                if (/^\d+$/.test(line)) {
-                    name = itemLines[i+1]?.trim() || "";
+                let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
+
+                // If details are in a single string (Space separated)
+                const parts = detailsLine.split(/\s+/);
+                if (parts.length >= 6) {
+                    hsn = parts[0];
+                    batch = parts[1];
+                    expDate = parts[2];
+                    mrp = parseFloat(parts[3]) || 0;
+                    qty = parseInt(parts[4]) || 0;
+                    rate = parseFloat(parts[5]) || 0;
+                    if (parts[6]) gst = parseFloat(parts[6].replace('%','')) * 2;
                 } else {
-                    name = line.replace(/^\d+\s+/, '').trim();
-                }
+                    // Neighborhood scanning if not in a single line
+                    for (let j = i + 1; j < i + 12; j++) {
+                        const l = itemLines[j];
+                        if (!l || /^\d+$/.test(l) && j > i + 1) break;
 
-                // Scan proximity (12 lines)
-                for (let j = i + 1; j < i + 13; j++) {
-                    const l = itemLines[j]?.trim();
-                    if (!l) continue;
-                    if (/^\d+$/.test(l) && j > i + 1) break;
-
-                    const hsnMatch = l.match(/^(\d{6,8})$/);
-                    if (hsnMatch && !hsn) hsn = hsnMatch[1];
-
-                    const expMatch = l.match(/(\d{2}\/\d{4})/);
-                    if (expMatch && !expDate) {
-                        expDate = expMatch[1];
-                        const mMatch = l.match(/(\d+\.\d{2})/);
-                        if (mMatch && !mrp && l !== expMatch[1]) mrp = parseFloat(mMatch[1]);
-                    }
-
-                    if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) mrp = parseFloat(l);
-
-                    if (l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !l.includes("GSTIN") && !batch) {
-                         batch = l;
-                    }
-
-                    if (l.match(/^\d+$/) && !qty && (mrp || rate || j > i + 5)) {
-                        const val = parseInt(l);
-                        if (val > 0 && val < 5000) qty = val;
-                    }
-
-                    if (!rate && (l.includes("₹") || (l.match(/^\d+\.\d{2}$/) && mrp > 0 && parseFloat(l) !== mrp))) {
-                        const rMatch = l.match(/₹\s*([\d,]+\.\d{2})/) || l.match(/([\d,]+\.\d{2})/);
-                        if (rMatch) rate = parseFloat(rMatch[1].replace(/,/g,''));
-                    }
-
-                    if (l.includes("%")) {
-                        const gMatch = l.match(/(\d+\.?\d*)\s*%/);
-                        if (gMatch) gst = parseFloat(gMatch[1]) * 2;
+                        if (l.match(/^\d{6,8}$/) && !hsn) hsn = l;
+                        if (l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !batch) batch = l;
+                        const expMatch = l.match(/(\d{2}\/\d{4})/);
+                        if (expMatch && !expDate) expDate = expMatch[1];
+                        if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) mrp = parseFloat(l);
+                        if (l.match(/^\d+$/) && !qty && (mrp || j > i + 5)) qty = parseInt(l);
                     }
                 }
 

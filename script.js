@@ -2567,6 +2567,27 @@ async function postToRegistry() {
     }
 }
 
+function removeExtRow(idx) {
+    if (!lastExtractedData) return;
+    lastExtractedData.items.splice(idx, 1);
+    
+    // Refresh table
+    const tbody = document.getElementById('ext-preview-body');
+    tbody.innerHTML = lastExtractedData.items.map((item, i) => `
+        <tr>
+            <td><input type="text" value="${item.name}" oninput="lastExtractedData.items[${i}].name=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;"></td>
+            <td><input type="text" value="${item.hsn||''}" oninput="lastExtractedData.items[${i}].hsn=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:90px;"></td>
+            <td><input type="text" value="${item.batch}" oninput="lastExtractedData.items[${i}].batch=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
+            <td><input type="text" value="${item.expDate||''}" oninput="lastExtractedData.items[${i}].expDate=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:80px;"></td>
+            <td><input type="number" step="0.01" value="${item.mrp||0}" oninput="lastExtractedData.items[${i}].mrp=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:75px; text-align:right;"></td>
+            <td><input type="number" value="${item.qty}" oninput="lastExtractedData.items[${i}].qty=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:65px; text-align:center;"></td>
+            <td><input type="number" step="0.01" value="${item.rate}" oninput="lastExtractedData.items[${i}].rate=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:85px; text-align:right;"></td>
+            <td><input type="number" value="${item.gst}" oninput="lastExtractedData.items[${i}].gst=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:55px; text-align:center;"></td>
+            <td style="text-align:center;"><button onclick="removeExtRow(${i})" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+        </tr>
+    `).join('');
+}
+
 function cancelUpload() {
     document.getElementById('ext-preview-section').classList.add('hidden');
     document.getElementById('ext-inv-file').value = '';
