@@ -1719,10 +1719,6 @@ app.get('/api/admin/products/:id/timeline', async (req, res) => {
 });
 
 
-
-function cancelUpload() {
-// ... existing functions
-
 app.get('/api/admin/purchase-entries', async (req, res) => {
     try {
         const entries = await db.PurchaseEntry.findAll({ 
