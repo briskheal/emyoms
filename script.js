@@ -134,6 +134,14 @@ function switchOrderTab(tab) {
     } else if (tab === 'registry') {
         document.getElementById('section-registry').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
+        
+        // --- GUIDE NEW USER ---
+        const arrow = document.getElementById('guide-arrow');
+        if (arrow) arrow.classList.remove('hidden');
+        
+        setTimeout(() => {
+            document.getElementById('section-registry').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
     }
 }
 
@@ -2314,6 +2322,10 @@ let lastExtractedData = null;
 async function uploadExtInvoice() {
     const fileInput = document.getElementById('ext-inv-file');
     if (!fileInput.files[0]) return alert("Please select an invoice file (PDF/JPG/PNG).");
+
+    // Hide guide arrow once user starts
+    const arrow = document.getElementById('guide-arrow');
+    if (arrow) arrow.classList.add('hidden');
 
     const btn = document.getElementById('upload-btn');
     const originalText = btn.innerHTML;
