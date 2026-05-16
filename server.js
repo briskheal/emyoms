@@ -2213,6 +2213,18 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i);
                 if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
 
+                const gstMatch = fullText.match(/GSTIN:\s*([A-Z0-9]{15})/i) || fullText.match(/GST:\s*([A-Z0-9]{15})/i);
+                if (gstMatch) extractedData.gstNo = gstMatch[1];
+
+                const phoneMatch = fullText.match(/Phone:\s*(\d+)/i) || fullText.match(/Mobile:\s*(\d+)/i) || fullText.match(/Contact:\s*(\d+)/i);
+                if (phoneMatch) extractedData.phone = phoneMatch[1];
+
+                const emailMatch = fullText.match(/Email:\s*([^\n\r\s@]+@[^\n\r\s@]+\.[^\n\r\s@]+)/i);
+                if (emailMatch) extractedData.email = emailMatch[1].toLowerCase();
+
+                const pinMatch = fullText.match(/PIN-(\d{6})/i) || fullText.match(/(\d{6})/);
+                if (pinMatch) extractedData.pincode = pinMatch[1];
+
                 // 3. STATISTICAL HEAT MAP PARSER (LAYOUT AGNOSTIC)
                 const hTexts = page.Texts.map(t => ({
                     x: t.x, y: t.y, text: decodeURIComponent(t.R[0].T).trim()
@@ -2319,7 +2331,7 @@ app.post('/api/stockist/invoice-external', async (req, res) => {
         // 0. UPDATE STOCKIST PROFILE (Enforce CAPITAL LETTERS)
         if (profileUpdate) {
             const upData = {};
-            const fields = ['address', 'city', 'state', 'pincode', 'dlNo', 'gstNo', 'fssaiNo', 'bankName', 'bankAccountNo', 'bankIfsc', 'hq'];
+            const fields = ['address', 'city', 'state', 'pincode', 'dlNo', 'gstNo', 'fssaiNo', 'bankName', 'bankAccountNo', 'bankIfsc', 'hq', 'phone', 'email'];
             fields.forEach(f => {
                 if (profileUpdate[f]) upData[f] = profileUpdate[f].toString().trim().toUpperCase();
             });
