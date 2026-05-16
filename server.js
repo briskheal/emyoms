@@ -2245,120 +2245,90 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             });
         }
 
-        // 4. THE PHARMA-VISION ZONAL PARSER (AUDIT-GRADE)
+        // 4. THE UNIVERSAL SPATIAL-ORDER PARSER (PRO GRADE)
         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        let dynamicOrder = [];
         let tableStartIdx = -1;
-        let tableEndIdx = lines.length;
 
-        // --- STEP 1: DEFINE THE TABLE ZONE ---
+        // --- STEP 1: DYNAMICALLY IDENTIFY COLUMN ORDER ---
         for (let i = 0; i < lines.length; i++) {
             const l = lines[i].toUpperCase();
-            // A table start is where we see a cluster of headers (Flexible Regex)
-            const headerHits = [
-                l.match(/HSN|SAC/i), 
-                l.match(/BATCH|B\.?NO|LOT/i), 
-                l.match(/EXP|E\.?DT/i), 
-                l.match(/QTY|QUANTITY|Q\.?TY/i), 
-                l.match(/RATE|UNIT PRICE|PRICE/i), 
-                l.match(/MRP/i), 
-                l.match(/ITEM|PRODUCT|DESCRIPTION/i)
-            ].filter(Boolean).length;
-
-            if (headerHits >= 2) {
+            const cols = l.split(/\s{2,}/); // Look for large gaps first
+            const hasEssential = (l.includes("HSN") || l.includes("SAC")) && (l.includes("QTY") || l.includes("BATCH"));
+            
+            if (hasEssential) {
                 tableStartIdx = i;
+                const headerLine = lines[i].toUpperCase();
+                // Map the sequence: e.g. ["NAME", "HSN", "BATCH", "EXP", "MRP", "QTY", "RATE"]
+                if (headerLine.includes("ITEM") || headerLine.includes("DESCRIPTION")) dynamicOrder.push("NAME");
+                if (headerLine.includes("HSN")) dynamicOrder.push("HSN");
+                if (headerLine.includes("BATCH")) dynamicOrder.push("BATCH");
+                if (headerLine.includes("EXP")) dynamicOrder.push("EXP");
+                if (headerLine.includes("MRP")) dynamicOrder.push("MRP");
+                if (headerLine.includes("QTY")) dynamicOrder.push("QTY");
+                if (headerLine.includes("RATE")) dynamicOrder.push("RATE");
+                if (headerLine.includes("GST")) dynamicOrder.push("GST");
                 break;
             }
         }
 
-        // FALLBACK: If no headers found, find the first line that looks like a product row
-        if (tableStartIdx === -1) {
-            for (let i = 0; i < lines.length; i++) {
-                if (/^\d+\s+[A-Z]/.test(lines[i])) {
-                    tableStartIdx = i - 1;
-                    break;
-                }
-            }
-        }
-
-        for (let i = tableStartIdx + 1; i < lines.length; i++) {
-            const l = lines[i].toUpperCase();
-            if (l.includes("TOTAL") || l.includes("TAXABLE") || l.includes("TERMS") || l.includes("BANK")) {
-                tableEndIdx = i;
-                break;
-            }
-        }
-
-        // --- STEP 2: NOISE FILTER (CARRY FROM HEADER) ---
-        const headerText = lines.slice(0, tableStartIdx).join(" ").toUpperCase();
-        const noiseWords = [
-            "INVOICE", "TAX", "ORIGINAL", "DUPLICATE", "PHARMACEUTICALS", "DISTRIBUTORS", "AGENCIES",
-            extractedData.customerName?.toUpperCase(), 
-            stockistName?.toUpperCase()
-        ].filter(Boolean);
-
-        // --- STEP 3: CONTEXTUAL EXTRACTION WITHIN ZONE ---
+        // --- STEP 2: PARSE ROWS BY DYNAMIC SEQUENCE ---
         if (tableStartIdx !== -1) {
-            const zoneLines = lines.slice(tableStartIdx + 1, tableEndIdx);
-            let currentItem = null;
+            let buffer = null;
 
-            for (let i = 0; i < zoneLines.length; i++) {
-                const line = zoneLines[i];
+            for (let i = tableStartIdx + 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.toUpperCase().includes("TOTAL") || line.toUpperCase().includes("TERMS")) break;
+
+                const parts = line.split(/\s+/);
                 
-                // Detect Row Start: Digit index or All Caps Product name
-                const isNewRow = /^\d+$/.test(line) || (/^[A-Z0-9\s-]{10,}$/.test(line) && !line.includes("/"));
+                // Detection: Does this line look like a full data row or just a name?
+                const hasNumbers = line.match(/\d+\.\d{2}/) || line.match(/\d{2}\/\d{4}/);
+                const isNewRow = /^\d+\s+[A-Z]/.test(line);
 
-                if (isNewRow) {
-                    if (currentItem) extractedData.items.push(currentItem);
+                if (isNewRow || hasNumbers) {
+                    if (buffer) extractedData.items.push(buffer);
                     
-                    let nameCandidate = /^\d+$/.test(line) ? zoneLines[i+1] : line;
-                    // Filter noise from name
-                    if (noiseWords.some(nw => nameCandidate.toUpperCase().includes(nw))) {
-                        currentItem = null;
-                        continue;
-                    }
-
-                    currentItem = {
-                        name: nameCandidate.toUpperCase(),
-                        hsn: "3004", batch: "EXTRACTED", expDate: "12/2026",
-                        mrp: 0, qty: 0, rate: 0, gst: 12
-                    };
-                }
-
-                if (currentItem) {
-                    // Extract Entities from current and next 2 lines
-                    const context = zoneLines.slice(i, i + 3).join(" ");
+                    // Initialize empty item
+                    buffer = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
                     
-                    const hMatch = context.match(/\b(\d{6,8})\b/);
-                    if (hMatch && currentItem.hsn === "3004") currentItem.hsn = hMatch[1];
+                    // SMART MAPPING: Map parts to the dynamicOrder we found in Step 1
+                    let pIdx = 0;
+                    if (/^\d+/.test(parts[0])) pIdx++; // Skip index if present
 
-                    const eMatch = context.match(/(\d{2}\/\d{4})/) || context.match(/(\d{2}\-\d{2})/);
-                    if (eMatch && currentItem.expDate === "12/2026") currentItem.expDate = eMatch[1];
+                    dynamicOrder.forEach(col => {
+                        const val = parts[pIdx];
+                        if (!val) return;
 
-                    const bMatch = context.match(/\b([A-Z0-9]{5,})\b/);
-                    if (bMatch && currentItem.batch === "EXTRACTED" && bMatch[1] !== currentItem.hsn) {
-                        currentItem.batch = bMatch[1];
-                    }
-
-                    const decimals = context.match(/(\d+\.\d{2})/g) || [];
-                    const prices = decimals.map(d => parseFloat(d)).sort((a,b) => b-a);
-                    if (prices[0] && !currentItem.mrp) currentItem.mrp = prices[0];
-                    if (prices[1] && !currentItem.rate) currentItem.rate = prices[1];
-
-                    const qtyMatch = context.match(/\s+(\d+)\s+/) || context.match(/^(\d+)$/);
-                    if (qtyMatch && !currentItem.qty) {
-                        const q = parseInt(qtyMatch[1]);
-                        if (q > 0 && q < 5000 && q.toString() !== currentItem.hsn) currentItem.qty = q;
-                    }
+                        if (col === "NAME") {
+                            buffer.name = val;
+                            // Check if name is split: e.g. "PARACETAMOL 500"
+                            if (parts[pIdx+1] && isNaN(parts[pIdx+1]) && !parts[pIdx+1].includes("/")) {
+                                buffer.name += " " + parts[pIdx+1];
+                                pIdx++;
+                            }
+                        }
+                        else if (col === "HSN") buffer.hsn = val.replace(/[^0-9]/g,'');
+                        else if (col === "BATCH") buffer.batch = val;
+                        else if (col === "EXP") buffer.expDate = val;
+                        else if (col === "MRP") buffer.mrp = parseFloat(val.replace(/[^0-9.]/g,'')) || 0;
+                        else if (col === "QTY") buffer.qty = parseInt(val.replace(/[^0-9]/g,'')) || 0;
+                        else if (col === "RATE") buffer.rate = parseFloat(val.replace(/[^0-9.]/g,'')) || 0;
+                        else if (col === "GST") buffer.gst = parseFloat(val.replace(/[^0-9.]/g,'')) || 12;
+                        
+                        pIdx++;
+                    });
+                } else if (buffer && !hasNumbers) {
+                    // This is likely a continuation of the product name from the previous line
+                    buffer.name += " " + line.toUpperCase();
                 }
             }
-            if (currentItem) extractedData.items.push(currentItem);
+            if (buffer) extractedData.items.push(buffer);
         }
 
-        // --- STEP 4: FINAL CLEANUP & DEDUPLICATION ---
+        // --- STEP 3: REFINEMENT & NOISE REMOVAL ---
         extractedData.items = extractedData.items.filter(it => 
-            it.name.length > 5 && (it.qty > 0 || it.mrp > 0)
-        ).filter((item, index, self) =>
-            index === self.findIndex((t) => (t.name === item.name && t.batch === item.batch))
+            it.name.length > 3 && (it.qty > 0 || it.mrp > 0)
         );
 
         const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
