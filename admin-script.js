@@ -1,4 +1,4 @@
-﻿// EMYRIS OMS - Admin Logic
+// EMYRIS OMS - Admin Logic
 const API_BASE = '/api';
 let allProducts = [];
 let currentProductBatches = [];
@@ -3490,10 +3490,10 @@ function renderSaleItems() {
         gstTotal += gst;
 
         return `<tr>
-            <td style="text-align:center;">
-                <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#fff; background:#ef4444; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.6rem; font-weight:800;">DEL</button>
+            <td style="text-align:center; width: 32px;">
+                <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#fff; background:#ef4444; border:none; border-radius:4px; padding:2px 6px; cursor:pointer; font-size:0.6rem; font-weight:800;">DEL</button>
             </td>
-            <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div></td>
+            <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">${item.name}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.pack || '-'}</div></td>
             <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
@@ -3503,15 +3503,15 @@ function renderSaleItems() {
             <td style="font-size: 0.65rem; opacity: 0.6;">₹${Number(item.ptr || 0).toFixed(2)}</td>
             <td>
                 <input type="number" step="0.01" value="${item.rate}" oninput="updateDirectSaleLine(${index}, 'rate', this.value)" 
-                    style="width: 70px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
+                    style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; padding: 2px 4px; border-radius: 4px; font-weight: 700;">
             </td>
             <td>
                 <input type="number" value="${item.qty}" oninput="updateDirectSaleLine(${index}, 'qty', this.value)" 
-                    style="width: 55px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
+                    style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: center; padding: 2px 4px; border-radius: 4px; font-weight: 700;">
             </td>
             <td>
                 <input type="number" value="${item.free || 0}" oninput="updateDirectSaleLine(${index}, 'free', this.value)" 
-                    style="width: 45px; background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.2); color: var(--accent); text-align: center; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
+                    style="width: 100%; background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.2); color: var(--accent); text-align: center; padding: 2px 4px; border-radius: 4px; font-weight: 700;">
             </td>
             <td style="text-align:center;">${pct}%</td>
             <td style="text-align:right; font-weight:700; color:var(--accent); padding-right:10px;">₹${(val + gst).toFixed(2)}</td>
