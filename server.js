@@ -2163,8 +2163,11 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
 
 app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
     try {
+        const { stockistName } = req.body;
         const pdf = require('pdf-parse');
-        const dataBuffer = req.file.buffer;
+        
+        // Since we use disk storage, req.file.buffer is null. Read from disk instead.
+        const dataBuffer = fs.readFileSync(req.file.path);
         const pdfData = await pdf(dataBuffer);
         const text = pdfData.text;
 
