@@ -263,8 +263,6 @@ let allInvoices = [];
 let allPurchaseEntries = [];
 let allNotes = [];
 let currentNoteReason = 'ALL';
-let purchaseItems = []; // Temporary storage for new purchase entry
-let directSaleItems = []; // Temporary storage for direct sales entry
 // companyProfile declared at top of file
 let currentEditingNoteId = null; 
 let allPayments = [];
@@ -2295,8 +2293,7 @@ function viewOrderDetails(id) {
     }
 }
 
-let isEditMode = false;
-let editingInvoiceId = null;
+// Variables moved to top
 
 function openOrderEditMode(orderId) {
     const o = allOrders.find(x => x._id == orderId);
@@ -2935,7 +2932,7 @@ function addPurchaseItem() {
 }
 
 // --- ADDITIONAL CHARGES LOGIC ---
-let purchaseCharges = [];
+// Variables moved to top
 
 function addPurchaseCharge() {
     const name = document.getElementById('pur-charge-name').value.trim();
@@ -3576,7 +3573,7 @@ function updateDirectSaleLine(index, field, value) {
 }
 
 // --- DIRECT SALE ADDITIONAL CHARGES ---
-let saleCharges = [];
+// Variables moved to top
 
 function addSaleCharge() {
     const name = document.getElementById('sale-charge-name').value.trim();
