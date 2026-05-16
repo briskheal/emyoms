@@ -2835,6 +2835,176 @@ app.get('/api/admin/financial-statements', async (req, res) => {
     }
 });
 
+app.get('/api/admin/all-ledger-entities', async (req, res) => {
+    try {
+        const [ledgers, stockists, expCats] = await Promise.all([
+            db.Ledger.findAll({ order: [['name', 'ASC']] }),
+            db.Stockist.findAll({ order: [['name', 'ASC']] }),
+            db.ExpenseCategory.findAll({ order: [['name', 'ASC']] })
+        ]);
+
+        const all = [
+            ...ledgers.map(l => ({ id: l.id, name: l.name, type: 'Ledger', group: l.group })),
+            ...stockists.map(s => ({ id: s.id, name: s.name, type: 'Stockist', group: s.partyType })),
+            ...expCats.map(c => ({ id: c.id, name: c.name, type: 'ExpenseCategory', group: 'Expense' }))
+        ];
+        res.json(all);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/trial-balance', async (req, res) => {
+    try {
+        const { from, to } = req.query;
+        const [ledgers, stockists, expCats, lines] = await Promise.all([
+            db.Ledger.findAll(),
+            db.Stockist.findAll(),
+            db.ExpenseCategory.findAll(),
+            db.JournalEntryLine.findAll({
+                include: [{ model: db.JournalVoucher, attributes: ['date'] }]
+            })
+        ]);
+
+        const dateFilter = (line) => {
+            if (!from && !to) return true;
+            const d = new Date(line.JournalVoucher?.date || line.createdAt);
+            if (from && d < new Date(from)) return false;
+            if (to && d > new Date(to)) return false;
+            return true;
+        };
+
+        const getNetBal = (type, id, name = null) => {
+            let dr = 0, cr = 0;
+            if (type === 'Ledger') {
+                const l = ledgers.find(x => x.id == id);
+                if (l) {
+                    const ob = Number(l.openingBalance || 0);
+                    if (l.nature === 'DR') dr += ob; else cr += ob;
+                }
+            } else if (type === 'Stockist') {
+                const s = stockists.find(x => x.id == id);
+                if (s) {
+                    const ob = Number(s.openingBalance || 0);
+                    if (s.partyType === 'SUPPLIER') cr += ob; else dr += ob;
+                }
+            }
+
+            const relevantLines = (lines || []).filter(line => {
+                if (line.entityType !== type) return false;
+                if (line.entityId == id) return true;
+                if (type === 'Ledger' && name && line.entityName === name) return true;
+                if (type === 'Ledger' && name === 'Sundry Debtor' && line.entityName === 'Sundry Debtors') return true;
+                if (type === 'Ledger' && name === 'Sundry Creditor' && line.entityName === 'Sundry Creditors') return true;
+                return false;
+            }).filter(dateFilter);
+
+            relevantLines.forEach(line => {
+                if (line.type === 'DR') dr += Number(line.amount);
+                else cr += Number(line.amount);
+            });
+            return { dr, cr, net: dr - cr };
+        };
+
+        const tb = [];
+        
+        ledgers.forEach(l => {
+            const { dr, cr, net } = getNetBal('Ledger', l.id, l.name);
+            if (dr === 0 && cr === 0) return;
+            tb.push({ name: l.name, group: l.group || 'General', dr: net > 0 ? net : 0, cr: net < 0 ? Math.abs(net) : 0 });
+        });
+
+        stockists.forEach(s => {
+            const { dr, cr, net } = getNetBal('Stockist', s.id);
+            if (dr === 0 && cr === 0) return;
+            tb.push({ name: s.name, group: s.partyType === 'SUPPLIER' ? 'Sundry Creditor' : 'Sundry Debtor', dr: net > 0 ? net : 0, cr: net < 0 ? Math.abs(net) : 0 });
+        });
+
+        expCats.forEach(c => {
+            const { dr, cr, net } = getNetBal('ExpenseCategory', c.id);
+            if (dr === 0 && cr === 0) return;
+            tb.push({ name: c.name, group: 'Expense', dr: net > 0 ? net : 0, cr: net < 0 ? Math.abs(net) : 0 });
+        });
+
+        res.json({ success: true, trialBalance: tb });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/admin/ledger-statement', async (req, res) => {
+    try {
+        const { type, id, from, to } = req.query;
+        if (!type || !id) throw new Error('Entity type and ID are required');
+
+        const [entity, allLines] = await Promise.all([
+            type === 'Ledger' ? db.Ledger.findByPk(id) : (type === 'Stockist' ? db.Stockist.findByPk(id) : db.ExpenseCategory.findByPk(id)),
+            db.JournalEntryLine.findAll({
+                where: { entityType: type, entityId: id },
+                include: [{ model: db.JournalVoucher, as: 'JournalVoucher' }],
+                order: [[{ model: db.JournalVoucher, as: 'JournalVoucher' }, 'date', 'ASC'], ['createdAt', 'ASC']]
+            })
+        ]);
+
+        if (!entity) throw new Error('Entity not found');
+
+        let openingBalance = 0;
+        if (type === 'Ledger') {
+            const ob = Number(entity.openingBalance || 0);
+            openingBalance = (entity.nature === 'DR' ? ob : -ob);
+        } else if (type === 'Stockist') {
+            const ob = Number(entity.openingBalance || 0);
+            openingBalance = (entity.partyType === 'SUPPLIER' ? -ob : ob);
+        }
+
+        // Add support for name-based matching for Sundry Debtor/Creditor
+        let additionalLines = [];
+        if (type === 'Ledger' && (entity.name === 'Sundry Debtor' || entity.name === 'Sundry Creditor')) {
+            const alias = entity.name === 'Sundry Debtor' ? 'Sundry Debtors' : 'Sundry Creditors';
+            additionalLines = await db.JournalEntryLine.findAll({
+                where: { entityType: 'Ledger', entityName: [entity.name, alias], entityId: null },
+                include: [{ model: db.JournalVoucher, as: 'JournalVoucher' }]
+            });
+        }
+
+        const lines = [...allLines, ...additionalLines].sort((a,b) => {
+            const d1 = new Date(a.JournalVoucher?.date || a.createdAt);
+            const d2 = new Date(b.JournalVoucher?.date || b.createdAt);
+            return d1 - d2;
+        });
+
+        const resultLines = [];
+        let runningBalance = openingBalance;
+
+        // Filter by date for the statement itself, but include prior lines in openingBalance
+        lines.forEach(line => {
+            const d = new Date(line.JournalVoucher?.date || line.createdAt);
+            const amount = Number(line.amount);
+            const isDR = line.type === 'DR';
+            
+            if (from && d < new Date(from)) {
+                runningBalance += (isDR ? amount : -amount);
+                return;
+            }
+            if (to && d > new Date(to)) return;
+
+            runningBalance += (isDR ? amount : -amount);
+            resultLines.push({
+                date: d,
+                jvNo: line.JournalVoucher?.jvNo || 'N/A',
+                narration: line.JournalVoucher?.narration || line.notes,
+                dr: isDR ? amount : 0,
+                cr: isDR ? 0 : amount,
+                balance: runningBalance
+            });
+        });
+
+        res.json({ 
+            success: true, 
+            entityName: entity.name,
+            openingBalance,
+            lines: resultLines,
+            closingBalance: runningBalance
+        });
+    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+});
+
 
 app.get('/api/admin/journal-vouchers', async (req, res) => {
     try {
