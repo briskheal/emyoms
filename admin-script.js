@@ -7609,7 +7609,7 @@ function switchFinanceTab(viewId, btnEl) {
     btnEl.classList.add('btn-primary');
 
     if (viewId === 'trial-balance') loadTrialBalance();
-    if (viewId === 'jv-register') loadJvGrid();
+    if (viewId === 'jv-register') loadJvs();
 }
 
 async function loadTrialBalance() {
