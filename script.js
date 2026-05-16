@@ -2416,6 +2416,12 @@ async function postToRegistry() {
         return;
     }
 
+    // --- SOFT VALIDATION FOR FSSAI (14 DIGITS) ---
+    const fssai = profileUpdate.fssaiNo.replace(/[^0-9]/g, '');
+    if (fssai && fssai.length !== 14) {
+        if (!confirm(`⚠️ FSSAI/Food License numbers are typically 14 digits. Your entry (${fssai}) is ${fssai.length} digits.\n\nAre you sure you want to save this as-is?`)) return;
+    }
+
     if (!confirm("⚠️ FINAL CHECK: Are all details complete and accurate? This will overwrite your official Stockist Master records.")) return;
 
     const payload = {
