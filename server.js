@@ -2245,76 +2245,104 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             });
         }
 
-        // 4. THE CONTEXTUAL ENTITY ENGINE (LAYOUT-PROOF)
-        const rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
-        let blocks = [];
-        let currentBlock = [];
+        // 4. THE PHARMA-VISION ZONAL PARSER (AUDIT-GRADE)
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        let tableStartIdx = -1;
+        let tableEndIdx = lines.length;
 
-        // --- STEP 1: GROUP INTO CONTEXT BLOCKS ---
-        for (let i = 0; i < rawLines.length; i++) {
-            const line = rawLines[i];
-            // If line is just a number (index), start new block
-            if (/^\d+$/.test(line) && currentBlock.length > 0) {
-                blocks.push([...currentBlock]);
-                currentBlock = [];
+        // --- STEP 1: DEFINE THE TABLE ZONE ---
+        for (let i = 0; i < lines.length; i++) {
+            const l = lines[i].toUpperCase();
+            // A table start is where we see a cluster of headers
+            const headerHits = [
+                l.includes("HSN"), l.includes("BATCH"), l.includes("EXP"), 
+                l.includes("QTY"), l.includes("RATE"), l.includes("MRP"), l.includes("ITEM")
+            ].filter(Boolean).length;
+
+            if (headerHits >= 3) {
+                tableStartIdx = i;
+                break;
             }
-            currentBlock.push(line);
         }
-        if (currentBlock.length > 0) blocks.push(currentBlock);
 
-        // --- STEP 2: ANALYZE EACH BLOCK (ENTITY RECOGNITION) ---
-        blocks.forEach(block => {
-            const blockText = block.join(' ');
-            
-            // Extract Name (Usually the first few words that aren't numeric)
-            let name = block[1] || block[0]; // Skip index
-            if (name.length < 5 && block[2]) name = block[1] + " " + block[2];
-
-            // 1. Extract HSN (6-8 digits)
-            const hsnMatch = blockText.match(/\b(\d{6,8})\b/);
-            const hsn = hsnMatch ? hsnMatch[1] : "3004";
-
-            // 2. Extract EXP (MM/YYYY)
-            const expMatch = blockText.match(/(\d{2}\/\d{4})/);
-            const exp = expMatch ? expMatch[1] : "12/2026";
-
-            // 3. Extract Batch (Alphanumeric, 5+ chars, not HSN, not Date)
-            const words = blockText.split(/\s+/);
-            const batch = words.find(w => w.match(/^[A-Z0-9]{5,}$/) && w !== hsn && !w.includes("/") && !w.includes("GSTIN")) || "EXTRACTED";
-
-            // 4. Extract Prices (Look for all decimals like 100.00)
-            const decimals = blockText.match(/(\d+\.\d{2})/g) || [];
-            const prices = decimals.map(d => parseFloat(d)).sort((a, b) => b - a);
-            const mrp = prices[0] || 0;
-            const rate = prices[1] || prices[0] || 0;
-
-            // 5. Extract Qty (Integers that aren't HSN or Index)
-            const integers = blockText.match(/\b(\d+)\b/g) || [];
-            const qty = integers.find(n => {
-                const val = parseInt(n);
-                return val > 0 && val < 5000 && n !== hsn && !block[0].includes(n);
-            }) || 1;
-
-            // 6. Extract GST
-            const gstMatch = blockText.match(/(\d+)\s*%/);
-            const gst = gstMatch ? parseFloat(gstMatch[1]) * 2 : 12;
-
-            if (name && name.length > 5 && (prices.length > 0 || batch !== "EXTRACTED")) {
-                extractedData.items.push({
-                    name: name.toUpperCase(),
-                    hsn: hsn,
-                    batch: batch.toUpperCase(),
-                    expDate: exp,
-                    mrp: mrp,
-                    qty: parseInt(qty),
-                    rate: rate,
-                    gst: gst
-                });
+        for (let i = tableStartIdx + 1; i < lines.length; i++) {
+            const l = lines[i].toUpperCase();
+            if (l.includes("TOTAL") || l.includes("TAXABLE") || l.includes("TERMS") || l.includes("BANK")) {
+                tableEndIdx = i;
+                break;
             }
-        });
+        }
 
-        // 5. Clean up duplicates and noise
-        extractedData.items = extractedData.items.filter((item, index, self) =>
+        // --- STEP 2: NOISE FILTER (CARRY FROM HEADER) ---
+        const headerText = lines.slice(0, tableStartIdx).join(" ").toUpperCase();
+        const noiseWords = [
+            "INVOICE", "TAX", "ORIGINAL", "DUPLICATE", "PHARMACEUTICALS", "DISTRIBUTORS", "AGENCIES",
+            extractedData.customerName?.toUpperCase(), 
+            stockistName?.toUpperCase()
+        ].filter(Boolean);
+
+        // --- STEP 3: CONTEXTUAL EXTRACTION WITHIN ZONE ---
+        if (tableStartIdx !== -1) {
+            const zoneLines = lines.slice(tableStartIdx + 1, tableEndIdx);
+            let currentItem = null;
+
+            for (let i = 0; i < zoneLines.length; i++) {
+                const line = zoneLines[i];
+                
+                // Detect Row Start: Digit index or All Caps Product name
+                const isNewRow = /^\d+$/.test(line) || (/^[A-Z0-9\s-]{10,}$/.test(line) && !line.includes("/"));
+
+                if (isNewRow) {
+                    if (currentItem) extractedData.items.push(currentItem);
+                    
+                    let nameCandidate = /^\d+$/.test(line) ? zoneLines[i+1] : line;
+                    // Filter noise from name
+                    if (noiseWords.some(nw => nameCandidate.toUpperCase().includes(nw))) {
+                        currentItem = null;
+                        continue;
+                    }
+
+                    currentItem = {
+                        name: nameCandidate.toUpperCase(),
+                        hsn: "3004", batch: "EXTRACTED", expDate: "12/2026",
+                        mrp: 0, qty: 0, rate: 0, gst: 12
+                    };
+                }
+
+                if (currentItem) {
+                    // Extract Entities from current and next 2 lines
+                    const context = zoneLines.slice(i, i + 3).join(" ");
+                    
+                    const hMatch = context.match(/\b(\d{6,8})\b/);
+                    if (hMatch && currentItem.hsn === "3004") currentItem.hsn = hMatch[1];
+
+                    const eMatch = context.match(/(\d{2}\/\d{4})/) || context.match(/(\d{2}\-\d{2})/);
+                    if (eMatch && currentItem.expDate === "12/2026") currentItem.expDate = eMatch[1];
+
+                    const bMatch = context.match(/\b([A-Z0-9]{5,})\b/);
+                    if (bMatch && currentItem.batch === "EXTRACTED" && bMatch[1] !== currentItem.hsn) {
+                        currentItem.batch = bMatch[1];
+                    }
+
+                    const decimals = context.match(/(\d+\.\d{2})/g) || [];
+                    const prices = decimals.map(d => parseFloat(d)).sort((a,b) => b-a);
+                    if (prices[0] && !currentItem.mrp) currentItem.mrp = prices[0];
+                    if (prices[1] && !currentItem.rate) currentItem.rate = prices[1];
+
+                    const qtyMatch = context.match(/\s+(\d+)\s+/) || context.match(/^(\d+)$/);
+                    if (qtyMatch && !currentItem.qty) {
+                        const q = parseInt(qtyMatch[1]);
+                        if (q > 0 && q < 5000 && q.toString() !== currentItem.hsn) currentItem.qty = q;
+                    }
+                }
+            }
+            if (currentItem) extractedData.items.push(currentItem);
+        }
+
+        // --- STEP 4: FINAL CLEANUP & DEDUPLICATION ---
+        extractedData.items = extractedData.items.filter(it => 
+            it.name.length > 5 && (it.qty > 0 || it.mrp > 0)
+        ).filter((item, index, self) =>
             index === self.findIndex((t) => (t.name === item.name && t.batch === item.batch))
         );
 
