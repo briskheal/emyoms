@@ -2266,31 +2266,30 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     }
                 }
 
-                // --- 4. ZONAL MATRIX ITEM PARSING ---
-                let tableStarted = false;
+                // --- 4. UNIVERSAL ROW EXTRACTION (Layout Agnostic) ---
                 rows.forEach(r => {
                     const rText = r.items.map(i => i.text).join(" ").toUpperCase();
-                    if (rText.includes("HSN") || rText.includes("BATCH") || rText.includes("B.NO") || rText.includes("QTY") || rText.includes("RATE") || rText.includes("PARTICULARS")) {
-                        tableStarted = true;
+                    
+                    // Skip explicitly known footer/header rows to avoid false positives
+                    if (rText.includes("TOTAL") || rText.includes("TAXABLE") || rText.includes("SUMMARY") || rText.includes("SUB TOTAL") || rText.includes("DISCOUNT") || rText.includes("CGST") || rText.includes("SGST") || rText.includes("IGST") || rText.includes("ROUND OFF")) {
                         return;
                     }
-                    if (rText.includes("TOTAL") || rText.includes("TAXABLE") || rText.includes("SUMMARY") || rText.includes("SUB TOTAL")) {
-                        tableStarted = false;
-                    }
 
-                    if (tableStarted) {
-                        const texts = r.items.map(i => i.text);
-                        const hasPrice = texts.some(t => t.match(/^\d+\.\d{2}$/));
-                        const hasName = texts.some(t => t.length > 2 && isNaN(t[0]));
+                    const texts = r.items.map(i => i.text);
+                    
+                    // A row is considered a product if it has a price-like number and a valid text name
+                    const hasPrice = texts.some(t => t.match(/^\d+\.\d{1,3}$/));
+                    const invalidNames = ["HSN", "BATCH", "B.NO", "QTY", "RATE", "PARTICULARS", "PRODUCT", "DESCRIPTION", "AMOUNT", "VALUE", "MRP", "EXP", "PACK", "SIZE"];
+                    const hasName = texts.some(t => t.length > 2 && isNaN(t[0]) && !invalidNames.includes(t.toUpperCase()));
 
-                        if (hasPrice && hasName) {
+                    if (hasPrice && hasName) {
                             let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
                             
                             let prices = [];
                             texts.forEach(val => {
                                 if (val.match(/^\d{6,8}$/)) item.hsn = val;
                                 else if (val.match(/\d{2}[-/]\d{2,4}/)) item.expDate = val;
-                                else if (val.match(/^\d+\.\d{2}$/)) prices.push(parseFloat(val));
+                                else if (val.match(/^\d+\.\d{1,3}$/)) prices.push(parseFloat(val));
                                 else if (val.match(/^\d+$/) && parseInt(val) < 10000 && !val.match(/^0/)) {
                                     if (item.qty === 0) item.qty = parseInt(val);
                                 }
@@ -2310,7 +2309,6 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                                 }
                             }
                         }
-                    }
                 });
 
                 if (extractedData.items.length === 0) {
