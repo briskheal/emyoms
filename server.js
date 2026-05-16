@@ -2170,167 +2170,142 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
         const { stockistName, stockistId } = req.body;
         const stockist = await db.Stockist.findByPk(stockistId || 0);
-        const pdfParser = new PDFParser(null, 1);
+        const dataBuffer = fs.readFileSync(req.file.path);
+        
+        try {
+            const data = await pdfParse(dataBuffer);
+            const fullText = data.text;
 
-        pdfParser.on("pdfParser_dataError", errData => {
-            if (req.file) fs.unlinkSync(req.file.path);
-            res.status(500).json({ success: false, message: "Parser Error: " + errData.parserError });
-        });
+            const extractedData = {
+                invoiceNo: "", date: "", customerName: "", placeOfSupply: "",
+                state: "", pincode: "", fssaiNo: "", email: "", phone: "", gstNo: "", dlNo: "", items: []
+            };
 
-        pdfParser.on("pdfParser_dataReady", async (pdfData) => {
-            try {
-                const extractedData = {
-                    invoiceNo: "", date: "", customerName: "", placeOfSupply: "",
-                    state: "", pincode: "", fssaiNo: "", email: "", phone: "", gstNo: "", dlNo: "", items: []
-                };
+            // 1. HEADER EXTRACTION
+            const invMatch = fullText.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || fullText.match(/INV\/\d+/);
+            if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
 
-                const page = pdfData.Pages[0];
-                const rawTexts = page.Texts.map(t => ({
-                    x: t.x, y: t.y, text: decodeURIComponent(t.R[0].T).trim()
-                })).filter(t => t.text);
-
-                // --- 1. SPATIAL ROW CLUSTERING (Perfect horizontal alignment) ---
-                const rows = [];
-                rawTexts.sort((a,b) => a.y - b.y).forEach(t => {
-                    let added = false;
-                    for (let r of rows) {
-                        if (Math.abs(r.y - t.y) < 0.8) { 
-                            r.items.push(t);
-                            added = true;
-                            break;
-                        }
-                    }
-                    if (!added) rows.push({ y: t.y, items: [t] });
-                });
-
-                const reconstructedLines = rows.map(r => r.items.sort((a,b) => a.x - b.x).map(i => i.text).join(' '));
-                const fullText = reconstructedLines.join('\n');
-
-                // --- 2. HEADER EXTRACTION ---
-                const invMatch = fullText.match(/Invoice No\.\s*:\s*([^\n\r]+)/i) || fullText.match(/INV\/\d+/);
-                if (invMatch) extractedData.invoiceNo = invMatch[1].trim();
-
-                const dateMatch = fullText.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i) || fullText.match(/(\d{2}[-/]\d{2}[-/]\d{4})/);
-                if (dateMatch) {
-                    const d = dateMatch[1].replace(/\//g, '-');
-                    extractedData.date = d.split('-').length === 3 ? d.split('-').reverse().join('-') : d;
-                }
-
-                const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i) || fullText.match(/Party\s*:\s*([A-Za-z\s0-9]+)/i);
-                if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
-
-                const gstMatch = fullText.match(/GSTIN:\s*([A-Z0-9]{15})/i) || fullText.match(/GST:\s*([A-Z0-9]{15})/i);
-                if (gstMatch) extractedData.gstNo = gstMatch[1];
-
-                const dlMatch = fullText.match(/D\.?L\.?[^\n:]*[:\-]?\s*([0-9A-Z\-\/\,\s]+)(?=\n|GST|FSSAI|PIN)/i);
-                if (dlMatch) extractedData.dlNo = dlMatch[1].trim().replace(/\s{2,}/g, ' ');
-
-                const fssaiMatch = fullText.match(/(?:FSSAI|Food)[^\n\d]*(\d{14})/i);
-                if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1].trim();
-
-                const posMatch = fullText.match(/(?:Place of Supply|State)[^\n:]*[:\-]?\s*([0-9]{0,2}[\-\s]?[A-Za-z\s]{3,20})(?=\n|[A-Z]{2}|$)/i);
-                if (posMatch) {
-                    extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
-                    extractedData.state = posMatch[1].trim().toUpperCase();
-                }
-
-                // --- 3. ADVANCED IDENTITY VERIFICATION ---
-                let authorized = false;
-                let warningMsg = null;
-
-                if (stockistName) {
-                    const sn = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    const ft = fullText.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-                    // Check 1: Explicit 'Bill To' Name Match
-                    if (extractedData.customerName && extractedData.customerName.length > 2) {
-                        const cn = extractedData.customerName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                        if (cn.includes(sn) || sn.includes(cn) || cn.includes("CASH")) authorized = true;
-                    }
-
-                    // Check 2: Full-Text Name Match
-                    if (!authorized && ft.includes(sn)) {
-                        authorized = true;
-                        if (!extractedData.customerName) extractedData.customerName = stockistName;
-                    }
-
-                    // Check 3: Explicit Government ID Matching (Ultimate Fallback)
-                    if (!authorized && stockist) {
-                        if (stockist.gstNo && extractedData.gstNo && stockist.gstNo.toUpperCase().trim() === extractedData.gstNo.toUpperCase().trim()) authorized = true;
-                        if (stockist.dlNo && extractedData.dlNo && stockist.dlNo.toUpperCase().trim() === extractedData.dlNo.toUpperCase().trim()) authorized = true;
-                    }
-
-                    // Soft Block (Warning) instead of Hard Block to prevent false-positive lockouts
-                    if (!authorized) {
-                        warningMsg = `IDENTITY WARNING: Could not explicitly match your Name, GST, or DL on this invoice. Please ensure you are not uploading another party's document!`;
-                    }
-                }
-
-                // --- 4. UNIVERSAL ROW EXTRACTION (Layout Agnostic) ---
-                rows.forEach(r => {
-                    const rText = r.items.map(i => i.text).join(" ").toUpperCase();
-                    
-                    // Skip explicitly known footer/header rows to avoid false positives
-                    if (rText.includes("TOTAL") || rText.includes("TAXABLE") || rText.includes("SUMMARY") || rText.includes("SUB TOTAL") || rText.includes("DISCOUNT") || rText.includes("CGST") || rText.includes("SGST") || rText.includes("IGST") || rText.includes("ROUND OFF")) {
-                        return;
-                    }
-
-                    const texts = r.items.map(i => i.text);
-                    
-                    // A row is considered a product if it has a price-like number and a valid text name
-                    const hasPrice = texts.some(t => t.match(/^\d+\.\d{1,3}$/));
-                    const invalidNames = ["HSN", "BATCH", "B.NO", "QTY", "RATE", "PARTICULARS", "PRODUCT", "DESCRIPTION", "AMOUNT", "VALUE", "MRP", "EXP", "PACK", "SIZE"];
-                    const hasName = texts.some(t => t.length > 2 && isNaN(t[0]) && !invalidNames.includes(t.toUpperCase()));
-
-                    if (hasPrice && hasName) {
-                            let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
-                            
-                            let prices = [];
-                            texts.forEach(val => {
-                                if (val.match(/^\d{6,8}$/)) item.hsn = val;
-                                else if (val.match(/\d{2}[-/]\d{2,4}/)) item.expDate = val;
-                                else if (val.match(/^\d+\.\d{1,3}$/)) prices.push(parseFloat(val));
-                                else if (val.match(/^\d+$/) && parseInt(val) < 10000 && !val.match(/^0/)) {
-                                    if (item.qty === 0) item.qty = parseInt(val);
-                                }
-                                else if (val.length > 2 && isNaN(val[0]) && !item.name) item.name = val;
-                                else if (val.length >= 3 && !item.batch && isNaN(val[0]) && item.name && val !== item.name) item.batch = val;
-                            });
-
-                            if (prices.length > 0) {
-                                prices.sort((a,b) => b - a);
-                                item.mrp = prices[0];
-                                item.rate = prices.length > 1 ? prices[1] : prices[0];
-                            }
-
-                            if (item.name && !item.name.includes("PRODUCT") && !item.name.includes("DESCRIPTION") && item.mrp > 0) {
-                                if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
-                                    extractedData.items.push(item);
-                                }
-                            }
-                        }
-                });
-
-                if (extractedData.items.length === 0) {
-                     if (req.file) fs.unlinkSync(req.file.path);
-                     return res.json({ success: false, message: "EXTRACTION FAILED: Found 0 products. Ensure the invoice format is readable and the table has standard column headers (HSN, BATCH, RATE)." });
-                }
-
-                if (req.file) fs.unlinkSync(req.file.path);
-                res.json({ 
-                    success: true, 
-                    data: extractedData, 
-                    profile: stockist ? stockist.toJSON() : null,
-                    warning: warningMsg 
-                });
-
-            } catch (innerErr) {
-                if (req.file) fs.unlinkSync(req.file.path);
-                res.status(500).json({ success: false, message: innerErr.message });
+            const dateMatch = fullText.match(/Date\s*:\s*(\d{2}-\d{2}-\d{4})/i) || fullText.match(/(\d{2}[-/]\d{2}[-/]\d{4})/);
+            if (dateMatch) {
+                const d = dateMatch[1].replace(/\//g, '-');
+                extractedData.date = d.split('-').length === 3 ? d.split('-').reverse().join('-') : d;
             }
-        });
 
-        pdfParser.loadPDF(req.file.path);
+            const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i) || fullText.match(/Party\s*:\s*([A-Za-z\s0-9]+)/i);
+            if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
+
+            const gstMatch = fullText.match(/GSTIN:\s*([A-Z0-9]{15})/i) || fullText.match(/GST:\s*([A-Z0-9]{15})/i);
+            if (gstMatch) extractedData.gstNo = gstMatch[1];
+
+            const dlMatch = fullText.match(/D\.?L\.?[^\n:]*[:\-]?\s*([0-9A-Z\-\/\,\s]+)(?=\n|GST|FSSAI|PIN)/i);
+            if (dlMatch) extractedData.dlNo = dlMatch[1].trim().replace(/\s{2,}/g, ' ');
+
+            const fssaiMatch = fullText.match(/(?:FSSAI|Food)[^\n\d]*(\d{14})/i);
+            if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1].trim();
+
+            const posMatch = fullText.match(/(?:Place of Supply|State)[^\n:]*[:\-]?\s*([0-9]{0,2}[\-\s]?[A-Za-z\s]{3,20})(?=\n|[A-Z]{2}|$)/i);
+            if (posMatch) {
+                extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
+                extractedData.state = posMatch[1].trim().toUpperCase();
+            }
+
+            // 3. ADVANCED IDENTITY VERIFICATION
+            let authorized = false;
+            let warningMsg = null;
+
+            if (stockistName) {
+                const sn = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                const ft = fullText.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+                if (extractedData.customerName && extractedData.customerName.length > 2) {
+                    const cn = extractedData.customerName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (cn.includes(sn) || sn.includes(cn) || cn.includes("CASH")) authorized = true;
+                }
+                if (!authorized && ft.includes(sn)) {
+                    authorized = true;
+                    if (!extractedData.customerName) extractedData.customerName = stockistName;
+                }
+                if (!authorized && stockist) {
+                    if (stockist.gstNo && extractedData.gstNo && stockist.gstNo.toUpperCase().trim() === extractedData.gstNo.toUpperCase().trim()) authorized = true;
+                    if (stockist.dlNo && extractedData.dlNo && stockist.dlNo.toUpperCase().trim() === extractedData.dlNo.toUpperCase().trim()) authorized = true;
+                }
+                if (!authorized) {
+                    warningMsg = `IDENTITY WARNING: Could not explicitly match your Name, GST, or DL on this invoice. Please ensure you are not uploading another party's document!`;
+                }
+            }
+
+            // 4. ITEM EXTRACTION (UNIVERSAL STRING BASED)
+            const lines = fullText.split('\n');
+
+            lines.forEach(line => {
+                const upperLine = line.toUpperCase();
+                if (upperLine.includes("TOTAL") || upperLine.includes("TAXABLE") || upperLine.includes("SUMMARY") || upperLine.includes("SUB TOTAL") || upperLine.includes("DISCOUNT") || upperLine.includes("CGST") || upperLine.includes("SGST") || upperLine.includes("IGST") || upperLine.includes("ROUND OFF")) {
+                    return;
+                }
+
+                if (line.match(/\d+\.\d{1,3}/)) {
+                    let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
+                    
+                    const prices = line.match(/\d+\.\d{1,3}/g);
+                    if (prices) {
+                        const parsed = prices.map(parseFloat).sort((a,b)=>b-a);
+                        item.mrp = parsed[0];
+                        item.rate = parsed.length > 1 ? parsed[1] : parsed[0];
+                    }
+
+                    const hsnMatch = line.match(/\b\d{6,8}\b/);
+                    if (hsnMatch) item.hsn = hsnMatch[0];
+
+                    const expMatch = line.match(/\b\d{2}[-/]\d{2,4}\b/);
+                    if (expMatch) item.expDate = expMatch[0];
+
+                    const parts = line.trim().split(/\s+/);
+                    const nums = parts.filter(p => p.match(/^\d+$/) && !p.match(/^0/));
+                    if (nums.length > 0) item.qty = parseInt(nums[nums.length-1]);
+
+                    const invalidNames = ["HSN", "BATCH", "B.NO", "QTY", "RATE", "PARTICULARS", "PRODUCT", "DESCRIPTION", "AMOUNT", "VALUE", "MRP", "EXP", "PACK", "SIZE"];
+                    
+                    const nameMatch = line.match(/^([A-Za-z0-9\-\s\.]+?)(?=\s[A-Z0-9]{4,12}\s|\s\d{2}[-/]|\s\d+\.\d{1,3}|\s\d+\s)/);
+                    if (nameMatch) {
+                        item.name = nameMatch[1].trim().toUpperCase();
+                    } else {
+                        const words = parts.filter(p => isNaN(p) || p.match(/^[0-9]+[A-Za-z]+$/));
+                        item.name = words.slice(0, 2).join(' ').toUpperCase();
+                    }
+
+                    if (invalidNames.includes(item.name)) item.name = "";
+
+                    const batchMatch = line.match(/\b([A-Z0-9]{4,12})\b/g);
+                    if (batchMatch) {
+                        const possibleBatches = batchMatch.filter(b => isNaN(b) && b !== item.name && !item.name.includes(b));
+                        if (possibleBatches.length > 0) item.batch = possibleBatches[0];
+                    }
+
+                    if (item.name && item.name.length > 2 && !item.name.includes("PRODUCT") && item.mrp > 0) {
+                        if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
+                            extractedData.items.push(item);
+                        }
+                    }
+                }
+            });
+
+            if (extractedData.items.length === 0) {
+                 if (req.file) fs.unlinkSync(req.file.path);
+                 return res.json({ success: false, message: "EXTRACTION FAILED: Found 0 products. Ensure the invoice format is readable and clearly shows item prices." });
+            }
+
+            if (req.file) fs.unlinkSync(req.file.path);
+            res.json({ 
+                success: true, 
+                data: extractedData, 
+                profile: stockist ? stockist.toJSON() : null,
+                warning: warningMsg 
+            });
+
+        } catch (innerErr) {
+            if (req.file) fs.unlinkSync(req.file.path);
+            res.status(500).json({ success: false, message: innerErr.message });
+        }
     } catch (err) {
         if (req.file) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: err.message });
