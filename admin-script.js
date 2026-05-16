@@ -2856,17 +2856,6 @@ function openPurchaseModal(id = null) {
 
         purchaseItems = [];
         purchaseCharges = [];
-        
-        // Reset Bulk Grid State
-        purGridActive = false;
-        purGridCat = 'ALL';
-        const gridView = document.getElementById('pur-grid-view');
-        const formView = document.getElementById('purchaseForm');
-        const toggleBtn = document.getElementById('pur-grid-toggle');
-        if (gridView) gridView.classList.add('hidden');
-        if (formView) formView.classList.remove('hidden');
-        if (toggleBtn) toggleBtn.innerText = '⚡ BULK GRID MODE';
-
         renderPurchaseItems();
         renderPurchaseCharges();
         document.getElementById('purchaseModal').classList.remove('hidden');
@@ -3212,16 +3201,6 @@ function openDirectSaleModal(type, preserveEdit = false) {
 
             directSaleItems = [];
         }
-        // Reset Bulk Grid State
-        saleGridActive = false;
-        saleGridCat = 'ALL';
-        const gridView = document.getElementById('sale-grid-view');
-        const formView = document.getElementById('saleForm');
-        const toggleBtn = document.getElementById('sale-grid-toggle');
-        if (gridView) gridView.classList.add('hidden');
-        if (formView) formView.classList.remove('hidden');
-        if (toggleBtn) toggleBtn.innerText = '⚡ BULK GRID MODE';
-
         renderSaleItems();
 
         // UI Adjustments based on type
@@ -6496,13 +6475,12 @@ function handleProductSearch(input, context) {
         context.startsWith('PUR-GRID') ? 'pur-grid-search-results' : 'note-search-results'
     );
     
-    if (resultsDiv) {
-        const isGrid = context.includes('-GRID-');
+    if (resultsDiv && (context === 'SALE' || context === 'PURCHASE')) {
         const rect = input.getBoundingClientRect();
         resultsDiv.style.position = 'fixed';
         resultsDiv.style.top = (rect.bottom + 5) + 'px';
         resultsDiv.style.left = rect.left + 'px';
-        resultsDiv.style.width = isGrid ? '600px' : (context === 'SALE' ? '700px' : '650px');
+        resultsDiv.style.width = context === 'SALE' ? '700px' : '650px';
         resultsDiv.style.display = 'block';
         resultsDiv.style.zIndex = '99999';
     }
@@ -6590,57 +6568,6 @@ function selectProduct(id, context) {
         document.getElementById('note-product').value = id;
         document.getElementById('note-search-results').style.display = 'none';
         updateNoteBatches(id);
-    } else if (context.startsWith('SALE-GRID-')) {
-        const idx = parseInt(context.replace('SALE-GRID-', ''));
-        const p = allProducts.find(x => (x._id || x.id) == id);
-        if (p) {
-            saleItems[idx] = {
-                productId: id,
-                name: p.name,
-                hsn: p.hsn,
-                packing: p.packing,
-                mrp: p.mrp,
-                ptr: p.ptr,
-                pts: p.pts,
-                gstPercent: p.gstPercent,
-                qty: 1,
-                rate: p.pts,
-                batchNo: '',
-                expDate: ''
-            };
-            // If it's a new product, maybe auto-select best batch
-            if (p.batches && p.batches.length > 0) {
-                const best = p.batches.find(b => (b.qtyAvailable || 0) > 0) || p.batches[0];
-                saleItems[idx].batchNo = best.batchNo;
-                saleItems[idx].expDate = best.expDate;
-            }
-            document.getElementById('sale-grid-search-results').style.display = 'none';
-            renderSaleGrid();
-            renderSaleItems(); // Sync footer
-        }
-    } else if (context.startsWith('PUR-GRID-')) {
-        const idx = parseInt(context.replace('PUR-GRID-', ''));
-        const p = allProducts.find(x => (x._id || x.id) == id);
-        if (p) {
-            purchaseItems[idx] = {
-                productId: id,
-                productName: p.name,
-                hsn: p.hsn,
-                pack: p.packing,
-                mrp: p.mrp,
-                ptr: p.ptr,
-                pts: p.pts,
-                rate: p.pts,
-                qty: 1,
-                gstPercent: p.gstPercent || 12,
-                batch: '',
-                exp: '',
-                mfg: ''
-            };
-            document.getElementById('pur-grid-search-results').style.display = 'none';
-            renderPurchaseGrid();
-            renderPurchaseItems(); // Sync footer
-        }
     } else if (context.startsWith('RETURN-')) {
         const rowId = context.replace('RETURN-', '');
         document.getElementById(`return-prod-search-${rowId}`).value = p.name;
@@ -8191,232 +8118,4 @@ function autoAllocatePayment() {
     updateLinkedTotal();
 }
 
-// ==========================================
-// BULK GRID ENTRY SYSTEM (Enhanced Convenience)
-// ==========================================
-let saleGridActive = false;
-let purGridActive = false;
-let saleGridCat = 'ALL';
-let purGridCat = 'ALL';
-
-window.saleGridCat = 'ALL';
-window.purGridCat = 'ALL';
-
-function toggleSaleGridMode() {
-    saleGridActive = !saleGridActive;
-    const gridView = document.getElementById('sale-grid-view');
-    const formView = document.getElementById('saleForm');
-    const toggleBtn = document.getElementById('sale-grid-toggle');
-
-    if (saleGridActive) {
-        gridView.classList.remove('hidden');
-        formView.classList.add('hidden');
-        toggleBtn.innerText = '⬅ BACK TO FORM';
-        renderGridCategories('sale-grid-cats', 'saleGridCat', renderSaleGrid);
-        renderSaleGrid();
-    } else {
-        gridView.classList.add('hidden');
-        formView.classList.remove('hidden');
-        toggleBtn.innerText = '⚡ BULK GRID MODE';
-    }
-}
-
-function togglePurchaseGridMode() {
-    purGridActive = !purGridActive;
-    const gridView = document.getElementById('pur-grid-view');
-    const formView = document.getElementById('purchaseForm');
-    const toggleBtn = document.getElementById('pur-grid-toggle');
-
-    if (purGridActive) {
-        gridView.classList.remove('hidden');
-        formView.classList.add('hidden');
-        toggleBtn.innerText = '⬅ BACK TO FORM';
-        renderGridCategories('pur-grid-cats', 'purGridCat', renderPurchaseGrid);
-        renderPurchaseGrid();
-    } else {
-        gridView.classList.add('hidden');
-        formView.classList.remove('hidden');
-        toggleBtn.innerText = '⚡ BULK GRID MODE';
-    }
-}
-
-function renderGridCategories(containerId, stateVarName, renderFunc) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const cats = ['ALL', ...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
-    const current = window[stateVarName];
-    
-    container.innerHTML = cats.map(c => `
-        <span onclick="window['${stateVarName}']='${c}'; renderGridCategories('${containerId}', '${stateVarName}', ${renderFunc.name}); ${renderFunc.name}();" 
-              style="padding: 4px 10px; border-radius: 4px; font-size: 0.6rem; cursor: pointer; border: 1px solid ${c === current ? 'var(--primary)' : 'rgba(255,255,255,0.1)'}; background: ${c === current ? 'rgba(99,102,241,0.1)' : 'transparent'}; color: ${c === current ? '#fff' : 'var(--text-muted)'}; white-space: nowrap;">
-            ${c}
-        </span>
-    `).join('');
-}
-
-function renderSaleGrid() {
-    const tbody = document.getElementById('sale-grid-body');
-    const searchInput = document.getElementById('sale-grid-search');
-    const search = searchInput ? searchInput.value.toLowerCase() : '';
-    
-    // Ensure we have at least 10 rows or existing + 5
-    const rowCount = Math.max(10, saleItems.length + 5);
-    
-    let html = '';
-    for (let i = 0; i < rowCount; i++) {
-        const item = saleItems[i];
-        const isFilled = !!item;
-        
-        if (search && isFilled && !item.name.toLowerCase().includes(search)) continue;
-
-        const prodName = isFilled ? item.name : '';
-        const batchNo = isFilled ? item.batchNo : '';
-        const exp = isFilled ? formatBatchExp(item.expDate) : '';
-        const qty = isFilled ? item.qty : '';
-        const rate = isFilled ? item.rate : '';
-        const total = isFilled ? (item.qty * item.rate).toFixed(2) : '0.00';
-        
-        html += `
-            <tr class="${isFilled ? 'filled-row' : 'empty-row'}">
-                <td style="text-align:center; opacity:0.5;">${i + 1}</td>
-                <td style="padding: 2px 8px;">
-                    <input type="text" value="${prodName}" placeholder="Type Product..."
-                        onfocus="handleProductSearch(this, 'SALE-GRID-${i}')"
-                        oninput="handleProductSearch(this, 'SALE-GRID-${i}')"
-                        onkeydown="handleSearchKey(event, 'sale-grid-search-results')"
-                        style="width: 100%; background: transparent; border: none; color: #fff; font-size: 0.8rem; height: 30px;">
-                </td>
-                <td>
-                    <input type="text" value="${batchNo}" placeholder="Batch"
-                        oninput="updateSaleGridItem(${i}, 'batchNo', this.value)"
-                        style="width: 100%; background: transparent; border: none; color: var(--accent); font-size: 0.75rem; text-align: center;">
-                </td>
-                <td style="text-align: center; font-size: 0.7rem; opacity: 0.7;">${exp}</td>
-                <td style="text-align: center; font-weight: 700; color: #fff;">-</td>
-                <td>
-                    <input type="number" step="0.01" value="${rate}"
-                        oninput="updateSaleGridItem(${i}, 'rate', this.value)"
-                        style="width: 100%; background: transparent; border: none; color: #fff; text-align: right; font-size: 0.75rem;">
-                </td>
-                <td>
-                    <input type="number" value="${qty}" placeholder="0"
-                        oninput="updateSaleGridItem(${i}, 'qty', this.value)"
-                        style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--accent); text-align: center; font-weight: 800; font-size: 0.9rem; border-radius: 4px;">
-                </td>
-                <td style="text-align: right; padding-right: 12px; font-weight: 800; color: var(--accent); font-family: monospace;">₹${total}</td>
-            </tr>
-        `;
-    }
-    tbody.innerHTML = html;
-}
-
-function updateSaleGridItem(idx, field, value) {
-    if (!saleItems[idx]) return;
-    
-    if (field === 'qty') saleItems[idx].qty = parseInt(value) || 0;
-    else if (field === 'rate') saleItems[idx].rate = parseFloat(value) || 0;
-    else if (field === 'batchNo') saleItems[idx].batchNo = value;
-    
-    // Update local total
-    const tbody = document.getElementById('sale-grid-body');
-    if (tbody) {
-        const row = tbody.rows[idx];
-        if (row) {
-            const totalCell = row.cells[row.cells.length - 1];
-            totalCell.innerText = `₹${(saleItems[idx].qty * saleItems[idx].rate).toFixed(2)}`;
-        }
-    }
-    renderSaleItems(); // Update footer
-}
-
-function renderPurchaseGrid() {
-    const tbody = document.getElementById('pur-grid-body');
-    const searchInput = document.getElementById('pur-grid-search');
-    const search = searchInput ? searchInput.value.toLowerCase() : '';
-    
-    const rowCount = Math.max(10, purchaseItems.length + 5);
-    
-    let html = '';
-    for (let i = 0; i < rowCount; i++) {
-        const item = purchaseItems[i];
-        const isFilled = !!item;
-        
-        if (search && isFilled && !item.productName.toLowerCase().includes(search)) continue;
-
-        const prodName = isFilled ? item.productName : '';
-        const hsn = isFilled ? item.hsn : '';
-        const pack = isFilled ? item.pack : '';
-        const batch = isFilled ? item.batch : '';
-        const exp = isFilled ? item.exp : '';
-        const mrp = isFilled ? item.mrp : '';
-        const pts = isFilled ? item.pts : '';
-        const rate = isFilled ? item.rate : '';
-        const qty = isFilled ? item.qty : '';
-        const total = isFilled ? (item.qty * item.rate).toFixed(2) : '0.00';
-        
-        html += `
-            <tr class="${isFilled ? 'filled-row' : 'empty-row'}">
-                <td style="text-align:center; opacity:0.5;">${i + 1}</td>
-                <td style="padding: 2px 8px;">
-                    <input type="text" value="${prodName}" placeholder="Type Product..."
-                        onfocus="handleProductSearch(this, 'PUR-GRID-${i}')"
-                        oninput="handleProductSearch(this, 'PUR-GRID-${i}')"
-                        onkeydown="handleSearchKey(event, 'pur-grid-search-results')"
-                        style="width: 100%; background: transparent; border: none; color: #fff; font-size: 0.8rem; height: 30px;">
-                </td>
-                <td><input type="text" value="${hsn}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: center;"></td>
-                <td><input type="text" value="${pack}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: center;"></td>
-                <td>
-                    <input type="text" value="${batch}" placeholder="Batch"
-                        oninput="updatePurchaseGridItem(${i}, 'batch', this.value)" 
-                        style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.7rem; border-radius: 4px; padding: 2px;">
-                </td>
-                <td>
-                    <input type="text" value="${exp}" placeholder="MM-YY" maxlength="5"
-                        oninput="formatMMYY(this); updatePurchaseGridItem(${i}, 'exp', this.value)" 
-                        style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 0.7rem; border-radius: 4px; padding: 2px; text-align: center;">
-                </td>
-                <td><input type="number" value="${mrp}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: right;"></td>
-                <td><input type="number" value="${pts}" readonly style="width: 100%; background: transparent; border: none; color: #94a3b8; font-size: 0.7rem; text-align: right;"></td>
-                <td>
-                    <input type="number" step="0.01" value="${rate}" 
-                        oninput="updatePurchaseGridItem(${i}, 'rate', this.value)" 
-                        style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; font-size: 0.75rem; border-radius: 4px;">
-                </td>
-                <td>
-                    <input type="number" value="${qty}" placeholder="0"
-                        oninput="updatePurchaseGridItem(${i}, 'qty', this.value)" 
-                        style="width: 100%; background: rgba(99, 102, 241, 0.15); border: 1px solid var(--primary); color: #fff; text-align: center; font-weight: 800; font-size: 0.85rem; border-radius: 4px;">
-                </td>
-                <td style="text-align: right; padding-right: 12px; font-weight: 800; color: var(--primary); font-family: monospace;">₹${total}</td>
-            </tr>
-        `;
-    }
-    tbody.innerHTML = html;
-}
-
-function updatePurchaseGridItem(idx, field, value) {
-    if (!purchaseItems[idx]) return;
-    
-    if (field === 'qty') purchaseItems[idx].qty = parseInt(value) || 0;
-    else if (field === 'rate') purchaseItems[idx].rate = parseFloat(value) || 0;
-    else if (field === 'batch') purchaseItems[idx].batch = value;
-    else if (field === 'exp') purchaseItems[idx].exp = value;
-    
-    const tbody = document.getElementById('pur-grid-body');
-    if (tbody) {
-        const row = tbody.rows[idx];
-        if (row) {
-            const totalCell = row.cells[row.cells.length - 1];
-            totalCell.innerText = `₹${(purchaseItems[idx].qty * purchaseItems[idx].rate).toFixed(2)}`;
-        }
-    }
-    renderPurchaseItems();
-}
-
-function formatBatchExp(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear().toString().substring(2)}`;
-}
 

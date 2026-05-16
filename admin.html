@@ -2755,43 +2755,12 @@
                         <div style="font-size:0.5rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--primary);opacity:0.9;">INVENTORY MANAGEMENT</div>
                         <div style="font-size:0.9rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Purchase Inward Entry</div>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button type="button" id="pur-grid-toggle" class="btn btn-ghost" onclick="togglePurchaseGridMode()" style="padding: 4px 12px; font-size: 0.7rem; border-color: var(--primary); color: var(--primary); font-weight: 800;">⚡ BULK GRID MODE</button>
-                        <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:4px 10px;font-size:0.7rem;opacity:0.7;">✕ Close</button>
-                    </div>
+                    <button type="button" class="btn btn-ghost" onclick="closePurchaseModal()" style="padding:4px 10px;font-size:0.7rem;opacity:0.7;">✕ Close</button>
                 </div>
             </div>
             
             <!-- SCROLLABLE CONTENT -->
             <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; padding: 0.4rem 1.5rem 0.4rem 1.5rem;">
-                <!-- BULK GRID VIEW (Hidden by default) -->
-                <div id="pur-grid-view" class="hidden" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; gap: 10px; margin-bottom: 10px;">
-                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
-                        <div id="pur-grid-cats" style="display: flex; gap: 8px; overflow-x: auto; flex: 1;"></div>
-                        <input type="text" id="pur-grid-search" placeholder="Quick Search Product..." oninput="renderPurchaseGrid()" style="width: 250px; font-size: 0.8rem; height: 32px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 12px; color: #fff;">
-                    </div>
-                    <div class="table-container" style="flex: 1; overflow: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
-                        <div id="pur-grid-search-results" class="search-results" style="display:none; position:fixed; width:700px; z-index:99999;"></div>
-                        <table class="excel-table" style="width: 100%; font-size: 0.72rem;">
-                            <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10;">
-                                <tr>
-                                    <th style="width: 30px;">#</th>
-                                    <th style="text-align: left; padding: 8px 12px;">Product (Type to Search)</th>
-                                    <th style="width: 70px;">HSN</th>
-                                    <th style="width: 60px;">Pack</th>
-                                    <th style="width: 100px;">Batch</th>
-                                    <th style="width: 80px;">Exp</th>
-                                    <th style="width: 80px;">MRP</th>
-                                    <th style="width: 80px;">PTS</th>
-                                    <th style="width: 80px;">Rate</th>
-                                    <th style="width: 80px;">Qty</th>
-                                    <th style="width: 100px; text-align: right;">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pur-grid-body"></tbody>
-                        </table>
-                    </div>
-                </div>
 
                 <form id="purchaseForm" onsubmit="return false;" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     <input type="hidden" id="pur-id">
@@ -2969,40 +2938,12 @@
                         <div id="sale-modal-subtitle" style="font-size:0.5rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);opacity:0.9;">DIRECT SALES MODULE</div>
                         <div id="sale-modal-title" style="font-size:0.9rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Generate Direct Invoice</div>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button type="button" id="sale-grid-toggle" class="btn btn-ghost" onclick="toggleSaleGridMode()" style="padding: 4px 12px; font-size: 0.7rem; border-color: var(--accent); color: var(--accent); font-weight: 800;">⚡ BULK GRID MODE</button>
-                        <button type="button" class="btn btn-ghost" onclick="closeSaleModal()" style="padding:4px 10px;font-size:0.7rem;opacity:0.7;">✕ Close</button>
-                    </div>
+                    <button type="button" class="btn btn-ghost" onclick="closeSaleModal()" style="padding:4px 10px;font-size:0.7rem;opacity:0.7;">✕ Close</button>
                 </div>
             </div>
             
             <!-- SCROLLABLE CONTENT -->
             <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; padding: 0.4rem 1.5rem 0.4rem 1.5rem;">
-                <!-- BULK GRID VIEW (Hidden by default) -->
-                <div id="sale-grid-view" class="hidden" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; gap: 10px; margin-bottom: 10px;">
-                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
-                        <div id="sale-grid-cats" style="display: flex; gap: 8px; overflow-x: auto; flex: 1;"></div>
-                        <input type="text" id="sale-grid-search" placeholder="Quick Search Product..." oninput="renderSaleGrid()" style="width: 250px; font-size: 0.8rem; height: 32px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 12px; color: #fff;">
-                    </div>
-                    <div class="table-container" style="flex: 1; overflow: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
-                        <div id="sale-grid-search-results" class="search-results" style="display:none; position:fixed; width:700px; z-index:99999;"></div>
-                        <table class="excel-table" style="width: 100%; font-size: 0.75rem;">
-                            <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10;">
-                                <tr>
-                                    <th style="width: 30px;">#</th>
-                                    <th style="text-align: left; padding: 8px 12px;">Product (Type to Search)</th>
-                                    <th style="width: 120px;">Batch</th>
-                                    <th style="width: 80px;">Exp</th>
-                                    <th style="width: 80px;">Stock</th>
-                                    <th style="width: 90px;">Rate</th>
-                                    <th style="width: 100px;">Qty Entry</th>
-                                    <th style="width: 110px; text-align: right;">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sale-grid-body"></tbody>
-                        </table>
-                    </div>
-                </div>
 
                 <form id="saleForm" onsubmit="saveDirectSale(event)" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     <input type="hidden" id="sale-type-input">
