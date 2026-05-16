@@ -2409,7 +2409,7 @@ let lastExtractedData = null;
 
 async function uploadExtInvoice() {
     const fileInput = document.getElementById('ext-inv-file');
-    if (!fileInput.files[0]) return alert("Please select an invoice file (PDF/JPG/PNG).");
+    if (!fileInput.files[0]) return showCenteredMessage("Please select an invoice file (PDF/JPG/PNG).", "warning");
 
     // Hide guide arrow once user starts
     const arrow = document.getElementById('guide-arrow');
@@ -2469,10 +2469,10 @@ async function uploadExtInvoice() {
             
             document.getElementById('ext-preview-section').classList.remove('hidden');
         } else {
-            alert(result.message || "Failed to read invoice.");
+            showCenteredMessage(result.message || "Failed to read invoice.", "error");
         }
     } catch (e) {
-        alert("Server error during upload.");
+        showCenteredMessage("Server error during upload.", "error");
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -2485,7 +2485,7 @@ async function postToRegistry() {
     const invNo = document.getElementById('ext-inv-no').value.trim();
     const invDate = document.getElementById('ext-inv-date').value;
     
-    if (!invNo) return alert("Invoice No is required.");
+    if (!invNo) return showCenteredMessage("Invoice No is required.", "warning");
 
     const profileUpdate = {
         address: document.getElementById('prof-address').value.trim().toUpperCase(),
@@ -2506,7 +2506,7 @@ async function postToRegistry() {
     const missing = mandatory.filter(key => !profileUpdate[key]);
     
     if (missing.length > 0) {
-        alert("🚨 MANDATORY FIELDS MISSING: " + missing.join(', ').toUpperCase() + "\n\nAll starred (*) fields must be completed for the first-time upload to open your code.");
+        showCenteredMessage("MANDATORY FIELDS MISSING: " + missing.join(', ').toUpperCase() + "\n\nAll starred (*) fields must be completed for the first-time upload to open your code.", "error");
         return;
     }
 
@@ -2539,16 +2539,16 @@ async function postToRegistry() {
         const result = await res.json();
         
         if (result.success) {
-            alert("✓ Invoice successfully posted to final registry!");
+            showCenteredMessage("Invoice successfully posted to final registry!", "success");
             document.getElementById('ext-preview-section').classList.add('hidden');
             document.getElementById('ext-inv-file').value = '';
             lastExtractedData = null;
             syncProfile(); // Refresh local profile
         } else {
-            alert(result.error || "Failed to post invoice.");
+            showCenteredMessage(result.error || "Failed to post invoice.", "error");
         }
     } catch (e) {
-        alert("Server error during posting.");
+        showCenteredMessage("Server error during posting.", "error");
     }
 }
 
@@ -2615,4 +2615,47 @@ function clearInvoiceRegistry(silent = false) {
     if (tbody) tbody.innerHTML = '';
     
     if (!silent) showCenteredMessage("Invoice Registry cleared. Ready for new upload.", "info");
+}
+
+// GLOBAL ALERT SYSTEM
+function showCenteredMessage(msg, type = "info") {
+    const overlay = document.getElementById('globalAlertOverlay');
+    const box = document.getElementById('globalAlertBox');
+    const iconEl = document.getElementById('alertIcon');
+    const titleEl = document.getElementById('alertTitle');
+    const msgEl = document.getElementById('alertMsg');
+
+    if (!overlay) return alert(msg);
+
+    // Reset classes
+    box.className = '';
+    
+    // Configure based on type
+    let icon = "ℹ️", title = "Information", colorClass = "alert-info";
+    
+    if (type === "success") {
+        icon = "✅"; title = "Success"; colorClass = "alert-success";
+    } else if (type === "error") {
+        icon = "❌"; title = "Error"; colorClass = "alert-error";
+    } else if (type === "warning") {
+        icon = "⚠️"; title = "Warning"; colorClass = "alert-warning";
+    }
+
+    box.classList.add(colorClass);
+    iconEl.innerHTML = icon;
+    titleEl.innerText = title;
+    msgEl.innerText = msg;
+
+    overlay.classList.remove('hidden');
+    // Force reflow
+    void overlay.offsetWidth;
+    overlay.classList.add('show-alert');
+}
+
+function closeAlert() {
+    const overlay = document.getElementById('globalAlertOverlay');
+    if (overlay) {
+        overlay.classList.remove('show-alert');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
 }

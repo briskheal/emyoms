@@ -2179,7 +2179,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             try {
                 const extractedData = {
                     invoiceNo: "", date: "", customerName: "", placeOfSupply: "",
-                    pincode: "", fssaiNo: "", email: "", items: []
+                    state: "", pincode: "", fssaiNo: "", email: "", phone: "", gstNo: "", dlNo: "", items: []
                 };
 
                 // 1. RECONSTRUCT SPATIAL GRID (Y-Grouped Rows)
@@ -2224,6 +2224,18 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
                 const pinMatch = fullText.match(/PIN-(\d{6})/i) || fullText.match(/(\d{6})/);
                 if (pinMatch) extractedData.pincode = pinMatch[1];
+
+                const dlMatch = fullText.match(/D\.?L\.?[^\n:]*[:\-]?\s*([0-9A-Z\-\/\,\s]+)(?=\n|GST|FSSAI|PIN|Phone|Email)/i);
+                if (dlMatch) extractedData.dlNo = dlMatch[1].trim().replace(/\s{2,}/g, ' ');
+
+                const fssaiMatch = fullText.match(/(?:FSSAI|Food)[^\n\d]*(\d{14})/i);
+                if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1].trim();
+
+                const posMatch = fullText.match(/(?:Place of Supply|State)[^\n:]*[:\-]?\s*([0-9]{0,2}[\-\s]?[A-Za-z\s]{3,20})(?=\n|[A-Z]{2}|$)/i);
+                if (posMatch) {
+                    extractedData.placeOfSupply = posMatch[1].trim().toUpperCase();
+                    extractedData.state = posMatch[1].trim().toUpperCase();
+                }
 
                 // 3. STATISTICAL HEAT MAP PARSER (LAYOUT AGNOSTIC)
                 const hTexts = page.Texts.map(t => ({
