@@ -2213,46 +2213,71 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 const buyerMatch = fullText.match(/Bill To\s*([^\n\r]+)/i) || fullText.match(/Buyer:\s*([^\n\r]+)/i);
                 if (buyerMatch) extractedData.customerName = buyerMatch[1].trim().toUpperCase();
 
-                // 3. SPATIAL TABLE EXTRACTION
+                // 3. STATISTICAL HEAT MAP PARSER (LAYOUT AGNOSTIC)
+                const page = pdfData.Pages[0];
+                const texts = page.Texts.map(t => ({
+                    x: t.x, y: t.y, text: decodeURIComponent(t.R[0].T).trim()
+                })).filter(t => t.text);
+
+                // --- PASS 1: MAP GLOBAL COLUMN CENTERS ---
+                let centers = { hsn: [], exp: [], mrp: [], qty: [] };
+                texts.forEach(t => {
+                    if (t.text.match(/^\d{6,8}$/)) centers.hsn.push(t.x);
+                    if (t.text.match(/\d{2}[-/]\d{2,4}/)) centers.exp.push(t.x);
+                    if (t.text.match(/^\d+\.\d{2}$/)) centers.mrp.push(t.x);
+                    if (t.text.match(/^\d+$/) && t.text.length < 4) centers.qty.push(t.x);
+                });
+
+                const getAvg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : -1;
+                const colMap = {
+                    hsn: getAvg(centers.hsn),
+                    exp: getAvg(centers.exp),
+                    mrp: getAvg(centers.mrp),
+                    qty: getAvg(centers.qty)
+                };
+
+                // --- PASS 2: RECONSTRUCT ROWS & MAP TO CENTERS ---
+                let rowsMap = {};
+                texts.forEach(t => {
+                    const yKey = Math.round(t.y * 10);
+                    if (!rowsMap[yKey]) rowsMap[yKey] = [];
+                    rowsMap[yKey].push(t);
+                });
+
+                const sortedY = Object.keys(rowsMap).sort((a,b)=>a-b);
                 let inTable = false;
-                let headerFoundCount = 0;
 
-                grid.forEach(row => {
-                    const rText = row.join(" ").toUpperCase();
-                    
-                    // Relaxed Table Start (Scan for any 2 headers in history)
-                    if (rText.includes("HSN") || rText.includes("BATCH") || rText.includes("MRP") || rText.includes("QTY")) {
-                        headerFoundCount++;
-                        if (headerFoundCount >= 2) inTable = true;
-                    }
-                    if (rText.includes("TOTAL") || rText.includes("TAXABLE")) { inTable = false; }
+                sortedY.forEach(y => {
+                    const row = rowsMap[y].sort((a,b)=>a.x-b.x);
+                    const rText = row.map(t => t.text).join(" ").toUpperCase();
 
-                    // DATA SIGNATURE DETECTION (The Fallback)
-                    const hasPrice = row.some(c => c.match(/^\d+\.\d{2}$/));
-                    const hasDate = row.some(c => c.match(/\d{2}[-/]\d{2,4}/));
-                    const hasName = row.some(c => c.length > 5 && isNaN(c[0]));
+                    if (rText.includes("HSN") || rText.includes("BATCH")) inTable = true;
+                    if (rText.includes("TOTAL") || rText.includes("TAXABLE")) inTable = false;
+
+                    const hasPrice = row.some(t => t.text.match(/^\d+\.\d{2}$/));
+                    const hasName = row.some(t => t.text.length > 8 && isNaN(t.text[0]));
 
                     if ((inTable || (hasPrice && hasName)) && row.length >= 3) {
                         let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
                         
-                        row.forEach(cell => {
-                            if (cell.match(/^\d{6,8}$/)) item.hsn = cell;
-                            else if (cell.match(/\d{2}[-/]\d{2,4}/)) item.expDate = cell;
-                            else if (cell.match(/^\d+\.\d{2}$/)) {
-                                const val = parseFloat(cell);
-                                if (val > (item.mrp || 0)) { item.rate = item.mrp; item.mrp = val; }
-                                else item.rate = val;
+                        row.forEach(t => {
+                            const val = t.text;
+                            const dist = (target) => Math.abs(t.x - target);
+
+                            // Map to closest statistical center
+                            if (colMap.hsn > 0 && dist(colMap.hsn) < 2 && val.match(/^\d{6,8}$/)) item.hsn = val;
+                            else if (colMap.exp > 0 && dist(colMap.exp) < 2 && val.match(/\d{2}[-/]\d{2,4}/)) item.expDate = val;
+                            else if (colMap.mrp > 0 && dist(colMap.mrp) < 3 && val.match(/^\d+\.\d{2}$/)) {
+                                const f = parseFloat(val);
+                                if (f > item.mrp) { item.rate = item.mrp; item.mrp = f; }
+                                else item.rate = f;
                             }
-                            else if (cell.match(/^\d+$/) && !item.qty) {
-                                const q = parseInt(cell);
-                                if (q > 0 && q < 5000 && cell !== item.hsn) item.qty = q;
-                            }
-                            else if (cell.length > 5 && !item.name && isNaN(cell[0])) item.name = cell;
-                            else if (cell.length >= 3 && !item.batch && cell !== item.hsn && isNaN(cell[0])) item.batch = cell;
+                            else if (colMap.qty > 0 && dist(colMap.qty) < 2 && val.match(/^\d+$/)) item.qty = parseInt(val);
+                            else if (val.length > 5 && isNaN(val[0]) && !item.name) item.name = val;
+                            else if (val.length >= 3 && !item.batch && isNaN(val[0])) item.batch = val;
                         });
 
                         if (item.name && (item.qty > 0 || item.mrp > 0)) {
-                            // Deduplicate before adding
                             if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
                                 extractedData.items.push(item);
                             }
