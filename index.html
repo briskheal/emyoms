@@ -479,6 +479,7 @@
             <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Billing Details</button>
             <button class="tab-btn" id="btn-tab-pdcn" onclick="switchOrderTab('pdcn')">📝 PDCN Worksheet</button>
             <button class="tab-btn" id="btn-tab-pdcn-history" onclick="switchOrderTab('pdcn-history')">📊 PDCN Claims</button>
+            <button class="tab-btn" id="btn-tab-registry" onclick="switchOrderTab('registry')">📂 Invoice Registry</button>
         </div>
 
 
@@ -594,6 +595,73 @@
                     <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
                         <i class="fas fa-folder-open" style="font-size: 3rem; opacity: 0.1; margin-bottom: 1rem;"></i>
                         <p>No claims found or loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INVOICE REGISTRY SECTION (NEW) -->
+        <div id="section-registry" class="hidden">
+            <div class="glass-card" style="padding: 2rem; border-top: 4px solid var(--primary);">
+                <div style="margin-bottom: 2rem;">
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff;">External Invoice Registry</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Upload invoices from your Super Distributor to automate your PDCN claims and update your profile.</p>
+                </div>
+
+                <div style="background: rgba(99, 102, 241, 0.05); border: 2px dashed var(--glass-border); border-radius: 20px; padding: 3rem; text-align: center; transition: 0.3s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
+                    <i class="fas fa-file-invoice" style="font-size: 3rem; color: var(--primary); margin-bottom: 1.5rem; opacity: 0.5;"></i>
+                    <h3 style="margin-bottom: 1rem; color: #fff;">Upload External Supplier Invoice</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2rem;">Select PDF, JPG or PNG format. Our AI will automatically read items and totals.</p>
+                    
+                    <div style="max-width: 400px; margin: 0 auto;">
+                        <input type="file" id="ext-inv-file" accept="application/pdf,image/*" style="margin-bottom: 1.5rem;">
+                        <button class="btn-primary" id="upload-btn" onclick="uploadExtInvoice()">
+                            <i class="fas fa-magic"></i> READ INVOICE DATA
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Section -->
+                <div id="ext-preview-section" class="hidden" style="margin-top: 3rem; animation: fadeInUp 0.5s ease-out;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+                        <div>
+                            <h3 style="color: var(--accent); font-weight: 800; margin-bottom: 4px;">EXTRACTED DATA PREVIEW</h3>
+                            <p style="font-size: 0.7rem; color: var(--text-muted);">Please verify the items and values read from the PDF.</p>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <div class="form-group" style="margin:0;"><label>Invoice No</label><input type="text" id="ext-inv-no" style="width: 150px; background: rgba(0,0,0,0.3);"></div>
+                            <div class="form-group" style="margin:0;"><label>Date</label><input type="date" id="ext-inv-date" style="width: 150px; background: rgba(0,0,0,0.3);"></div>
+                        </div>
+                    </div>
+
+                    <div class="excel-container" style="min-height: auto; margin-bottom: 2rem;">
+                        <table class="excel-table">
+                            <thead>
+                                <tr><th>Product Name</th><th>Batch</th><th>Qty</th><th>Rate (₹)</th><th>GST%</th></tr>
+                            </thead>
+                            <tbody id="ext-preview-body"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Profile Enrichment -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 20px; padding: 2rem; margin-bottom: 2.5rem;">
+                        <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--primary); margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 1px;">Update Customer Master Database (ALL CAPS)</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                            <div class="form-group"><label>Firm Name</label><input type="text" id="prof-name" readonly style="opacity: 0.6;"></div>
+                            <div class="form-group"><label>Phone</label><input type="text" id="prof-phone"></div>
+                            <div class="form-group" style="grid-column: span 2;"><label>Full Address</label><input type="text" id="prof-address"></div>
+                            <div class="form-group"><label>City</label><input type="text" id="prof-city"></div>
+                            <div class="form-group"><label>State</label><input type="text" id="prof-state"></div>
+                            <div class="form-group"><label>GSTIN</label><input type="text" id="prof-gst"></div>
+                            <div class="form-group"><label>Drug License</label><input type="text" id="prof-dl"></div>
+                            <div class="form-group"><label>Bank Name</label><input type="text" id="prof-bank"></div>
+                            <div class="form-group"><label>IFSC Code</label><input type="text" id="prof-ifsc"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button class="btn" style="width: auto; padding: 12px 30px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);" onclick="cancelUpload()">DISCARD</button>
+                        <button class="btn-primary" style="width: auto; padding: 12px 40px;" onclick="postToRegistry()">CONFIRM & SAVE TO REGISTRY</button>
                     </div>
                 </div>
             </div>

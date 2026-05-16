@@ -111,8 +111,7 @@ function switchOrderTab(tab) {
     if (targetBtn) targetBtn.classList.add('active');
     
     // Hide all sections first
-    ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history'].forEach(id => {
-
+    ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history', 'section-registry'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -132,6 +131,9 @@ function switchOrderTab(tab) {
         document.getElementById('section-pdcn-history').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
         fetchPDCNHistory();
+    } else if (tab === 'registry') {
+        document.getElementById('section-registry').classList.remove('hidden');
+        if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
     }
 }
 
@@ -2305,3 +2307,125 @@ function closePDCNViewModal() {
 
 
 
+
+// --- EXTERNAL INVOICE REGISTRY LOGIC ---
+let lastExtractedData = null;
+
+async function uploadExtInvoice() {
+    const fileInput = document.getElementById('ext-inv-file');
+    if (!fileInput.files[0]) return alert("Please select an invoice file (PDF/JPG/PNG).");
+
+    const btn = document.getElementById('upload-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> READING...";
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('invoice', fileInput.files[0]);
+        formData.append('stockistName', currentUser.name);
+        formData.append('stockistId', currentUser._id || currentUser.id);
+
+        const res = await fetch(`${API_BASE}/stockist/upload-invoice-read`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            lastExtractedData = result.data;
+            document.getElementById('ext-inv-no').value = result.data.invoiceNo;
+            document.getElementById('ext-inv-date').value = result.data.date;
+            
+            // Populate Profile Enrichment Form
+            if (result.profile) {
+                document.getElementById('prof-name').value = result.profile.name;
+                document.getElementById('prof-phone').value = result.profile.phone || '';
+                document.getElementById('prof-address').value = result.profile.address || '';
+                document.getElementById('prof-city').value = result.profile.city || '';
+                document.getElementById('prof-state').value = result.profile.state || '';
+                document.getElementById('prof-dl').value = result.profile.dlNo || '';
+                document.getElementById('prof-gst').value = result.profile.gstNo || '';
+                document.getElementById('prof-bank').value = result.profile.bankName || '';
+                document.getElementById('prof-ifsc').value = result.profile.bankIfsc || '';
+            }
+            
+            const tbody = document.getElementById('ext-preview-body');
+            tbody.innerHTML = result.data.items.map((item, idx) => `
+                <tr>
+                    <td><input type="text" value="${item.name}" oninput="lastExtractedData.items[${idx}].name=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;"></td>
+                    <td><input type="text" value="${item.batch}" oninput="lastExtractedData.items[${idx}].batch=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
+                    <td><input type="number" value="${item.qty}" oninput="lastExtractedData.items[${idx}].qty=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:70px; text-align:center;"></td>
+                    <td><input type="number" step="0.01" value="${item.rate}" oninput="lastExtractedData.items[${idx}].rate=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:90px; text-align:right;"></td>
+                    <td><input type="number" value="${item.gst}" oninput="lastExtractedData.items[${idx}].gst=this.value" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:60px; text-align:center;"></td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('ext-preview-section').classList.remove('hidden');
+        } else {
+            alert(result.message || "Failed to read invoice.");
+        }
+    } catch (e) {
+        alert("Server error during upload.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function postToRegistry() {
+    if (!lastExtractedData) return;
+    
+    const invNo = document.getElementById('ext-inv-no').value.trim();
+    const invDate = document.getElementById('ext-inv-date').value;
+    
+    if (!invNo) return alert("Invoice No is required.");
+
+    const payload = {
+        invoiceNo: invNo,
+        date: invDate,
+        stockistId: currentUser._id || currentUser.id,
+        items: lastExtractedData.items,
+        grandTotal: lastExtractedData.items.reduce((sum, i) => {
+            const line = parseFloat(i.qty) * parseFloat(i.rate);
+            return sum + line + (line * parseFloat(i.gst || 0) / 100);
+        }, 0),
+        profileUpdate: {
+            address: document.getElementById('prof-address').value,
+            city: document.getElementById('prof-city').value,
+            state: document.getElementById('prof-state').value,
+            dlNo: document.getElementById('prof-dl').value,
+            gstNo: document.getElementById('prof-gst').value,
+            bankName: document.getElementById('prof-bank').value,
+            bankIfsc: document.getElementById('prof-ifsc').value,
+            phone: document.getElementById('prof-phone').value
+        }
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/stockist/invoice-external`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            alert("✓ Invoice successfully posted to final registry!");
+            document.getElementById('ext-preview-section').classList.add('hidden');
+            document.getElementById('ext-inv-file').value = '';
+            lastExtractedData = null;
+            syncProfile(); // Refresh local profile
+        } else {
+            alert(result.error || "Failed to post invoice.");
+        }
+    } catch (e) {
+        alert("Server error during posting.");
+    }
+}
+
+function cancelUpload() {
+    document.getElementById('ext-preview-section').classList.add('hidden');
+    document.getElementById('ext-inv-file').value = '';
+    lastExtractedData = null;
+}

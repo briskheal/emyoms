@@ -1,15 +1,16 @@
-const path = require('path');
-const db = require(path.join(__dirname, '../models'));
+const db = require('../models');
 
 async function checkLedgers() {
     try {
         const ledgers = await db.Ledger.findAll();
-        console.log("Existing Ledgers:");
+        console.log('--- ALL LEDGERS ---');
         ledgers.forEach(l => {
-            console.log(`- ${l.name} (${l.groupName})`);
+            console.log(`ID: ${l.id} | Name: ${l.name} | Nature: ${l.nature} | Group: ${l.group}`);
         });
+        process.exit(0);
     } catch (e) {
-        console.error("Error checking ledgers:", e);
+        console.error(e);
+        process.exit(1);
     }
 }
 
