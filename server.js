@@ -2265,62 +2265,58 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             if (capturing && isNewItem) {
                 let name = "", hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
                 
-                // If the line is just a digit, name is usually the next line
                 if (/^\d+$/.test(line)) {
                     name = itemLines[i+1]?.trim() || "";
                 } else {
                     name = line.replace(/^\d+\s+/, '').trim();
                 }
 
-                // Scan the next 15 lines for details
-                for (let j = i + 1; j < i + 16; j++) {
+                // Scan proximity (12 lines)
+                for (let j = i + 1; j < i + 13; j++) {
                     const l = itemLines[j]?.trim();
                     if (!l) continue;
-                    if (/^\d+$/.test(l) && j > i + 1) break; // Next item index found
+                    if (/^\d+$/.test(l) && j > i + 1) break;
 
-                    // Extract HSN
                     const hsnMatch = l.match(/^(\d{6,8})$/);
                     if (hsnMatch && !hsn) hsn = hsnMatch[1];
 
-                    // Extract MM/YYYY
                     const expMatch = l.match(/(\d{2}\/\d{4})/);
-                    if (expMatch && !expDate) expDate = expMatch[1];
-
-                    // Extract MRP (follows MM/YYYY or is a float)
-                    if (l.match(/^\d+\.\d{2}$/) && expDate && !mrp) mrp = parseFloat(l);
-                    if (l.includes("/") && l.match(/\d{2}\/\d{4}\s*(\d+\.\d{2})/)) {
-                        mrp = parseFloat(l.match(/\d{2}\/\d{4}\s*(\d+\.\d{2})/)[1]);
+                    if (expMatch && !expDate) {
+                        expDate = expMatch[1];
+                        const mMatch = l.match(/(\d+\.\d{2})/);
+                        if (mMatch && !mrp && l !== expMatch[1]) mrp = parseFloat(mMatch[1]);
                     }
 
-                    // Extract Qty (Integer after MRP or in isolation)
-                    if (l.match(/^\d+$/) && mrp && !qty) qty = parseInt(l);
+                    if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) mrp = parseFloat(l);
 
-                    // Extract Batch (Alphanumeric, not HSN, not Date)
                     if (l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !l.includes("GSTIN") && !batch) {
                          batch = l;
                     }
 
-                    // Extract Rate (₹ or float near Qty)
-                    if (l.includes("₹") && !rate) {
-                        const rMatch = l.match(/₹\s*([\d,]+\.\d{2})/);
+                    if (l.match(/^\d+$/) && !qty && (mrp || rate || j > i + 5)) {
+                        const val = parseInt(l);
+                        if (val > 0 && val < 5000) qty = val;
+                    }
+
+                    if (!rate && (l.includes("₹") || (l.match(/^\d+\.\d{2}$/) && mrp > 0 && parseFloat(l) !== mrp))) {
+                        const rMatch = l.match(/₹\s*([\d,]+\.\d{2})/) || l.match(/([\d,]+\.\d{2})/);
                         if (rMatch) rate = parseFloat(rMatch[1].replace(/,/g,''));
                     }
 
-                    // Extract GST
                     if (l.includes("%")) {
                         const gMatch = l.match(/(\d+\.?\d*)\s*%/);
                         if (gMatch) gst = parseFloat(gMatch[1]) * 2;
                     }
                 }
 
-                if (name && (qty || mrp || batch)) {
+                if (name && (qty > 0 || mrp > 0)) {
                     extractedData.items.push({
                         name: name.toUpperCase(),
-                        hsn: hsn,
+                        hsn: hsn || "3004",
                         batch: batch.toUpperCase() || "EXTRACTED",
-                        expDate: expDate,
-                        mrp: mrp,
-                        qty: qty || 0,
+                        expDate: expDate || "12/2026",
+                        mrp: mrp || 0,
+                        qty: qty || 1,
                         rate: rate || 0,
                         gst: gst || 12
                     });
@@ -2328,8 +2324,6 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             }
         }
 
-
-        // Return extracted data + Current Stockist Profile for verification
         const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
 
         res.json({ 
