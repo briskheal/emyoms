@@ -110,6 +110,12 @@ function switchOrderTab(tab) {
     const targetBtn = document.getElementById(`btn-tab-${tab}`);
     if (targetBtn) targetBtn.classList.add('active');
     
+    // Hide all guide arrows first
+    ['guide-place', 'guide-history', 'guide-pdcn', 'guide-pdcn-history', 'guide-arrow'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
     // Hide all sections first
     ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history', 'section-registry'].forEach(id => {
         const el = document.getElementById(id);
@@ -119,18 +125,49 @@ function switchOrderTab(tab) {
     if (tab === 'place') {
         document.getElementById('section-place-order').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.remove('hidden');
+        
+        const g = document.getElementById('guide-place');
+        if (g) g.classList.remove('hidden');
+        
+        setTimeout(() => {
+            document.getElementById('section-place-order').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
     } else if (tab === 'history') {
         document.getElementById('section-order-history').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
         fetchMyOrders();
+
+        const g = document.getElementById('guide-history');
+        if (g) g.classList.remove('hidden');
+
+        setTimeout(() => {
+            document.getElementById('section-order-history').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
     } else if (tab === 'pdcn') {
         document.getElementById('section-pdcn').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
         fetchPDCNInvoices();
+
+        const g = document.getElementById('guide-pdcn');
+        if (g) g.classList.remove('hidden');
+
+        setTimeout(() => {
+            document.getElementById('section-pdcn').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
     } else if (tab === 'pdcn-history') {
         document.getElementById('section-pdcn-history').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
         fetchPDCNHistory();
+
+        const g = document.getElementById('guide-pdcn-history');
+        if (g) g.classList.remove('hidden');
+
+        setTimeout(() => {
+            document.getElementById('section-pdcn-history').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
     } else if (tab === 'registry') {
         document.getElementById('section-registry').classList.remove('hidden');
         if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
