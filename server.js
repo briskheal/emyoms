@@ -2215,29 +2215,47 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
                 // 3. SPATIAL TABLE EXTRACTION
                 let inTable = false;
+                let headerFoundCount = 0;
+
                 grid.forEach(row => {
                     const rText = row.join(" ").toUpperCase();
-                    if (rText.includes("HSN") && rText.includes("BATCH")) { inTable = true; return; }
-                    if (rText.includes("TOTAL") || rText.includes("TERMS")) { inTable = false; return; }
+                    
+                    // Relaxed Table Start (Scan for any 2 headers in history)
+                    if (rText.includes("HSN") || rText.includes("BATCH") || rText.includes("MRP") || rText.includes("QTY")) {
+                        headerFoundCount++;
+                        if (headerFoundCount >= 2) inTable = true;
+                    }
+                    if (rText.includes("TOTAL") || rText.includes("TAXABLE")) { inTable = false; }
 
-                    if (inTable && row.length >= 4) {
+                    // DATA SIGNATURE DETECTION (The Fallback)
+                    const hasPrice = row.some(c => c.match(/^\d+\.\d{2}$/));
+                    const hasDate = row.some(c => c.match(/\d{2}[-/]\d{2,4}/));
+                    const hasName = row.some(c => c.length > 5 && isNaN(c[0]));
+
+                    if ((inTable || (hasPrice && hasName)) && row.length >= 3) {
                         let item = { name: "", hsn: "3004", batch: "EXTRACTED", expDate: "12/2026", mrp: 0, qty: 0, rate: 0, gst: 12 };
                         
                         row.forEach(cell => {
                             if (cell.match(/^\d{6,8}$/)) item.hsn = cell;
-                            else if (cell.match(/\d{2}\/\d{2,4}/)) item.expDate = cell;
+                            else if (cell.match(/\d{2}[-/]\d{2,4}/)) item.expDate = cell;
                             else if (cell.match(/^\d+\.\d{2}$/)) {
                                 const val = parseFloat(cell);
                                 if (val > (item.mrp || 0)) { item.rate = item.mrp; item.mrp = val; }
                                 else item.rate = val;
                             }
-                            else if (cell.match(/^\d+$/) && !item.qty) item.qty = parseInt(cell);
+                            else if (cell.match(/^\d+$/) && !item.qty) {
+                                const q = parseInt(cell);
+                                if (q > 0 && q < 5000 && cell !== item.hsn) item.qty = q;
+                            }
                             else if (cell.length > 5 && !item.name && isNaN(cell[0])) item.name = cell;
-                            else if (cell.length >= 4 && !item.batch && cell !== item.hsn && isNaN(cell[0])) item.batch = cell;
+                            else if (cell.length >= 3 && !item.batch && cell !== item.hsn && isNaN(cell[0])) item.batch = cell;
                         });
 
                         if (item.name && (item.qty > 0 || item.mrp > 0)) {
-                            extractedData.items.push(item);
+                            // Deduplicate before adding
+                            if (!extractedData.items.find(it => it.name === item.name && it.batch === item.batch)) {
+                                extractedData.items.push(item);
+                            }
                         }
                     }
                 });
