@@ -2800,7 +2800,7 @@ app.get('/api/admin/financial-statements', async (req, res) => {
             }
         });
 
-        // 2. Process Stockists (Sundry Debtors/Creditors)
+        // 2. Process Stockists (Sundry Debtors/Creditors - strictly operational)
         stockists.forEach(s => {
             const bal = getNetBal('Stockist', s.id, 'DR');
             if (bal === 0) return;
@@ -2816,7 +2816,19 @@ app.get('/api/admin/financial-statements', async (req, res) => {
             expenses.push({ name: c.name, amount: Math.abs(bal) });
         });
 
-        res.json({ success: true, assets, liabilities, income, expenses });
+        // 4. Calculate Totals for Frontend (PL & BS Structure)
+        const totalIncome = income.reduce((sum, x) => sum + x.amount, 0);
+        const totalExpenses = expenses.reduce((sum, x) => sum + x.amount, 0);
+        const netProfit = totalIncome - totalExpenses;
+
+        const totalAssets = assets.reduce((sum, x) => sum + x.amount, 0);
+        const totalLiabilities = liabilities.reduce((sum, x) => sum + x.amount, 0);
+
+        res.json({ 
+            success: true, 
+            pl: { income, expenses, totalIncome, totalExpenses, netProfit },
+            bs: { assets, liabilities, totalAssets, totalLiabilities }
+        });
     } catch (e) { 
         console.error('[ERROR] Financial Statement Generation Failed:', e);
         res.status(500).json({ success: false, error: e.message }); 
