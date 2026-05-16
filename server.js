@@ -2168,7 +2168,8 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-        const { stockistName } = req.body;
+        const { stockistName, stockistId } = req.body;
+        const stockist = await db.Stockist.findByPk(stockistId || 0);
         const pdfParser = new PDFParser(null, 1);
 
         pdfParser.on("pdfParser_dataError", errData => {
@@ -2233,29 +2234,35 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     extractedData.state = posMatch[1].trim().toUpperCase();
                 }
 
-                // --- 3. HARD SECURITY CHECK ON BILLING NAME ---
+                // --- 3. ADVANCED IDENTITY VERIFICATION ---
+                let authorized = false;
+                let warningMsg = null;
+
                 if (stockistName) {
                     const sn = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    let authorized = false;
+                    const ft = fullText.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+                    // Check 1: Explicit 'Bill To' Name Match
                     if (extractedData.customerName && extractedData.customerName.length > 2) {
                         const cn = extractedData.customerName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                        if (cn.includes(sn) || sn.includes(cn) || cn.includes("CASH")) {
-                            authorized = true;
-                        } else {
-                            if (req.file) fs.unlinkSync(req.file.path);
-                            return res.json({ success: false, message: `SECURITY BLOCK: Invoice is billed to '${extractedData.customerName}', but your account is '${stockistName}'. Upload rejected.` });
-                        }
-                    } else {
-                        // Fallback: Full Text Verification
-                        const ft = fullText.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                        if (ft.includes(sn)) {
-                            authorized = true;
-                            extractedData.customerName = stockistName; // Auto-fill since it was verified
-                        } else {
-                            if (req.file) fs.unlinkSync(req.file.path);
-                            return res.json({ success: false, message: `SECURITY BLOCK: Could not detect your name ('${stockistName}') anywhere on this invoice. Upload rejected to prevent cross-party data leaks.` });
-                        }
+                        if (cn.includes(sn) || sn.includes(cn) || cn.includes("CASH")) authorized = true;
+                    }
+
+                    // Check 2: Full-Text Name Match
+                    if (!authorized && ft.includes(sn)) {
+                        authorized = true;
+                        if (!extractedData.customerName) extractedData.customerName = stockistName;
+                    }
+
+                    // Check 3: Explicit Government ID Matching (Ultimate Fallback)
+                    if (!authorized && stockist) {
+                        if (stockist.gstNo && extractedData.gstNo && stockist.gstNo.toUpperCase().trim() === extractedData.gstNo.toUpperCase().trim()) authorized = true;
+                        if (stockist.dlNo && extractedData.dlNo && stockist.dlNo.toUpperCase().trim() === extractedData.dlNo.toUpperCase().trim()) authorized = true;
+                    }
+
+                    // Soft Block (Warning) instead of Hard Block to prevent false-positive lockouts
+                    if (!authorized) {
+                        warningMsg = `IDENTITY WARNING: Could not explicitly match your Name, GST, or DL on this invoice. Please ensure you are not uploading another party's document!`;
                     }
                 }
 
@@ -2312,8 +2319,12 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 }
 
                 if (req.file) fs.unlinkSync(req.file.path);
-                const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
-                res.json({ success: true, data: extractedData, profile: stockist ? stockist.toJSON() : null });
+                res.json({ 
+                    success: true, 
+                    data: extractedData, 
+                    profile: stockist ? stockist.toJSON() : null,
+                    warning: warningMsg 
+                });
 
             } catch (innerErr) {
                 if (req.file) fs.unlinkSync(req.file.path);

@@ -2435,42 +2435,47 @@ async function uploadExtInvoice() {
         });
         const result = await res.json();
         
-        if (result.success) {
-            lastExtractedData = result.data;
-            document.getElementById('ext-inv-no').value = result.data.invoiceNo;
-            document.getElementById('ext-inv-date').value = result.data.date;
-            document.getElementById('ext-inv-pos').value = result.data.placeOfSupply || '';
-            
-            // Populate Profile Enrichment Form (Prefer EXTRACTED data over old master data)
-            if (result.profile) {
-                document.getElementById('prof-name').value = result.profile.name;
-                document.getElementById('prof-phone').value = result.data.phone || result.profile.phone || '';
-                document.getElementById('prof-email').value = result.data.email || result.profile.email || '';
-                document.getElementById('prof-address').value = result.data.address || result.profile.address || '';
-                document.getElementById('prof-pin').value = result.data.pincode || result.profile.pincode || '';
-                document.getElementById('prof-fssai').value = result.data.fssaiNo || result.profile.fssaiNo || '';
-                document.getElementById('prof-city').value = result.profile.city || '';
-                document.getElementById('prof-state').value = result.data.state || result.profile.state || '';
-                document.getElementById('prof-dl').value = result.data.dlNo || result.profile.dlNo || '';
-                document.getElementById('prof-gst').value = result.data.gstNo || result.profile.gstNo || '';
-                document.getElementById('prof-bank').value = result.profile.bankName || '';
-                document.getElementById('prof-ifsc').value = result.profile.bankIfsc || '';
-            }
-            
-            document.getElementById('ext-preview-section').classList.remove('hidden');
+            if (result.success) {
+                lastExtractedData = result.data;
+                document.getElementById('ext-inv-no').value = result.data.invoiceNo;
+                document.getElementById('ext-inv-date').value = result.data.date;
+                document.getElementById('ext-inv-pos').value = result.data.placeOfSupply || '';
+                
+                if (result.profile) {
+                    document.getElementById('prof-name').value = result.profile.name;
+                    document.getElementById('prof-phone').value = result.data.phone || result.profile.phone || '';
+                    document.getElementById('prof-email').value = result.data.email || result.profile.email || '';
+                    document.getElementById('prof-address').value = result.data.address || result.profile.address || '';
+                    document.getElementById('prof-pin').value = result.data.pincode || result.profile.pincode || '';
+                    document.getElementById('prof-fssai').value = result.data.fssaiNo || result.profile.fssaiNo || '';
+                    document.getElementById('prof-city').value = result.profile.city || '';
+                    document.getElementById('prof-state').value = result.data.state || result.profile.state || '';
+                    document.getElementById('prof-dl').value = result.data.dlNo || result.profile.dlNo || '';
+                    document.getElementById('prof-gst').value = result.data.gstNo || result.profile.gstNo || '';
+                    document.getElementById('prof-bank').value = result.profile.bankName || '';
+                    document.getElementById('prof-ifsc').value = result.profile.bankIfsc || '';
+                }
+                
+                document.getElementById('ext-preview-section').classList.remove('hidden');
 
-            // --- AUTO SCROLL TO ENRICHMENT FORM ---
-            setTimeout(() => {
-                document.getElementById('ext-preview-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
-            
-            // --- RENDER TABLE VIA CENTRAL FUNCTION ---
-            renderExtTable();
-            
-            document.getElementById('ext-preview-section').classList.remove('hidden');
-        } else {
-            showCenteredMessage(result.message || "Failed to read invoice.", "error");
-        }
+                // --- AUTO SCROLL TO ENRICHMENT FORM ---
+                setTimeout(() => {
+                    document.getElementById('ext-preview-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 300);
+                
+                // --- RENDER TABLE VIA CENTRAL FUNCTION ---
+                renderExtTable();
+                
+                // Show warning if identity mismatch occurred but extraction succeeded
+                if (result.warning) {
+                    setTimeout(() => showCenteredMessage(result.warning, "warning"), 800);
+                } else {
+                    showCenteredMessage("Invoice Extracted Successfully!", "success");
+                }
+                
+            } else {
+                showCenteredMessage(result.message || "Failed to read invoice.", "error");
+            }
     } catch (e) {
         showCenteredMessage("Server error during upload.", "error");
     } finally {
