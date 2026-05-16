@@ -3493,7 +3493,7 @@ function renderSaleItems() {
             <td style="text-align:center; width: 32px;">
                 <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#fff; background:#ef4444; border:none; border-radius:4px; padding:2px 6px; cursor:pointer; font-size:0.6rem; font-weight:800;">DEL</button>
             </td>
-            <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">${item.name}</div></td>
+            <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${item.name}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.pack || '-'}</div></td>
             <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
@@ -6214,18 +6214,19 @@ async function generateSampleMatchedPDF({
                 }
             }),
             ...additionalCharges.map((c, idx) => {
+                const baseAmt = Number(c.amount || 0);
                 if (isPurchase) {
                     return [
                         '#', c.hsn || '-', 
                         { content: `CHARGE: ${c.name}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
-                        '-', '-', '-', c.amount.toFixed(2), 
+                        '-', '-', '-', baseAmt.toFixed(2), 
                         '1', '0', Math.floor(c.gstPct || 0) + '%', c.total.toFixed(2)
                     ];
                 } else {
                     return [
                         '#', c.hsn || '-', 
                         { content: `CHARGE: ${c.name}`, styles: { fontStyle: 'italic', textColor: [100, 100, 100] } },
-                        '-', '-', '-', '-', '-', '1', '0', Math.floor(c.gstPct || 0) + '%', c.total.toFixed(2)
+                        '-', '-', '-', '-', baseAmt.toFixed(2), '1', '0', Math.floor(c.gstPct || 0) + '%', c.total.toFixed(2)
                     ];
                 }
             })
