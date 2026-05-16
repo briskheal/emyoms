@@ -2245,63 +2245,87 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             });
         }
 
-        // 4. Extract Items (HEADER-DRIVEN ROBUST VERSION)
+        // 4. Extract Items (HYPER-RESILIENT VERSION)
         const itemLines = text.split('\n').map(l => l.trim()).filter(l => l);
-        let capturing = false;
         
         for (let i = 0; i < itemLines.length; i++) {
             const line = itemLines[i];
             
-            // Header detection
-            if (line.includes("#Item name") || line.includes("Product Description") || line.includes("HSN/ SAC")) {
-                capturing = true;
-                continue;
-            }
-            if (line.includes("Total") && capturing) break;
+            // Skip known header/footer words
+            if (line.includes("Invoice") || line.includes("Date") || line.includes("Total") || line.includes("GSTIN")) continue;
 
-            // Detect Item Row (Starts with digit index)
-            if (capturing && /^\d+$/.test(line)) {
-                let name = itemLines[i+1] || "";
-                let detailsLine = itemLines[i+2] || ""; // For H.D. Sales, details are often in a combined string below
-                
+            // Detect potential Product Start: 
+            // 1. Starts with digit (e.g., "1", "01")
+            // 2. OR Looks like a product name (ALL CAPS, multiple words, 5+ length)
+            const isDigitStart = /^\d+$/.test(line);
+            const isNameStart = /^[A-Z0-9\s]{8,}$/.test(line) && line === line.toUpperCase() && !line.match(/^\d+$/);
+
+            if (isDigitStart || isNameStart) {
+                let name = isNameStart ? line : (itemLines[i+1] || "");
+                if (isDigitStart && name.length < 3) continue; // Noise
+
                 let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
 
-                // If details are in a single string (Space separated)
-                const parts = detailsLine.split(/\s+/);
-                if (parts.length >= 6) {
-                    hsn = parts[0];
-                    batch = parts[1];
-                    expDate = parts[2];
-                    mrp = parseFloat(parts[3]) || 0;
-                    qty = parseInt(parts[4]) || 0;
-                    rate = parseFloat(parts[5]) || 0;
-                    if (parts[6]) gst = parseFloat(parts[6].replace('%','')) * 2;
-                } else {
-                    // Neighborhood scanning if not in a single line
-                    for (let j = i + 1; j < i + 12; j++) {
-                        const l = itemLines[j];
-                        if (!l || /^\d+$/.test(l) && j > i + 1) break;
+                // Neighborhood scan (15 lines)
+                for (let j = i; j < i + 15; j++) {
+                    const l = itemLines[j];
+                    if (!l) continue;
+                    
+                    // Stop if we hit another digit-only line (potential next item)
+                    if (/^\d+$/.test(l) && j > i + 1) break;
 
-                        if (l.match(/^\d{6,8}$/) && !hsn) hsn = l;
-                        if (l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !batch) batch = l;
-                        const expMatch = l.match(/(\d{2}\/\d{4})/);
-                        if (expMatch && !expDate) expDate = expMatch[1];
-                        if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) mrp = parseFloat(l);
-                        if (l.match(/^\d+$/) && !qty && (mrp || j > i + 5)) qty = parseInt(l);
+                    // HSN
+                    const hsnMatch = l.match(/(\d{6,8})/);
+                    if (hsnMatch && !hsn) hsn = hsnMatch[1];
+
+                    // EXP
+                    const expMatch = l.match(/(\d{2}\/\d{4})/);
+                    if (expMatch && !expDate) expDate = expMatch[1];
+
+                    // MRP/Rate (Look for floats)
+                    const floats = l.match(/(\d+\.\d{2})/g);
+                    if (floats) {
+                        floats.forEach(f => {
+                            const val = parseFloat(f);
+                            if (val > 100 && !mrp) mrp = val;
+                            else if (val > 0 && !rate) rate = val;
+                        });
+                    }
+
+                    // QTY (Integer near floats or in isolation)
+                    const qtyMatch = l.match(/\s+(\d+)\s+/) || l.match(/^(\d+)$/);
+                    if (qtyMatch && !qty) {
+                        const val = parseInt(qtyMatch[1]);
+                        if (val > 0 && val < 5000 && val !== parseInt(hsn)) qty = val;
+                    }
+
+                    // BATCH
+                    if (l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !l.includes("GSTIN") && !batch) {
+                         batch = l;
+                    }
+                    
+                    // GST
+                    if (l.includes("%")) {
+                        const gMatch = l.match(/(\d+\.?\d*)\s*%/);
+                        if (gMatch) gst = parseFloat(gMatch[1]) * 2;
                     }
                 }
 
-                if (name && (qty > 0 || mrp > 0)) {
-                    extractedData.items.push({
-                        name: name.toUpperCase(),
-                        hsn: hsn || "3004",
-                        batch: batch.toUpperCase() || "EXTRACTED",
-                        expDate: expDate || "12/2026",
-                        mrp: mrp || 0,
-                        qty: qty || 1,
-                        rate: rate || 0,
-                        gst: gst || 12
-                    });
+                // If we found a name and at least ONE other detail, it's a valid row
+                if (name && name.length > 5 && (qty > 0 || mrp > 0 || batch)) {
+                    // Check for duplicates
+                    if (!extractedData.items.find(it => it.name === name.toUpperCase() && it.batch === batch.toUpperCase())) {
+                        extractedData.items.push({
+                            name: name.toUpperCase(),
+                            hsn: hsn || "3004",
+                            batch: batch.toUpperCase() || "EXTRACTED",
+                            expDate: expDate || "12/2026",
+                            mrp: mrp || 0,
+                            qty: qty || 0,
+                            rate: rate || 0,
+                            gst: gst || 12
+                        });
+                    }
                 }
             }
         }

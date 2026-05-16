@@ -2570,8 +2570,25 @@ async function postToRegistry() {
 function removeExtRow(idx) {
     if (!lastExtractedData) return;
     lastExtractedData.items.splice(idx, 1);
-    
-    // Refresh table
+    renderExtTable();
+}
+
+function addManualRow() {
+    if (!lastExtractedData) lastExtractedData = { items: [] };
+    lastExtractedData.items.push({
+        name: "NEW PRODUCT",
+        hsn: "3004",
+        batch: "NEW",
+        expDate: "12/2026",
+        mrp: 0,
+        qty: 1,
+        rate: 0,
+        gst: 12
+    });
+    renderExtTable();
+}
+
+function renderExtTable() {
     const tbody = document.getElementById('ext-preview-body');
     tbody.innerHTML = lastExtractedData.items.map((item, i) => `
         <tr>
