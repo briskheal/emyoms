@@ -1455,7 +1455,7 @@ app.post('/api/admin/direct-sale', async (req, res) => {
             await stockist.increment('outstandingBalance', { by: numGrandTotal });
             // Generate Auto JV for Sales
             try {
-                await autoPostSalesJV(newInvoice, stockist);
+                await autoPostInvoiceJV(newInvoice, stockist);
             } catch(err) { console.error("Auto JV failed for sales:", err); }
         }
 
@@ -2308,7 +2308,7 @@ app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
 
 // --- AUTO JOURNAL POSTING ENGINE ---
 
-async function autoPostSalesJV(invoice, stockist) {
+async function autoPostInvoiceJV(invoice, stockist) {
     console.log(`[DEBUG] Triggering Auto JV for Sales: ${invoice.invoiceNo}`);
     const jvNo = await getNextDocNo('jv');
     const jv = await db.JournalVoucher.create({
@@ -2404,47 +2404,6 @@ async function autoPostPurchaseJV(purchase, stockist) {
 
 
 
-async function autoPostInvoiceJV(invoice, t) {
-    try {
-        const salesLedger = await db.Ledger.findOne({ where: { name: 'Sales Account' } });
-        const jvNo = await getNextDocNo('jv');
-        const jv = await db.JournalVoucher.create({
-            jvNo, date: invoice.createdAt, narration: `Sales Invoice ${invoice.invoiceNo}`, totalAmount: invoice.grandTotal, refType: 'Invoice', refId: invoice.id
-        }, { transaction: t });
-        await db.JournalEntryLine.bulkCreate([
-            { jvId: jv.id, type: 'DR', amount: invoice.grandTotal, entityType: 'Stockist', entityId: invoice.stockistId, entityName: 'Stockist', notes: 'Sales' },
-            { jvId: jv.id, type: 'CR', amount: invoice.grandTotal, entityType: 'Ledger', entityId: salesLedger ? salesLedger.id : null, entityName: 'Sales Account', notes: 'Revenue' }
-        ], { transaction: t });
-    } catch (e) { console.error("Invoice Auto JV Error:", e); }
-}
-
-async function autoPostPurchaseJV(purchase, t) {
-    try {
-        const purchaseLedger = await db.Ledger.findOne({ where: { name: 'Purchase Account' } });
-        const jvNo = await getNextDocNo('jv');
-        const jv = await db.JournalVoucher.create({
-            jvNo, date: purchase.invoiceDate || purchase.createdAt, narration: `Purchase Bill ${purchase.supplierInvoiceNo || purchase.purchaseNo}`, totalAmount: purchase.grandTotal, refType: 'Purchase', refId: purchase.id
-        }, { transaction: t });
-        await db.JournalEntryLine.bulkCreate([
-            { jvId: jv.id, type: 'DR', amount: purchase.grandTotal, entityType: 'Ledger', entityId: purchaseLedger ? purchaseLedger.id : null, entityName: 'Purchase Account', notes: 'Inventory Inward' },
-            { jvId: jv.id, type: 'CR', amount: purchase.grandTotal, entityType: 'Stockist', entityId: purchase.supplierId, entityName: 'Supplier', notes: 'Credit Purchase' }
-        ], { transaction: t });
-    } catch (e) { console.error("Purchase Auto JV Error:", e); }
-}
-
-async function autoPostNoteJV(note, t) {
-    try {
-        const jvNo = await getNextDocNo('jv');
-        const isCN = note.noteType === 'CN';
-        const jv = await db.JournalVoucher.create({
-            jvNo, date: note.createdAt, narration: `${isCN ? 'Credit Note' : 'Debit Note'} ${note.noteNo} - ${note.reason}`, totalAmount: note.amount, refType: 'FinancialNote', refId: note.id
-        }, { transaction: t });
-        await db.JournalEntryLine.bulkCreate([
-            { jvId: jv.id, type: isCN ? 'DR' : 'CR', amount: note.amount, entityType: 'Ledger', entityName: isCN ? 'Sales Returns' : 'Purchase Returns', notes: note.reason },
-            { jvId: jv.id, type: isCN ? 'CR' : 'DR', amount: note.amount, entityType: 'Stockist', entityId: note.stockistId, entityName: 'Party', notes: 'Adjustment' }
-        ], { transaction: t });
-    } catch (e) { console.error("Note Auto JV Error:", e); }
-}
 
 async function autoPostPaymentJV(payment, stockist, t) {
     console.log(`[DEBUG] Triggering Auto JV for Payment: ${payment.paymentNo}`);
