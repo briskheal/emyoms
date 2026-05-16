@@ -623,6 +623,15 @@
 
                 <!-- Preview Section -->
                 <div id="ext-preview-section" class="hidden" style="margin-top: 3rem; animation: fadeInUp 0.5s ease-out;">
+                    
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-left: 5px solid #ef4444; padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #ef4444;"></i>
+                        <div>
+                            <h4 style="color: #fff; font-size: 0.85rem; font-weight: 800; margin-bottom: 2px;">⚠️ ACTION REQUIRED: VERIFY ALL DETAILS</h4>
+                            <p style="font-size: 0.72rem; color: #fca5a5; opacity: 0.9;">Accurate Address, Pincode, GST, and DL numbers are <strong>mandatory</strong> for the first-time code opening. Please ensure all fields are in <strong>CAPITAL LETTERS</strong>.</p>
+                        </div>
+                    </div>
+
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
                         <div>
                             <h3 style="color: var(--accent); font-weight: 800; margin-bottom: 4px;">EXTRACTED DATA PREVIEW</h3>
@@ -656,16 +665,22 @@
                     <!-- Profile Enrichment -->
                     <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 20px; padding: 2rem; margin-bottom: 2.5rem;">
                         <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--primary); margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 1px;">Update Customer Master Database (ALL CAPS)</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div class="form-group"><label>Firm Name</label><input type="text" id="prof-name" readonly style="opacity: 0.6;"></div>
-                            <div class="form-group"><label>Phone</label><input type="text" id="prof-phone"></div>
-                            <div class="form-group" style="grid-column: span 2;"><label>Full Address</label><input type="text" id="prof-address"></div>
-                            <div class="form-group"><label>City</label><input type="text" id="prof-city"></div>
-                            <div class="form-group"><label>State</label><input type="text" id="prof-state"></div>
-                            <div class="form-group"><label>GSTIN</label><input type="text" id="prof-gst"></div>
-                            <div class="form-group"><label>Drug License</label><input type="text" id="prof-dl"></div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                            <div class="form-group"><label>Firm Name *</label><input type="text" id="prof-name" readonly style="opacity: 0.6;"></div>
+                            <div class="form-group"><label>Phone *</label><input type="text" id="prof-phone"></div>
+                            <div class="form-group"><label>FSSAI / Food No. *</label><input type="text" id="prof-fssai"></div>
+                            
+                            <div class="form-group" style="grid-column: span 2;"><label>Full Address *</label><input type="text" id="prof-address"></div>
+                            <div class="form-group"><label>Pincode *</label><input type="number" id="prof-pin" maxlength="6"></div>
+
+                            <div class="form-group"><label>City *</label><input type="text" id="prof-city"></div>
+                            <div class="form-group"><label>State *</label><input type="text" id="prof-state"></div>
+                            <div class="form-group"><label>GSTIN *</label><input type="text" id="prof-gst"></div>
+
+                            <div class="form-group" style="grid-column: span 3;"><label>Drug License Numbers (Full) *</label><input type="text" id="prof-dl"></div>
+                            
                             <div class="form-group"><label>Bank Name</label><input type="text" id="prof-bank"></div>
-                            <div class="form-group"><label>IFSC Code</label><input type="text" id="prof-ifsc"></div>
+                            <div class="form-group" style="grid-column: span 2;"><label>IFSC Code</label><input type="text" id="prof-ifsc"></div>
                         </div>
                     </div>
 

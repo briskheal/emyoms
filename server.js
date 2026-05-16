@@ -2176,6 +2176,9 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             invoiceNo: "",
             date: "",
             customerName: "",
+            placeOfSupply: "",
+            pincode: "",
+            fssaiNo: "",
             items: []
         };
 
@@ -2208,7 +2211,9 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
             // Extract DL, GST, Phone from the "Bill To" block
             const blockText = lines.slice(0, 15).join("\n");
-            const dlMatch = blockText.match(/D\.L\.No-([^\n\r,]+)/i);
+            
+            // Full DL Extraction (Capture entire line starting with D.L.No)
+            const dlMatch = blockText.match(/D\.L\.No-([^\n\r]+)/i);
             if (dlMatch) extractedData.dlNo = dlMatch[1].trim().toUpperCase();
 
             const gstMatch = blockText.match(/GSTIN Number:\s*([^\n\r\s]+)/i) || blockText.match(/GSTIN:\s*([^\n\r\s]+)/i);
@@ -2219,6 +2224,12 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
             const stateMatch = blockText.match(/State:\s*([^\n\r]+)/i);
             if (stateMatch) extractedData.state = stateMatch[1].trim().toUpperCase();
+
+            const pinMatch = blockText.match(/PIN-(\d{6})/i);
+            if (pinMatch) extractedData.pincode = pinMatch[1].trim();
+
+            const fssaiMatch = blockText.match(/FSSAI No\.:\s*(\d+)/i) || blockText.match(/FOOD:\s*(\d+)/i);
+            if (fssaiMatch) extractedData.fssaiNo = fssaiMatch[1] || fssaiMatch[0].replace(/[^0-9]/g,'');
         }
 
         // VALIDATION: Check if the invoice belongs to the logged-in stockist

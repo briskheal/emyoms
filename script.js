@@ -2343,13 +2343,22 @@ async function uploadExtInvoice() {
                 document.getElementById('prof-name').value = result.profile.name;
                 document.getElementById('prof-phone').value = result.data.phone || result.profile.phone || '';
                 document.getElementById('prof-address').value = result.data.address || result.profile.address || '';
-                document.getElementById('prof-city').value = result.profile.city || ''; // City is usually part of address in extraction
+                document.getElementById('prof-pin').value = result.data.pincode || result.profile.pincode || '';
+                document.getElementById('prof-fssai').value = result.data.fssaiNo || result.profile.fssaiNo || '';
+                document.getElementById('prof-city').value = result.profile.city || '';
                 document.getElementById('prof-state').value = result.data.state || result.profile.state || '';
                 document.getElementById('prof-dl').value = result.data.dlNo || result.profile.dlNo || '';
                 document.getElementById('prof-gst').value = result.data.gstNo || result.profile.gstNo || '';
                 document.getElementById('prof-bank').value = result.profile.bankName || '';
                 document.getElementById('prof-ifsc').value = result.profile.bankIfsc || '';
             }
+            
+            document.getElementById('ext-preview-section').classList.remove('hidden');
+
+            // --- AUTO SCROLL TO ENRICHMENT FORM ---
+            setTimeout(() => {
+                document.getElementById('ext-preview-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
             
             const tbody = document.getElementById('ext-preview-body');
             tbody.innerHTML = result.data.items.map((item, idx) => `
@@ -2385,6 +2394,30 @@ async function postToRegistry() {
     
     if (!invNo) return alert("Invoice No is required.");
 
+    const profileUpdate = {
+        address: document.getElementById('prof-address').value.trim().toUpperCase(),
+        city: document.getElementById('prof-city').value.trim().toUpperCase(),
+        state: document.getElementById('prof-state').value.trim().toUpperCase(),
+        pincode: document.getElementById('prof-pin').value.trim(),
+        dlNo: document.getElementById('prof-dl').value.trim().toUpperCase(),
+        gstNo: document.getElementById('prof-gst').value.trim().toUpperCase(),
+        fssaiNo: document.getElementById('prof-fssai').value.trim().toUpperCase(),
+        bankName: document.getElementById('prof-bank').value.trim().toUpperCase(),
+        bankIfsc: document.getElementById('prof-ifsc').value.trim().toUpperCase(),
+        phone: document.getElementById('prof-phone').value.trim()
+    };
+
+    // --- STRICT VALIDATION FOR FIRST-TIME CODE OPENING ---
+    const mandatory = ['address', 'city', 'state', 'pincode', 'dlNo', 'gstNo', 'fssaiNo', 'phone'];
+    const missing = mandatory.filter(key => !profileUpdate[key]);
+    
+    if (missing.length > 0) {
+        alert("🚨 MANDATORY FIELDS MISSING: " + missing.join(', ').toUpperCase() + "\n\nAll starred (*) fields must be completed for the first-time upload to open your code.");
+        return;
+    }
+
+    if (!confirm("⚠️ FINAL CHECK: Are all details complete and accurate? This will overwrite your official Stockist Master records.")) return;
+
     const payload = {
         invoiceNo: invNo,
         date: invDate,
@@ -2394,16 +2427,7 @@ async function postToRegistry() {
             const line = parseFloat(i.qty) * parseFloat(i.rate);
             return sum + line + (line * parseFloat(i.gst || 0) / 100);
         }, 0),
-        profileUpdate: {
-            address: document.getElementById('prof-address').value,
-            city: document.getElementById('prof-city').value,
-            state: document.getElementById('prof-state').value,
-            dlNo: document.getElementById('prof-dl').value,
-            gstNo: document.getElementById('prof-gst').value,
-            bankName: document.getElementById('prof-bank').value,
-            bankIfsc: document.getElementById('prof-ifsc').value,
-            phone: document.getElementById('prof-phone').value
-        }
+        profileUpdate: profileUpdate
     };
 
     try {
