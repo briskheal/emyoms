@@ -180,7 +180,7 @@ function checkBatchStatus(expDate) {
     threeMonthsOut.setMonth(today.getMonth() + 3);
 
     if (exp < today) return { status: 'expired', label: ' [EXPIRED]' };
-    if (exp < threeMonthsOut) return { status: 'near', label: ' [⚠️ NEAR EXPIRY]' };
+    if (exp < threeMonthsOut) return { status: 'near', label: ' [âš ï¸ NEAR EXPIRY]' };
     return { status: 'ok', label: '' };
 }
 
@@ -199,12 +199,12 @@ function renderProductBatches() {
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s;">
                     <td style="padding: 8px 12px; font-weight: 700; color: #fff;">${b.batchNo}</td>
                     <td style="padding: 8px 12px; text-align: center;">${b.expDate || '-'}</td>
-                    <td style="padding: 8px 12px; text-align: right;">₹${Number(b.mrp||0).toFixed(2)}</td>
-                    <td style="padding: 8px 12px; text-align: right;">₹${Number(b.pts||0).toFixed(2)}</td>
-                    <td style="padding: 8px 12px; text-align: right;">₹${Number(b.ptr||0).toFixed(2)}</td>
-                    <td style="padding: 8px 12px; text-align: right; color: var(--accent); font-weight: 700;">₹${Number(b.purchaseRate||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right;">â‚¹${Number(b.mrp||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right;">â‚¹${Number(b.pts||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right;">â‚¹${Number(b.ptr||0).toFixed(2)}</td>
+                    <td style="padding: 8px 12px; text-align: right; color: var(--accent); font-weight: 700;">â‚¹${Number(b.purchaseRate||0).toFixed(2)}</td>
                     <td style="padding: 8px 12px; text-align: center; font-weight: 800; color: var(--accent); background: rgba(16, 185, 129, 0.05);">${b.qtyAvailable}</td>
-                    <td style="padding: 8px 12px; text-align: center;"><button type="button" class="btn btn-ghost" style="padding: 4px 8px; border-radius: 6px; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="removeProductBatch(${i})">✕</button></td>
+                    <td style="padding: 8px 12px; text-align: center;"><button type="button" class="btn btn-ghost" style="padding: 4px 8px; border-radius: 6px; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="removeProductBatch(${i})">âœ•</button></td>
                 </tr>
             `;
         });
@@ -251,6 +251,13 @@ function removeProductBatch(i) {
     renderProductBatches();
 }
 let allStockists = [];
+let directSaleItems = []; 
+let saleCharges = [];
+let purchaseItems = [];
+let purchaseCharges = [];
+let isEditMode = false;
+let editingInvoiceId = null;
+let editingPurchaseId = null;
 let allOrders = [];
 let allInvoices = [];
 let allPurchaseEntries = [];
@@ -403,7 +410,7 @@ function renderSettings() {
     if (s.referenceInvoiceUrl) {
         const designLink = document.getElementById('design-preview-link');
         const designBadge = document.getElementById('design-status-badge');
-        if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent);">📄 View Current Blueprint</a>`;
+        if (designLink) designLink.innerHTML = `<a href="${s.referenceInvoiceUrl}" target="_blank" style="color:var(--accent);">ðŸ“„ View Current Blueprint</a>`;
         if (designBadge) designBadge.innerHTML = `<span class="badge badge-approved">BLUEPRINT LOADED</span>`;
     }
 
@@ -421,7 +428,7 @@ async function saveSettings(e) {
     
     const btn = document.getElementById('save-settings-btn') || (e && e.submitter) || (e && e.target && e.target.querySelector('button[type="submit"]'));
     const originalHtml = btn ? btn.innerHTML : "SAVE SETTINGS";
-    if (btn) { btn.disabled = true; btn.innerHTML = "⏳ SAVING TO CLOUD..."; }
+    if (btn) { btn.disabled = true; btn.innerHTML = "â³ SAVING TO CLOUD..."; }
 
     const counters = {
         invoice: { prefix: safeGetVal('cnt-inv-pre'), nextNumber: Number(safeGetVal('cnt-inv-next')) || 0 },
@@ -488,16 +495,16 @@ async function saveSettings(e) {
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Global Settings Saved Successfully!");
+            alert("âœ… Global Settings Saved Successfully!");
             companyProfile = result.settings;
             renderSettings();
         } else {
             console.error("Server error saving settings:", result);
-            alert("❌ FAILED: " + (result.error || result.message || "Unknown server error"));
+            alert("âŒ FAILED: " + (result.error || result.message || "Unknown server error"));
         }
     } catch (e) { 
         console.error("Network/Client error saving settings:", e);
-        alert("🚨 CRITICAL ERROR: Could not save settings.\n" + (e.message || "Check your connection."));
+        alert("ðŸš¨ CRITICAL ERROR: Could not save settings.\n" + (e.message || "Check your connection."));
     }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } }
 }
@@ -526,7 +533,7 @@ async function handleAdminLogin(e) {
 }
 
 async function resetSystemDatabase() {
-    const confirmation = confirm("🚨 WARNING: This will PERMANENTLY DELETE all orders, invoices, purchases, payments, and resets inventory counts. This action CANNOT be undone.\n\nAre you sure you want to proceed?");
+    const confirmation = confirm("ðŸš¨ WARNING: This will PERMANENTLY DELETE all orders, invoices, purchases, payments, and resets inventory counts. This action CANNOT be undone.\n\nAre you sure you want to proceed?");
     if (!confirmation) return;
 
     // Use prompt for a more secure check
@@ -542,7 +549,7 @@ async function resetSystemDatabase() {
         const originalText = btn ? btn.innerHTML : "RESET DATABASE";
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = "⏳ PURGING DATABASE...";
+            btn.innerHTML = "â³ PURGING DATABASE...";
         }
 
         const res = await fetch(`${API_BASE}/admin/system/reset`, {
@@ -552,17 +559,17 @@ async function resetSystemDatabase() {
 
         const result = await res.json();
         if (result.success) {
-            alert("✅ System Reset Successful! All transactional data cleared and counters reset.");
+            alert("âœ… System Reset Successful! All transactional data cleared and counters reset.");
             window.location.reload();
         } else {
-            alert("❌ Reset Failed: " + (result.error || "Unknown error"));
+            alert("âŒ Reset Failed: " + (result.error || "Unknown error"));
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
         }
     } catch (e) {
-        alert("❌ Error: Could not connect to server.");
+        alert("âŒ Error: Could not connect to server.");
         console.error(e);
     }
 }
@@ -662,7 +669,7 @@ async function refreshDashboard() {
         const totalRevenue = approvedOrders.reduce((sum, o) => sum + (Number(o.subTotal) || 0), 0);
         const revenueEl = document.getElementById('stat-revenue');
         if (revenueEl) {
-            revenueEl.innerText = '₹' + totalRevenue.toLocaleString('en-IN', {
+            revenueEl.innerText = 'â‚¹' + totalRevenue.toLocaleString('en-IN', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
@@ -692,7 +699,7 @@ async function refreshDashboard() {
         const growth = previousTotal === 0 ? 100 : (((currentTotal - previousTotal) / previousTotal) * 100);
         const momBadge = document.getElementById('mom-badge');
         if (momBadge) {
-            momBadge.innerText = `${growth >= 0 ? '▲' : '▼'} ${Math.abs(growth).toFixed(1)}% vs Last Month`;
+            momBadge.innerText = `${growth >= 0 ? 'â–²' : 'â–¼'} ${Math.abs(growth).toFixed(1)}% vs Last Month`;
             momBadge.style.background = growth >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
             momBadge.style.color = growth >= 0 ? '#10b981' : '#ef4444';
         }
@@ -818,7 +825,7 @@ function renderCharts(currentMonthOrders, totalOrders) {
         data: {
             labels: Array.from({length: daysInMonth}, (_, i) => i + 1),
             datasets: [{
-                label: 'Revenue (₹)',
+                label: 'Revenue (â‚¹)',
                 data: dailyData,
                 borderColor: '#6366f1',
                 backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -885,7 +892,7 @@ function renderCharts(currentMonthOrders, totalOrders) {
         data: {
             labels: topStockists.map(s => s[0]),
             datasets: [{
-                label: 'Total Purchase (₹)',
+                label: 'Total Purchase (â‚¹)',
                 data: topStockists.map(s => s[1]),
                 backgroundColor: '#10b981',
                 borderRadius: 8
@@ -998,7 +1005,7 @@ function renderCharts(currentMonthOrders, totalOrders) {
     });
 
     const gstDisplay = document.getElementById('total-gst-display');
-    if (gstDisplay) gstDisplay.innerText = `₹${totalGSTAll.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (gstDisplay) gstDisplay.innerText = `â‚¹${totalGSTAll.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 // --- DATA FETCHING ---
@@ -1133,16 +1140,16 @@ function renderProducts(list = allProducts) {
             <td style="font-size:0.75rem; opacity:0.8;">${p.category || '-'}</td>
             <td style="color:var(--text-muted); font-size:0.8rem;">${p.packing || '-'}</td>
             <td style="font-family: monospace;">${p.hsn || '-'}</td>
-            <td>₹${p.mrp}</td>
-            <td style="color:var(--accent); font-weight:700;">₹${p.ptr}</td>
-            <td>₹${p.pts}</td>
-            <td style="color:#10b981; font-weight:700;">₹${p.purchaseRate || 0}</td>
+            <td>â‚¹${p.mrp}</td>
+            <td style="color:var(--accent); font-weight:700;">â‚¹${p.ptr}</td>
+            <td>â‚¹${p.pts}</td>
+            <td style="color:#10b981; font-weight:700;">â‚¹${p.purchaseRate || 0}</td>
             <td>${Math.round(p.gstPercent || 0)}%</td>
             <td>${p.qtyAvailable}</td>
             <td><span class="badge ${p.active ? 'badge-approved' : 'badge-pending'}">${p.active ? 'Active' : 'Inactive'}</span></td>
             <td style="white-space: nowrap;">
-                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">📝</button>
-                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">🗑️</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px;" onclick="editProduct('${p._id}')" title="Edit">ðŸ“</button>
+                <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" onclick="deleteProduct('${p._id}')" title="Delete">ðŸ—‘ï¸</button>
             </td>
         </tr>
     `).join('');
@@ -1400,7 +1407,7 @@ function renderMasterLists() {
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
                     <span>${displayValue}</span>
-                    <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">✖</button>
+                    <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('${type}', '${item._id}')">âœ–</button>
                 </div>
             `;
         }).join('');
@@ -1414,7 +1421,7 @@ function renderMasterLists() {
         gstList.innerHTML = window.masters.gst.map(item => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:rgba(255,255,255,0.05); border-radius:8px; margin-bottom:5px; font-size:0.85rem;">
                 <span>${Math.round(item.rate)}%</span>
-                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('gst', '${item._id}')">✖</button>
+                <button style="background:none; border:none; color:#ef4444; cursor:pointer;" onclick="deleteMaster('gst', '${item._id}')">âœ–</button>
             </div>
         `).join('');
     }
@@ -1518,7 +1525,7 @@ async function uploadInvoiceDesign() {
         });
         const result = await res.json();
         if (result.success) {
-            alert("📁 Reference Invoice Uploaded! We will use this to match your design.");
+            alert("ðŸ“ Reference Invoice Uploaded! We will use this to match your design.");
             loadSettings();
         } else {
             alert("Upload failed: " + result.error);
@@ -1535,7 +1542,7 @@ async function uploadLogo() {
         const res = await fetch(`${API_BASE}/admin/upload-logo`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
-            alert("🖼️ Logo uploaded successfully!");
+            alert("ðŸ–¼ï¸ Logo uploaded successfully!");
             loadSettings();
         } else alert("Upload failed: " + result.error);
     } catch (e) { alert("Upload error."); }
@@ -1550,7 +1557,7 @@ async function uploadSignature() {
         const res = await fetch(`${API_BASE}/admin/upload-signature`, { method: 'POST', body: formData });
         const result = await res.json();
         if (result.success) {
-            alert("✍️ Signature uploaded successfully!");
+            alert("âœï¸ Signature uploaded successfully!");
             loadSettings();
         } else alert("Upload failed: " + result.error);
     } catch (e) { alert("Upload error."); }
@@ -1562,7 +1569,7 @@ function toggleMusic() {
     const text = document.getElementById('musicTextAdmin');
     
     if (!audio || !audio.src || audio.src.endsWith('/') || audio.src.includes('undefined')) {
-        alert("⚠️ No music source found.\n\nIf you recently pushed code, your uploaded file may have been removed from the server. Please re-upload or use a permanent URL.");
+        alert("âš ï¸ No music source found.\n\nIf you recently pushed code, your uploaded file may have been removed from the server. Please re-upload or use a permanent URL.");
         return;
     }
 
@@ -1575,7 +1582,7 @@ function toggleMusic() {
             btn.style.background = 'rgba(16, 185, 129, 0.1)';
             btn.style.borderColor = '#10b981';
             btn.style.color = '#10b981';
-            btn.querySelector('span').innerText = '🔊';
+            btn.querySelector('span').innerText = 'ðŸ”Š';
             text.innerText = 'Music On';
         }).catch(err => {
             console.warn("Playback blocked by browser policy.");
@@ -1586,7 +1593,7 @@ function toggleMusic() {
         btn.style.background = 'rgba(99, 102, 241, 0.1)';
         btn.style.borderColor = '#6366f1';
         btn.style.color = '#fff';
-        btn.querySelector('span').innerText = '🔇';
+        btn.querySelector('span').innerText = 'ðŸ”‡';
         text.innerText = 'Music Off';
     }
 }
@@ -1608,7 +1615,7 @@ async function uploadMedia(type) {
         });
         const result = await res.json();
         if (result.success) {
-            alert(`✅ ${type.toUpperCase()} uploaded successfully!`);
+            alert(`âœ… ${type.toUpperCase()} uploaded successfully!`);
             loadSettings();
         } else {
             alert("Upload failed: " + result.message);
@@ -1659,16 +1666,16 @@ function testMedia(type) {
         audio.src = url;
         audio.volume = 1.0;
         
-        console.log("🧪 [TEST] Force testing link:", url);
+        console.log("ðŸ§ª [TEST] Force testing link:", url);
         
         audio.play()
-            .then(() => alert("🎵 Music test started successfully! System is working!"))
+            .then(() => alert("ðŸŽµ Music test started successfully! System is working!"))
             .catch(e => {
-                console.error("❌ Test failed:", e);
-                alert(`❌ Playback failed.\n\nMessage: ${e.message}\n\nTIP: Ensure your Dropbox/Drive file is "Shared to Anyone". If it still fails, the file might be too large for direct streaming.`);
+                console.error("âŒ Test failed:", e);
+                alert(`âŒ Playback failed.\n\nMessage: ${e.message}\n\nTIP: Ensure your Dropbox/Drive file is "Shared to Anyone". If it still fails, the file might be too large for direct streaming.`);
             });
     } else {
-        alert("📹 Video test: Save settings and check the Landing Page.");
+        alert("ðŸ“¹ Video test: Save settings and check the Landing Page.");
     }
 }
 
@@ -1684,7 +1691,7 @@ async function toggleMediaLibrary() {
 
 async function fetchMediaLibrary() {
     const list = document.getElementById('media-library-list');
-    list.innerHTML = '<p style="color: var(--accent);">⏳ Loading library...</p>';
+    list.innerHTML = '<p style="color: var(--accent);">â³ Loading library...</p>';
     
     try {
         const res = await fetch(`${API_BASE}/admin/media`);
@@ -1706,7 +1713,7 @@ async function fetchMediaLibrary() {
                 </div>
                 <div style="display: flex; gap: 5px;">
                     <button class="btn btn-primary" style="flex:1; padding: 4px; font-size: 0.6rem;" onclick="selectFromLibrary('${item.url}', '${item.type}')">ACTIVATE</button>
-                    <button class="btn btn-ghost" style="padding: 4px; font-size: 0.6rem; color: #ef4444;" onclick="deleteFromMedia('${item._id}')">🗑️</button>
+                    <button class="btn btn-ghost" style="padding: 4px; font-size: 0.6rem; color: #ef4444;" onclick="deleteFromMedia('${item._id}')">ðŸ—‘ï¸</button>
                 </div>
             </div>
         `).join('');
@@ -1725,11 +1732,11 @@ function selectFromLibrary(url, type) {
             const designBadge = document.getElementById('design-status-badge');
             if (designBadge) designBadge.innerHTML = '<span class="badge badge-approved" style="font-size:0.6rem;">READY (FROM LIBRARY)</span>';
             const designLink = document.getElementById('design-preview-link');
-            if (designLink) designLink.innerHTML = `<a href="${url}" target="_blank" style="color:var(--accent); text-decoration:none;">📄 View Selected Blueprint</a>`;
-            alert(`✅ BLUEPRINT selected from library! Click SAVE ALL CHANGES below to finalize.`);
+            if (designLink) designLink.innerHTML = `<a href="${url}" target="_blank" style="color:var(--accent); text-decoration:none;">ðŸ“„ View Selected Blueprint</a>`;
+            alert(`âœ… BLUEPRINT selected from library! Click SAVE ALL CHANGES below to finalize.`);
         } else {
             document.getElementById(inputId).value = url;
-            alert(`✅ ${type.toUpperCase()} link updated from library! Click SAVE to apply.`);
+            alert(`âœ… ${type.toUpperCase()} link updated from library! Click SAVE to apply.`);
         }
     }
 }
@@ -1817,7 +1824,7 @@ function renderStockists(list = null) {
             <td style="font-size:0.75rem; font-weight:700; color:var(--primary);">${s.partyType || 'STOCKIST'}</td>
             <td>${s.phone || '-'}</td>
             <td style="font-size:0.7rem; font-weight:800; color:#f59e0b;">${s.hq || '-'}</td>
-            <td style="text-align:right; font-weight:700; color:${(s.outstandingBalance || 0) < 0 ? '#ef4444' : '#10b981'}; font-family:monospace;">₹${(s.outstandingBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td style="text-align:right; font-weight:700; color:${(s.outstandingBalance || 0) < 0 ? '#ef4444' : '#10b981'}; font-family:monospace;">â‚¹${(s.outstandingBalance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td><span class="badge ${s.approved ? 'badge-approved' : 'badge-pending'}" style="font-size:0.6rem;">${s.approved ? 'APPROVED' : 'PENDING'}</span></td>
             <td style="text-align:right; white-space:nowrap;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="viewLedger('${s._id}')">LEDGER</button>
@@ -1885,12 +1892,12 @@ function openPartyModal(id = null) {
             // Dynamic Header & Button for Approval
             if (!s.approved) {
                 document.getElementById('party-modal-subtitle').innerText = "NEW REGISTRATION";
-                document.getElementById('party-modal-title').innerText = "📋 Verify & Approve Stockist";
+                document.getElementById('party-modal-title').innerText = "ðŸ“‹ Verify & Approve Stockist";
                 document.getElementById('btn-save-party').innerText = "SAVE & APPROVE";
                 document.getElementById('btn-save-party').style.background = "var(--accent)";
             } else {
                 document.getElementById('party-modal-subtitle').innerText = "GLOBAL MASTER";
-                document.getElementById('party-modal-title').innerText = "🤝 Update Party Record";
+                document.getElementById('party-modal-title').innerText = "ðŸ¤ Update Party Record";
                 document.getElementById('btn-save-party').innerText = "UPDATE RECORD";
                 document.getElementById('btn-save-party').style.background = "var(--primary)";
                 
@@ -1901,7 +1908,7 @@ function openPartyModal(id = null) {
         }
     } else {
         document.getElementById('party-modal-subtitle').innerText = "GLOBAL MASTER";
-        document.getElementById('party-modal-title').innerText = "🤝 Create New Party";
+        document.getElementById('party-modal-title').innerText = "ðŸ¤ Create New Party";
         document.getElementById('btn-save-party').innerText = "SAVE PARTY";
         document.getElementById('btn-save-party').style.background = "var(--primary)";
         
@@ -1938,7 +1945,7 @@ async function saveParty(e) {
 
     // Enforce HQ Selection
     if (!hq) {
-        return alert("❌ ACTION REQUIRED: Please assign a Headquarter (HQ) for this party before saving/approving.");
+        return alert("âŒ ACTION REQUIRED: Please assign a Headquarter (HQ) for this party before saving/approving.");
     }
 
     const data = {
@@ -1976,7 +1983,7 @@ async function saveParty(e) {
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Party record saved and activated!");
+            alert("âœ… Party record saved and activated!");
             closePartyModal();
             await loadStockists();
             // If direct sale modal is open, refresh its dropdown and select the new party
@@ -2086,7 +2093,7 @@ function renderOrderHistory(filter = '') {
             <td style="font-weight:600;">${o.stockist ? o.stockist.name : 'Unknown'}</td>
             <td>${new Date(o.createdAt).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${o.items.length}</td>
-            <td style="text-align:right; font-weight:700;">₹${(o.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="text-align:right; font-weight:700;">â‚¹${(o.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             <td style="text-align:center;"><span class="badge ${(o.status || 'pending') === 'approved' ? 'badge-approved' : ((o.status || 'pending') === 'invoiced' ? 'badge-approved' : ((o.status || 'pending') === 'rejected' ? 'badge-pending' : 'badge-pending'))}" style="${(o.status || 'pending') === 'rejected' ? 'background:#ef4444; color:#fff;' : ((o.status || 'pending') === 'invoiced' ? 'background:var(--accent); color:#fff;' : '')}">${(o.status || 'PENDING').toUpperCase()}</span></td>
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="viewOrderDetails('${o._id}')">VIEW ORDER</button>
@@ -2145,8 +2152,8 @@ function viewOrderDetails(id) {
             <tr style="transition: all 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03);">
                 <td style="position: sticky; left: 0; z-index: 5; background: #0f172a; font-weight: 700; color: #f1f5f9; border-right: 1px solid rgba(255,255,255,0.05); font-size: 0.75rem;">${item.name}</td>
                 <td style="text-align:center;">${batchCellHtml}</td>
-                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">₹${Number(item.masterRate || item.priceUsed || 0).toFixed(2)}</td>
-                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">₹${Number(item.askingRate || item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align:right; color:var(--text-muted); opacity: 0.8; font-family: monospace;">â‚¹${Number(item.masterRate || item.priceUsed || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:700; color:${isNegotiated ? '#ef4444' : '#fff'}; font-family: monospace;">â‚¹${Number(item.askingRate || item.priceUsed || 0).toFixed(2)}</td>
                 <td style="text-align:center; font-style:italic; font-size:0.7rem; color: #94a3b8; line-height: 1.2;">${item.negotiationNote || '-'}</td>
                 <td style="text-align:center;">
                     <input type="number" step="0.01" class="final-rate-input" id="rate-${o._id}-${item._id}" 
@@ -2156,7 +2163,7 @@ function viewOrderDetails(id) {
                 </td>
                 <td style="text-align:center; font-weight:800; color: #fff;">${item.qty || 0}</td>
                 <td style="text-align:center; color:var(--accent); font-weight:800; font-size: 0.75rem;">+${item.bonusQty || 0}</td>
-                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${Number(item.totalValue || 0).toFixed(2)}</td>
+                <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">â‚¹${Number(item.totalValue || 0).toFixed(2)}</td>
                 <td style="text-align:center;">
                     ${o.status === 'pending' ? `
                         <div style="display:flex; gap:4px; justify-content:center;">
@@ -2178,17 +2185,17 @@ function viewOrderDetails(id) {
     const unroundedTotal = Number((safeSubTotal + safeGstAmount).toFixed(2));
     const roundOffValue = (safeGrandTotal - unroundedTotal).toFixed(2);
 
-    if (document.getElementById('detail-subtotal')) document.getElementById('detail-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (document.getElementById('detail-gst')) document.getElementById('detail-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    if (document.getElementById('detail-roundoff')) document.getElementById('detail-roundoff').innerText = `₹${roundOffValue}`;
-    if (document.getElementById('detail-total')) document.getElementById('detail-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (document.getElementById('detail-subtotal')) document.getElementById('detail-subtotal').innerText = `â‚¹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (document.getElementById('detail-gst')) document.getElementById('detail-gst').innerText = `â‚¹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (document.getElementById('detail-roundoff')) document.getElementById('detail-roundoff').innerText = `â‚¹${roundOffValue}`;
+    if (document.getElementById('detail-total')) document.getElementById('detail-total').innerText = `â‚¹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     // Update Strip
     if (document.getElementById('strip-order-count')) document.getElementById('strip-order-count').innerText = o.items.length;
-    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `₹${roundOffValue}`;
-    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `â‚¹${safeSubTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `â‚¹${safeGstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `â‚¹${roundOffValue}`;
+    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `â‚¹${safeGrandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     const rejectBtn = document.getElementById('detail-reject-btn');
     const approveBtn = document.getElementById('detail-approve-btn');
@@ -2252,7 +2259,7 @@ function viewOrderDetails(id) {
 
     deleteBtn.innerText = 'CANCEL RECORD';
     deleteBtn.onclick = () => {
-        if (confirm(`⚠️ POLICY: Are you sure you want to CANCEL this record? Inventory will be restored, but the document number will be preserved for audit.`)) {
+        if (confirm(`âš ï¸ POLICY: Are you sure you want to CANCEL this record? Inventory will be restored, but the document number will be preserved for audit.`)) {
             cancelInvoice(o._id);
             closeOrderModal();
         }
@@ -2282,7 +2289,7 @@ function viewOrderDetails(id) {
     document.getElementById('orderDetailModal').classList.remove('hidden');
     } catch (err) {
         console.error("Critical error in viewOrderDetails:", err);
-        alert("⚠️ Failed to load order details. Please check console for errors.");
+        alert("âš ï¸ Failed to load order details. Please check console for errors.");
         // Attempt to open anyway if modal ID exists
         if (document.getElementById('orderDetailModal')) document.getElementById('orderDetailModal').classList.remove('hidden');
     }
@@ -2328,7 +2335,7 @@ function openOrderEditMode(orderId) {
     const submitBtn = document.querySelector('#directSaleModal button[type="submit"]');
     
     if (modalTitle) modalTitle.innerText = `Edit Invoiced Sale [${inv.invoiceNo}]`;
-    if (submitBtn) submitBtn.innerText = '💾 SAVE UPDATES (NO COUNTER CHANGE)';
+    if (submitBtn) submitBtn.innerText = 'ðŸ’¾ SAVE UPDATES (NO COUNTER CHANGE)';
 
     // Populate Header Fields
     const partySelect = document.getElementById('sale-party');
@@ -2360,7 +2367,7 @@ function updateModalTotals(orderId, triggerItemId) {
         const lineTotal = rate * qty;
         
         const lineTotalEl = document.getElementById(`linetotal-${orderId}-${item._id}`);
-        if (lineTotalEl) lineTotalEl.innerText = `₹${lineTotal.toFixed(2)}`;
+        if (lineTotalEl) lineTotalEl.innerText = `â‚¹${lineTotal.toFixed(2)}`;
         
         const gstPct = Number(item.gstPercent || 0);
         const itemGst = (lineTotal * gstPct) / 100;
@@ -2374,16 +2381,16 @@ function updateModalTotals(orderId, triggerItemId) {
     const roundOff = (grandTotal - netAmount).toFixed(2);
 
     // Update Modal Summary Fields
-    document.getElementById('detail-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('detail-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('detail-roundoff').innerText = `₹${roundOff}`;
-    document.getElementById('detail-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-subtotal').innerText = `â‚¹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-gst').innerText = `â‚¹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('detail-roundoff').innerText = `â‚¹${roundOff}`;
+    document.getElementById('detail-total').innerText = `â‚¹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     // Update Sticky Strip if present
-    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `₹${roundOff}`;
-    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `â‚¹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-gst')) document.getElementById('strip-order-gst').innerText = `â‚¹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('strip-order-roundoff')) document.getElementById('strip-order-roundoff').innerText = `â‚¹${roundOff}`;
+    if (document.getElementById('strip-order-total')) document.getElementById('strip-order-total').innerText = `â‚¹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 async function rejectOrder(id) {
@@ -2391,7 +2398,7 @@ async function rejectOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}/reject`, { method: 'PUT' });
         const result = await res.json();
         if (result.success) {
-            alert("❌ Order rejected and marked accordingly.");
+            alert("âŒ Order rejected and marked accordingly.");
             loadOrders(); // Refresh history
         } else {
             alert("Rejection failed: " + result.message);
@@ -2404,7 +2411,7 @@ async function negotiateItem(orderId, itemId, action, btn) {
     
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `⏳`;
+    btn.innerHTML = `â³`;
 
     const customRate = document.getElementById(`rate-${orderId}-${itemId}`).value;
 
@@ -2443,7 +2450,7 @@ async function approveOrder(id) {
     const selectedHq = hqSelect ? hqSelect.value : null;
 
     if (!o.stockist?.hq && !selectedHq && o.status === 'pending') {
-        alert("⚠️ MANDATORY: Please assign a Headquarters (HQ) for this stockist before approving the order.");
+        alert("âš ï¸ MANDATORY: Please assign a Headquarters (HQ) for this stockist before approving the order.");
         return;
     }
 
@@ -2455,7 +2462,7 @@ async function approveOrder(id) {
         });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Order approved successfully.");
+            alert("âœ… Order approved successfully.");
             loadOrders(); // Refresh history
         } else {
             alert(result.message || "Approval failed.");
@@ -2471,7 +2478,7 @@ async function cancelInvoice(orderId) {
         const res = await fetch(`${API_BASE}/admin/invoices/${inv._id}/cancel`, { method: 'PUT' });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Record Cancelled. Inventory restored. Record preserved for audit.");
+            alert("âœ… Record Cancelled. Inventory restored. Record preserved for audit.");
             loadOrders();
             loadInvoices();
             renderOrderHistory();
@@ -2488,9 +2495,9 @@ async function viewProductTimeline(productId) {
     const p = allProducts.find(x => x._id == productId);
     if (!p) return;
 
-    document.getElementById('timeline-product-name').innerText = `📦 Timeline: ${p.name}`;
+    document.getElementById('timeline-product-name').innerText = `ðŸ“¦ Timeline: ${p.name}`;
     const tbody = document.getElementById('timelineTableBody');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; opacity:0.6;">⌛ Loading History...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; opacity:0.6;">âŒ› Loading History...</td></tr>';
     document.getElementById('productTimelineModal').classList.remove('hidden');
 
     try {
@@ -2507,7 +2514,7 @@ async function viewProductTimeline(productId) {
         }
     } catch (e) {
         console.error("Timeline load fail:", e);
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#ef4444;">❌ Failed to load history: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#ef4444;">âŒ Failed to load history: ${e.message}</td></tr>`;
     }
 }
 
@@ -2540,7 +2547,7 @@ function renderProductTimeline(timeline) {
                 </td>
                 <td style="padding: 12px; font-weight: 600;">${entry.party}</td>
                 <td style="padding: 12px; text-align: center; opacity: 0.8;">${entry.batch || '-'}</td>
-                <td style="padding: 12px; text-align: right; font-family: monospace;">₹${Number(entry.rate).toFixed(2)}</td>
+                <td style="padding: 12px; text-align: right; font-family: monospace;">â‚¹${Number(entry.rate).toFixed(2)}</td>
                 <td style="padding: 12px; text-align: center; font-weight: 800; color: ${qtyColor};">
                     ${entry.qty > 0 ? '+' : ''}${entry.qty}
                 </td>
@@ -2566,7 +2573,7 @@ async function viewLedger(id) {
 
     currentLedgerPartyId = id;
     const nameEl = document.getElementById('ledger-party-name');
-    if(nameEl) nameEl.innerText = '📋 Ledger: ' + s.name;
+    if(nameEl) nameEl.innerText = 'ðŸ“‹ Ledger: ' + s.name;
     
     try {
         const res = await fetch('/api/admin/parties/' + id + '/ledger');
@@ -2589,9 +2596,9 @@ function renderLedger(ledger) {
                 <td style="font-weight:700; color:var(--primary);">${entry.refNo}</td>
                 <td style="font-size:0.65rem; color:var(--text-muted);">${entry.type}</td>
                 <td style="font-size:0.7rem; font-style:italic;">${entry.description}</td>
-                <td style="text-align:right; font-family:monospace; color:${entry.debit > 0 ? '#fff' : 'rgba(255,255,255,0.2)'};">${entry.debit > 0 ? '₹' + Number(entry.debit).toFixed(2) : '-'}</td>
-                <td style="text-align:right; font-family:monospace; color:${entry.credit > 0 ? '#10b981' : 'rgba(255,255,255,0.2)'};">${entry.credit > 0 ? '₹' + Number(entry.credit).toFixed(2) : '-'}</td>
-                <td style="text-align:right; font-family:monospace; font-weight:800; color:${balance >= 0 ? 'var(--accent)' : '#ef4444'};">₹${Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
+                <td style="text-align:right; font-family:monospace; color:${entry.debit > 0 ? '#fff' : 'rgba(255,255,255,0.2)'};">${entry.debit > 0 ? 'â‚¹' + Number(entry.debit).toFixed(2) : '-'}</td>
+                <td style="text-align:right; font-family:monospace; color:${entry.credit > 0 ? '#10b981' : 'rgba(255,255,255,0.2)'};">${entry.credit > 0 ? 'â‚¹' + Number(entry.credit).toFixed(2) : '-'}</td>
+                <td style="text-align:right; font-family:monospace; font-weight:800; color:${balance >= 0 ? 'var(--accent)' : '#ef4444'};">â‚¹${Math.abs(balance).toFixed(2)} ${balance >= 0 ? 'Dr' : 'Cr'}</td>
             </tr>
         `;
     }).join('');
@@ -2662,14 +2669,14 @@ function renderInvoices(list = null) {
             <td style="font-family:monospace; font-weight:700; color:var(--accent);">${inv.invoiceNo}</td>
             <td style="font-weight:600;">${partyName}</td>
             <td>${new Date(inv.createdAt).toLocaleDateString('en-GB')}</td>
-            <td style="text-align:right;">₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-            <td style="text-align:right;">₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right;">â‚¹${subTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right;">â‚¹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">â‚¹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
             <td style="text-align:right;">
                 <button class="btn btn-ghost" style="padding:6px 12px; font-size: 0.65rem; color:var(--primary);" onclick="downloadInvoicePDF('${inv._id}')">DOWNLOAD PDF</button>
             </td>
             <td style="text-align:center;">
-                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewInvoicePDF('${inv._id}')" title="View PDF">👁️</button>
+                <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewInvoicePDF('${inv._id}')" title="View PDF">ðŸ‘ï¸</button>
             </td>
         </tr>`;
     }).join('');
@@ -2768,7 +2775,7 @@ async function generateInvoice(orderId) {
         const res = await fetch(`${API_BASE}/admin/invoices/generate/${orderId}`, { method: 'POST' });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Invoice Generated Successfully!");
+            alert("âœ… Invoice Generated Successfully!");
             await loadInvoices();
             await loadOrders();
             renderOrderHistory();
@@ -2791,7 +2798,7 @@ function renderPurchaseEntries() {
             <td>${p.supplierInvoiceNo || '-'}</td>
             <td>${new Date(p.invoiceDate).toLocaleDateString('en-GB')}</td>
             <td style="text-align:center;">${p.items?.length || 0}</td>
-            <td style="text-align:right; font-weight:800; color:var(--primary);">₹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; font-weight:800; color:var(--primary);">â‚¹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
 
             <td style="text-align:right; white-space:nowrap;">
                 <button class="btn btn-ghost" style="padding:6px 10px; font-size: 0.65rem;" onclick="viewPurchaseDetails('${p._id}')">INFO</button>
@@ -2809,7 +2816,7 @@ function calculatePurchaseLineTotal() {
     const taxable = Number((qty * rate).toFixed(2));
     const total = Number((taxable + taxable * (gstPct / 100)).toFixed(2));
     const el = document.getElementById('pur-line-total');
-    if (el) el.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (el) el.innerText = `â‚¹${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function openPurchaseModal(id = null) {
@@ -2838,7 +2845,7 @@ function openPurchaseModal(id = null) {
         safeSetVal('pur-qty', '');
         safeSetVal('pur-gst-pct', '');
         if (document.getElementById('pur-line-total')) {
-            document.getElementById('pur-line-total').innerText = '₹0.00';
+            document.getElementById('pur-line-total').innerText = 'â‚¹0.00';
         }
 
         // Set Today's Date
@@ -2883,7 +2890,7 @@ function addPurchaseItem() {
     const gstPct = Number(document.getElementById('pur-gst-pct').value) || (window.companyProfile ? window.companyProfile.gstRate : 5);
 
     if (!prodId || !qty || qty <= 0) {
-        alert('⚠️ Please select a product and enter valid quantity');
+        alert('âš ï¸ Please select a product and enter valid quantity');
         document.getElementById('pur-prod-search').focus();
         return;
     }
@@ -2912,7 +2919,7 @@ function addPurchaseItem() {
     safeSetVal('pur-gst-pct', (window.companyProfile ? window.companyProfile.gstRate : 5));
     
     const lt = document.getElementById('pur-line-total');
-    if (lt) lt.innerText = '₹0.00';
+    if (lt) lt.innerText = 'â‚¹0.00';
 
     renderPurchaseItems();
     
@@ -2936,7 +2943,7 @@ function addPurchaseCharge() {
     const amount = parseFloat(document.getElementById('pur-charge-amount').value) || 0;
     const gstPct = parseFloat(document.getElementById('pur-charge-gst').value) || 0;
 
-    if (!name || amount <= 0) return alert('⚠️ Please enter charge name and amount');
+    if (!name || amount <= 0) return alert('âš ï¸ Please enter charge name and amount');
 
     const gstAmount = Number((amount * (gstPct / 100)).toFixed(2));
     const total = Number((amount + gstAmount).toFixed(2));
@@ -2957,11 +2964,11 @@ function renderPurchaseCharges() {
     tbody.innerHTML = purchaseCharges.map((c, idx) => `
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 4px 8px;">${c.name}</td>
-            <td style="padding: 4px 8px; text-align: right;">₹${c.amount.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: right;">â‚¹${c.amount.toFixed(2)}</td>
             <td style="padding: 4px 8px; text-align: center;">${c.gstPct}%</td>
-            <td style="padding: 4px 8px; text-align: right; font-weight: 700;">₹${c.total.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: right; font-weight: 700;">â‚¹${c.total.toFixed(2)}</td>
             <td style="padding: 4px 8px; text-align: center;">
-                <button type="button" onclick="purchaseCharges.splice(${idx}, 1); renderPurchaseCharges();" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;">✕</button>
+                <button type="button" onclick="purchaseCharges.splice(${idx}, 1); renderPurchaseCharges();" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;">âœ•</button>
             </td>
         </tr>
     `).join('');
@@ -2976,8 +2983,8 @@ function renderPurchaseItems() {
     tbody.innerHTML = purchaseItems.map((item, index) => `
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
             <td style="text-align: center; white-space: nowrap; padding: 4px 2px;">
-                <button type="button" onclick="editPurchaseLineItem(${index})" style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 0.8rem; margin-right: 4px;" title="Edit Row">✎</button>
-                <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Delete Row">✕</button>
+                <button type="button" onclick="editPurchaseLineItem(${index})" style="color: var(--primary); background: none; border: none; cursor: pointer; font-size: 0.8rem; margin-right: 4px;" title="Edit Row">âœŽ</button>
+                <button type="button" onclick="purchaseItems.splice(${index}, 1); renderPurchaseItems();" style="color: #ef4444; background: none; border: none; cursor: pointer; font-size: 0.8rem;" title="Delete Row">âœ•</button>
             </td>
             <td style="font-weight: 700; padding: 4px 5px; color: #fff;">${item.productName || 'N/A'}</td>
             <td style="padding: 4px 5px;">${item.hsn || '-'}</td>
@@ -2985,13 +2992,13 @@ function renderPurchaseItems() {
             <td style="padding: 4px 5px;">${item.batch || '-'}</td>
             <td style="padding: 4px 5px; text-align: center;">${item.mfg || '-'}</td>
             <td style="padding: 4px 5px; text-align: center;">${item.exp || '-'}</td>
-            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">₹${Number(item.mrp || 0).toFixed(2)}</td>
-            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">₹${Number(item.ptr || 0).toFixed(2)}</td>
-            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">₹${Number(item.pts || 0).toFixed(2)}</td>
-            <td style="padding: 4px 5px; text-align: right; font-family: monospace; font-weight: 700; color: var(--accent);">₹${Number(item.rate || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">â‚¹${Number(item.mrp || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">â‚¹${Number(item.ptr || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace;">â‚¹${Number(item.pts || 0).toFixed(2)}</td>
+            <td style="padding: 4px 5px; text-align: right; font-family: monospace; font-weight: 700; color: var(--accent);">â‚¹${Number(item.rate || 0).toFixed(2)}</td>
             <td style="text-align: center; font-weight: 800; color: #fff; padding: 4px 5px;">${item.qty}</td>
             <td style="text-align: center; padding: 4px 5px;">${item.gstPercent}%</td>
-            <td style="text-align: right; padding: 4px 10px 4px 5px; font-weight: 900; color: var(--primary); font-family: monospace;">₹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="text-align: right; padding: 4px 10px 4px 5px; font-weight: 900; color: var(--primary); font-family: monospace;">â‚¹${Number(item.lineTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
         </tr>
     `).join('');
     updatePurchaseFooter();
@@ -3017,7 +3024,7 @@ function editPurchaseLineItem(index) {
     safeSetVal('pur-gst-pct', item.gstPercent || (window.companyProfile ? window.companyProfile.gstRate : 5));
     
     const lt = document.getElementById('pur-line-total');
-    if (lt) lt.innerText = `₹${Number(item.lineTotal || 0).toFixed(2)}`;
+    if (lt) lt.innerText = `â‚¹${Number(item.lineTotal || 0).toFixed(2)}`;
 
     // Remove from list so it can be re-added after editing
     purchaseItems.splice(index, 1);
@@ -3042,33 +3049,33 @@ function updatePurchaseFooter() {
     const roundOff = grandTotal - rawTotal;
 
     const safeEl = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
-    const format = (v) => '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const format = (v) => 'â‚¹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     safeEl('strip-pur-count', purchaseItems.length);
     safeEl('strip-pur-prod-total', format(prodGross));
     safeEl('strip-pur-charges', format(chargesTotal));
     safeEl('strip-pur-gst', format(totalGst));
-    safeEl('strip-pur-roundoff', (roundOff >= 0 ? '+' : '-') + '₹' + Math.abs(roundOff).toFixed(2));
+    safeEl('strip-pur-roundoff', (roundOff >= 0 ? '+' : '-') + 'â‚¹' + Math.abs(roundOff).toFixed(2));
     safeEl('strip-pur-total', format(grandTotal));
 }
 
 async function savePurchaseEntry(event) {
     if (event) event.preventDefault();
-    if (!purchaseItems.length) return alert('⚠️ Please add at least one item to the purchase list.');
+    if (!purchaseItems.length) return alert('âš ï¸ Please add at least one item to the purchase list.');
 
     const supplier = safeGetVal('pur-supplier');
-    if (!supplier) return alert('⚠️ Please select a Supplier first.');
+    if (!supplier) return alert('âš ï¸ Please select a Supplier first.');
 
     const billNo = safeGetVal('pur-bill-no');
-    if (!billNo) return alert('⚠️ Internal Bill No is missing. Please close and reopen the form — the number is auto-generated from the server.');
+    if (!billNo) return alert('âš ï¸ Internal Bill No is missing. Please close and reopen the form â€” the number is auto-generated from the server.');
 
     const billDate = safeGetVal('pur-date');
-    if (!billDate) return alert('⚠️ Please select a Purchase Date.');
+    if (!billDate) return alert('âš ï¸ Please select a Purchase Date.');
 
     // Detect the button that triggered the POST (works for both form submit and onclick)
     const btn = event?.submitter || (event?.currentTarget?.tagName === 'BUTTON' ? event.currentTarget : (event?.target?.tagName === 'BUTTON' ? event.target : null));
     const originalText = btn ? btn.innerText : '';
-    if (btn) { btn.disabled = true; btn.innerText = '⏳ POSTING...'; }
+    if (btn) { btn.disabled = true; btn.innerText = 'â³ POSTING...'; }
 
     try {
         const subTotal = purchaseItems.reduce((acc, i) => acc + (i.taxable || 0), 0) + purchaseCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
@@ -3111,7 +3118,7 @@ async function savePurchaseEntry(event) {
 
         if (result.success) {
             const savedBillNo = result.entry?.billNo || payload.billNo;
-            alert(`✅ Purchase Inward Posted!\nBill No: ${savedBillNo}`);
+            alert(`âœ… Purchase Inward Posted!\nBill No: ${savedBillNo}`);
             openPurchaseModal(); // Reset for next entry
             loadPurchaseEntries();
             loadProducts();
@@ -3160,7 +3167,7 @@ function openDirectSaleModal(type, preserveEdit = false) {
         const modalTitle = document.getElementById('sale-modal-title');
         const submitBtn = document.querySelector('#directSaleModal button[type="submit"]');
         if (modalTitle) modalTitle.innerText = 'Generate Direct Invoice';
-        if (submitBtn) submitBtn.innerText = '✓ POST FINAL SALE';
+        if (submitBtn) submitBtn.innerText = 'âœ“ POST FINAL SALE';
         
         // Reset Additional Charges
         saleCharges = [];
@@ -3210,14 +3217,14 @@ function openDirectSaleModal(type, preserveEdit = false) {
 
         if (title) {
             if (type === 'ONLINE') {
-                title.innerText = '🌐 New Online Platform Order';
+                title.innerText = 'ðŸŒ New Online Platform Order';
                 if (subtitle) {
                     subtitle.innerText = 'ONLINE SALES MODULE';
                     subtitle.style.color = 'var(--primary)';
                 }
                 if (channelSelect) channelSelect.value = 'ONLINE';
             } else {
-                title.innerText = '🏢 New Direct Company Sale';
+                title.innerText = 'ðŸ¢ New Direct Company Sale';
                 if (subtitle) {
                     subtitle.innerText = 'DIRECT SALES MODULE';
                     subtitle.style.color = 'var(--accent)';
@@ -3236,7 +3243,7 @@ function openDirectSaleModal(type, preserveEdit = false) {
         document.getElementById('directSaleModal').classList.remove('hidden');
     } catch (e) {
         console.error("Error opening Direct Sale modal:", e);
-        alert("Failed to open Order Entry. Please refresh data.");
+        alert("Failed to open Order Entry: " + e.message + "\nPlease refresh data.");
     }
 }
 
@@ -3263,7 +3270,7 @@ function closeSaleModal() {
 }
 
 function updateSalePartyContext() {
-    const partyId = document.getElementById('sale-party').value;
+    const partyId = document.getElementById('sale-party')?.value || '';
     const party = allStockists.find(s => (s._id || s.id) == partyId);
     
     if (party) {
@@ -3321,7 +3328,7 @@ function updateSaleProductMeta(prodId) {
     }
 
     // Check for negotiated price
-    const partyId = document.getElementById('sale-party').value;
+    const partyId = document.getElementById('sale-party')?.value || '';
     const party = allStockists.find(s => (s._id || s.id) == partyId);
     let finalRate = parseFloat(prod.pts || 0);
     
@@ -3369,7 +3376,7 @@ function calculateSaleLineTotal() {
     const total = taxable + gst;
     
     const el = document.getElementById('sale-line-total');
-    if (el) el.innerText = '₹' + (total || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
+    if (el) el.innerText = 'â‚¹' + (total || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
 
 function addSaleItem() {
@@ -3421,7 +3428,7 @@ function addSaleItem() {
     document.getElementById('sale-ptr').value = '';
     document.getElementById('sale-rate').value = '';
     document.getElementById('sale-gst-pct').value = '';
-    document.getElementById('sale-line-total').innerText = '₹0.00';
+    document.getElementById('sale-line-total').innerText = 'â‚¹0.00';
     document.getElementById('sale-prod-search').focus();
 }
 
@@ -3495,8 +3502,8 @@ function renderSaleItems() {
             <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.mfgDate || '-'}</div></td>
             <td><div style="font-weight:600; font-size:0.7rem; color:var(--accent);">${item.expDate || item.exp || item.expiry || '-'}</div></td>
-            <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
-            <td style="font-size: 0.65rem; opacity: 0.6;">₹${Number(item.ptr || 0).toFixed(2)}</td>
+            <td>â‚¹${Number(item.mrp || 0).toFixed(2)}</td>
+            <td style="font-size: 0.65rem; opacity: 0.6;">â‚¹${Number(item.ptr || 0).toFixed(2)}</td>
             <td>
                 <input type="number" step="0.01" value="${item.rate}" oninput="updateDirectSaleLine(${index}, 'rate', this.value)" 
                     style="width: 70px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #fff; text-align: right; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
@@ -3510,7 +3517,7 @@ function renderSaleItems() {
                     style="width: 45px; background: rgba(20, 184, 166, 0.05); border: 1px solid rgba(20, 184, 166, 0.2); color: var(--accent); text-align: center; padding: 2px 5px; border-radius: 4px; font-weight: 700;">
             </td>
             <td style="text-align:center;">${pct}%</td>
-            <td style="text-align:right; font-weight:700; color:var(--accent); padding-right:10px;">₹${(val + gst).toFixed(2)}</td>
+            <td style="text-align:right; font-weight:700; color:var(--accent); padding-right:10px;">â‚¹${(val + gst).toFixed(2)}</td>
         </tr>`;
     }).join('');
 
@@ -3518,7 +3525,7 @@ function renderSaleItems() {
     updateSaleStripTotals();
     // GST Split Monitoring (Telangana Compliance)
     const supplyState = (document.getElementById('sale-supply')?.value || '').toLowerCase();
-    const partyId = document.getElementById('sale-party').value;
+    const partyId = document.getElementById('sale-party')?.value || '';
     const party = allStockists.find(s => (s._id || s.id) == partyId);
     const partyGst = (party?.gst || party?.gstNo || '').substring(0, 2);
     
@@ -3541,9 +3548,9 @@ function renderSaleItems() {
         if (splitEl) splitEl.innerText = "";
     }
 
-    setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
-    setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-gst', 'â‚¹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + 'â‚¹' + roundOff.toFixed(2));
+    setVal('strip-sale-total', 'â‚¹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
 }
 
 function updateDirectSaleLine(index, field, value) {
@@ -3577,7 +3584,7 @@ function addSaleCharge() {
     const amount = parseFloat(document.getElementById('sale-charge-amount').value) || 0;
     const gstPct = parseFloat(document.getElementById('sale-charge-gst').value) || 0;
 
-    if (!name || amount <= 0) return alert('⚠️ Please enter charge name and amount');
+    if (!name || amount <= 0) return alert('âš ï¸ Please enter charge name and amount');
 
     const gstAmount = Number((amount * (gstPct / 100)).toFixed(2));
     const total = Number((amount + gstAmount).toFixed(2));
@@ -3598,11 +3605,11 @@ function renderSaleCharges() {
     tbody.innerHTML = saleCharges.map((c, idx) => `
         <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
             <td style="padding: 4px 8px;">${c.name}</td>
-            <td style="padding: 4px 8px; text-align: right;">₹${c.amount.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: right;">â‚¹${c.amount.toFixed(2)}</td>
             <td style="padding: 4px 8px; text-align: center;">${c.gstPct}%</td>
-            <td style="padding: 4px 8px; text-align: right; font-weight: 700;">₹${c.total.toFixed(2)}</td>
+            <td style="padding: 4px 8px; text-align: right; font-weight: 700;">â‚¹${c.total.toFixed(2)}</td>
             <td style="padding: 4px 8px; text-align: center;">
-                <button type="button" onclick="saleCharges.splice(${idx}, 1); renderSaleCharges();" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;">✕</button>
+                <button type="button" onclick="saleCharges.splice(${idx}, 1); renderSaleCharges();" style="background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.8rem;">âœ•</button>
             </td>
         </tr>
     `).join('');
@@ -3635,15 +3642,15 @@ function updateSaleStripTotals() {
     const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
     
     setVal('strip-sale-count', directSaleItems.length);
-    setVal('strip-sale-subtotal', '₹' + prodTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('strip-sale-charges', '₹' + chargesTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
-    setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-subtotal', 'â‚¹' + prodTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-charges', 'â‚¹' + chargesTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-gst', 'â‚¹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + 'â‚¹' + roundOff.toFixed(2));
+    setVal('strip-sale-total', 'â‚¹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
 
     // Update Split GST Labels
     const supplyState = (document.getElementById('sale-supply')?.value || '').toLowerCase();
-    const partyId = document.getElementById('sale-party').value;
+    const partyId = document.getElementById('sale-party')?.value || '';
     const party = allStockists.find(s => (s._id || s.id) == partyId);
     const partyGst = (party?.gst || party?.gstNo || '').substring(0, 2);
     const isIntra = (partyGst === '36') || (supplyState.includes('telangana'));
@@ -3678,7 +3685,7 @@ async function saveDirectSale(e) {
     
     if (btn) {
         btn.disabled = true;
-        btn.innerText = '⌛ SAVING SALE...';
+        btn.innerText = 'âŒ› SAVING SALE...';
     }
 
     const subTotalItems = directSaleItems.reduce((s, i) => s + (Number(i.totalValue) || 0), 0);
@@ -3727,7 +3734,7 @@ async function saveDirectSale(e) {
             // Reset button BEFORE alert to keep UI alive
             if (btn) { btn.disabled = false; btn.innerText = originalText; }
             
-            const msg = isEditMode ? `✅ Invoice Updated Successfully!` : `✅ Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`;
+            const msg = isEditMode ? `âœ… Invoice Updated Successfully!` : `âœ… Direct Sale Recorded!\nOrder No: ${result.order.orderNo}\nInvoice No: ${result.invoice.invoiceNo}`;
             alert(msg);
             
             // RESET EVERYTHING for the next invoice
@@ -3742,12 +3749,12 @@ async function saveDirectSale(e) {
             refreshDashboard();
         } else {
             if (btn) { btn.disabled = false; btn.innerText = originalText; }
-            alert("❌ Save failed: " + (result.error || "Unknown error"));
+            alert("âŒ Save failed: " + (result.error || "Unknown error"));
         }
     } catch (e) { 
         if (btn) { btn.disabled = false; btn.innerText = originalText; }
         console.error("Direct Sale Save Fail:", e);
-        alert("❌ Network/Server Error while saving sale."); 
+        alert("âŒ Network/Server Error while saving sale."); 
     }
 }
 
@@ -3791,7 +3798,7 @@ function refreshInventoryVal() {
     const totalVal = allProducts.reduce((sum, p) => sum + (Number(p.qtyAvailable || 0) * Number(p.pts || 0)), 0);
     const valEl = document.getElementById('report-inventory-val');
     if (valEl) {
-        valEl.innerText = '₹' + totalVal.toLocaleString('en-IN', {
+        valEl.innerText = 'â‚¹' + totalVal.toLocaleString('en-IN', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
@@ -3835,8 +3842,8 @@ function filterNotes() {
     // Update dynamic title
     const titleEl = document.getElementById('notes-page-title');
     if (titleEl) {
-        if (currentNoteReason === 'ALL') titleEl.innerText = "📝 Global Financial Adjustments";
-        else titleEl.innerText = `📝 ${currentNoteReason} Records`;
+        if (currentNoteReason === 'ALL') titleEl.innerText = "ðŸ“ Global Financial Adjustments";
+        else titleEl.innerText = `ðŸ“ ${currentNoteReason} Records`;
     }
 
     const filtered = allNotes.filter(n => {
@@ -3861,7 +3868,7 @@ function updateNotePartyDetails(id, infoId = 'note-party-info') {
     const s = allStockists.find(x => x._id == id);
     const info = document.getElementById(infoId);
     if (s && info) {
-        info.innerText = `Current Outstanding: ₹${s.outstandingBalance.toLocaleString('en-IN')}`;
+        info.innerText = `Current Outstanding: â‚¹${s.outstandingBalance.toLocaleString('en-IN')}`;
     } else if (info) {
         info.innerText = '';
     }
@@ -3888,10 +3895,10 @@ function renderFinancialNotes(data = allNotes) {
                 <td>
                     <div style="font-weight:700;">${n.reason}</div>
                     ${n.items && n.items.length > 0 
-                        ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
-                        : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
+                        ? `<div style="font-size:0.7rem; color:var(--text-muted);">ðŸ“¦ ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
+                        : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">ðŸ“¦ ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
                 </td>
-                <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${Number(n.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">â‚¹${Number(n.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
 
                 <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
                 <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
@@ -3899,12 +3906,12 @@ function renderFinancialNotes(data = allNotes) {
                         <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#10b981;" onclick="reviewPDCNClaim('${n._id}', 'approve')">APPROVE</button>
                         <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#ef4444;" onclick="reviewPDCNClaim('${n._id}', 'reject')">REJECT</button>
                     ` : ''}
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✏️</button>
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📥</button>
-                    <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✕</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">âœï¸</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">ðŸ“¥</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">âœ•</button>
                 </td>
                 <td style="text-align:center;">
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n._id}')" title="View PDF">👁️</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n._id}')" title="View PDF">ðŸ‘ï¸</button>
                 </td>
             </tr>
         `;
@@ -3943,13 +3950,13 @@ async function editNote(id) {
 }
 
 async function deleteNote(id) {
-    if (!confirm("⚠️ CAUTION: Are you sure you want to COMPLETELY DELETE this note?\n\nThis will REVERSE all inventory changes and accounting impacts (Stockist balance will be adjusted back). This action cannot be undone.")) return;
+    if (!confirm("âš ï¸ CAUTION: Are you sure you want to COMPLETELY DELETE this note?\n\nThis will REVERSE all inventory changes and accounting impacts (Stockist balance will be adjusted back). This action cannot be undone.")) return;
 
     try {
         const res = await fetch(`/api/admin/financial-notes/${id}`, { method: 'DELETE' });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Note deleted and all impacts reversed successfully.");
+            alert("âœ… Note deleted and all impacts reversed successfully.");
             await loadFinancialNotes();
             await loadProducts();
             await loadStockists();
@@ -4000,9 +4007,9 @@ function openNoteModal(editData = null) {
             document.getElementById('note-batch').value = editData.batchNo || '';
             document.getElementById('note-qty').value = editData.qty || 0;
         }
-        document.getElementById('note-modal-title').innerText = "✏️ Edit Financial Note";
+        document.getElementById('note-modal-title').innerText = "âœï¸ Edit Financial Note";
     } else {
-        document.getElementById('note-modal-title').innerText = "📝 Record Financial Adjustment";
+        document.getElementById('note-modal-title').innerText = "ðŸ“ Record Financial Adjustment";
         currentEditingNoteId = null;
     }
 
@@ -4046,12 +4053,12 @@ let returnItems = [];
 
 // Config map for all 6 return/note module types
 const RETURN_MODULE_CONFIG = {
-    'Salable Return':   { badge:'CREDIT NOTE', title:'Sale Return — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
-    'Exp/Brk/Damg CN':  { badge:'CREDIT NOTE', title:'Exp / Broken / Damaged — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
-    'Price Diff CN':    { badge:'CREDIT NOTE', title:'Price Difference — Credit Note', noteType:'CN', submitLabel:'✓ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'], isPriceDiff: true },
-    'Purchase Return':  { badge:'DEBIT NOTE',  title:'Purchase Return — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] },
-    'Price Diff DN':    { badge:'DEBIT NOTE',  title:'Price Difference — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'], isPriceDiff: true },
-    'Brk/Dmg/Loss DN': { badge:'DEBIT NOTE',  title:'Breakage / Damage / Loss — Debit Note', noteType:'DN', submitLabel:'✓ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] }
+    'Salable Return':   { badge:'CREDIT NOTE', title:'Sale Return â€” Credit Note', noteType:'CN', submitLabel:'âœ“ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
+    'Exp/Brk/Damg CN':  { badge:'CREDIT NOTE', title:'Exp / Broken / Damaged â€” Credit Note', noteType:'CN', submitLabel:'âœ“ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'] },
+    'Price Diff CN':    { badge:'CREDIT NOTE', title:'Price Difference â€” Credit Note', noteType:'CN', submitLabel:'âœ“ POST & GENERATE CN', tabs:['Salable Return','Exp/Brk/Damg CN','Price Diff CN'], tabLabels:['Sale Return','Exp/Brk/Damg','Price Diff'], isPriceDiff: true },
+    'Purchase Return':  { badge:'DEBIT NOTE',  title:'Purchase Return â€” Debit Note', noteType:'DN', submitLabel:'âœ“ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] },
+    'Price Diff DN':    { badge:'DEBIT NOTE',  title:'Price Difference â€” Debit Note', noteType:'DN', submitLabel:'âœ“ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'], isPriceDiff: true },
+    'Brk/Dmg/Loss DN': { badge:'DEBIT NOTE',  title:'Breakage / Damage / Loss â€” Debit Note', noteType:'DN', submitLabel:'âœ“ POST & GENERATE DN', tabs:['Purchase Return','Price Diff DN','Brk/Dmg/Loss DN'], tabLabels:['Purchase Return','Price Diff','Loss/Damage'] }
 };
 
 function openReturnModal(reason, editData = null) {
@@ -4259,12 +4266,12 @@ function addReturnRow() {
                 <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5"
                     style="${inputBase}text-align:center; color:#fff; font-weight:700;">
             </td>
-            <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
+            <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">â‚¹0.00</td>
             <td style="padding:4px 6px;text-align:center;">
                 <button type="button" onclick="removeReturnRow('${id}')" title="Delete Row"
                     style="background:#ef4444; border:none; color:#fff; cursor:pointer; font-size:0.65rem; font-weight:900; width:22px; height:22px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s; box-shadow:0 2px 5px rgba(239,68,68,0.2);"
                     onmouseover="this.style.background='#dc2626'; this.style.transform='scale(1.1)';" 
-                    onmouseout="this.style.background='#ef4444'; this.style.transform='scale(1)';">✕</button>
+                    onmouseout="this.style.background='#ef4444'; this.style.transform='scale(1)';">âœ•</button>
             </td>
         `;
     } else {
@@ -4313,12 +4320,12 @@ function addReturnRow() {
                 <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
                     style="${inputBase}text-align:center;color:#fff;font-weight:700;">
             </td>
-            <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
+            <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">â‚¹0.00</td>
             <td style="padding:4px 6px;text-align:center;">
                 <button type="button" onclick="removeReturnRow('${id}')" title="Delete Row"
                     style="background:#ef4444; border:none; color:#fff; cursor:pointer; font-size:0.65rem; font-weight:900; width:22px; height:22px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s; box-shadow:0 2px 5px rgba(239,68,68,0.2);"
                     onmouseover="this.style.background='#dc2626'; this.style.transform='scale(1.1)';" 
-                    onmouseout="this.style.background='#ef4444'; this.style.transform='scale(1)';">✕</button>
+                    onmouseout="this.style.background='#ef4444'; this.style.transform='scale(1)';">âœ•</button>
             </td>
         `;
     }
@@ -4427,7 +4434,7 @@ function calculateReturnTotals() {
         subtotal += taxable;
         gstTotal += gst;
         
-        document.getElementById(`return-row-total-${id}`).innerText = `₹${rowTotal.toFixed(2)}`;
+        document.getElementById(`return-row-total-${id}`).innerText = `â‚¹${rowTotal.toFixed(2)}`;
     });
 
 
@@ -4435,10 +4442,10 @@ function calculateReturnTotals() {
     const rounded = Math.round(total);
     const roundOff = rounded - total;
 
-    document.getElementById('return-subtotal').innerText = `₹${subtotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
-    document.getElementById('return-gst').innerText = `₹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
-    document.getElementById('return-roundoff').innerText = `₹${roundOff.toFixed(2)}`;
-    document.getElementById('return-total').innerText = `₹${rounded.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('return-subtotal').innerText = `â‚¹${subtotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('return-gst').innerText = `â‚¹${gstTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('return-roundoff').innerText = `â‚¹${roundOff.toFixed(2)}`;
+    document.getElementById('return-total').innerText = `â‚¹${rounded.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
 }
 
 async function saveMultiItemReturn(e) {
@@ -4449,9 +4456,9 @@ async function saveMultiItemReturn(e) {
     const pName = allStockists.find(s => s._id == pId)?.name || 'Direct Customer';
     
     // Strict Header Validation
-    if(!pId) return alert("❌ Please select a Party.");
-    if(!document.getElementById('return-inv-no').value) return alert("❌ Ref. Invoice No is mandatory.");
-    if(!document.getElementById('return-inv-date').value) return alert("❌ Invoice Date is mandatory.");
+    if(!pId) return alert("âŒ Please select a Party.");
+    if(!document.getElementById('return-inv-no').value) return alert("âŒ Ref. Invoice No is mandatory.");
+    if(!document.getElementById('return-inv-date').value) return alert("âŒ Invoice Date is mandatory.");
 
     try {
         const items = returnItems.map(id => {
@@ -4496,7 +4503,7 @@ async function saveMultiItemReturn(e) {
                         const billed = data ? data.totalBilledQty : 0;
                         
                         if (item.qty > billed) {
-                            return alert(`❌ QUANTITY ERROR: Product "${item.name}" was only billed ${billed} units. You cannot raise a PDCN for ${item.qty} units.`);
+                            return alert(`âŒ QUANTITY ERROR: Product "${item.name}" was only billed ${billed} units. You cannot raise a PDCN for ${item.qty} units.`);
                         }
                     }
                 }
@@ -4563,18 +4570,18 @@ async function saveFinancialNote(e) {
         });
         const result = await res.json();
         if (result.success) {
-            alert(currentEditingNoteId ? "✅ Note Updated Successfully!" : "✅ Financial Note Issued Successfully!");
+            alert(currentEditingNoteId ? "âœ… Note Updated Successfully!" : "âœ… Financial Note Issued Successfully!");
             await loadFinancialNotes();
             await loadStockists();
             await loadProducts();
             renderFinancialNotes();
             closeNoteModal();
         } else {
-            alert("❌ SAVE FAILED: " + (result.error || result.message || "Unknown error"));
+            alert("âŒ SAVE FAILED: " + (result.error || result.message || "Unknown error"));
         }
     } catch (e) { 
         console.error("Save note error:", e);
-        alert("❌ CRITICAL ERROR: Could not save note. Check your connection."); 
+        alert("âŒ CRITICAL ERROR: Could not save note. Check your connection."); 
     }
 }
 
@@ -4769,25 +4776,25 @@ function viewPurchaseDetails(id) {
         const hsn = i.hsn || product.hsn || '-';
         const total = Number(i.lineTotal || i.totalValue || 0).toFixed(2);
         const mfg = i.manufacturer || product.manufacturer || 'EMYRIS';
-        return `  ${idx+1}. ${name}\n     Mfg: ${mfg} | HSN: ${hsn} | Batch: ${batch} | Qty: ${qty} | Rate: ₹${rate} | GST: ${gst}% | Total: ₹${total}`;
+        return `  ${idx+1}. ${name}\n     Mfg: ${mfg} | HSN: ${hsn} | Batch: ${batch} | Qty: ${qty} | Rate: â‚¹${rate} | GST: ${gst}% | Total: â‚¹${total}`;
     }).join('\n');
     
     alert(
-        `📋 PURCHASE RECORD DETAILS\n` +
-        `${'─'.repeat(44)}\n` +
+        `ðŸ“‹ PURCHASE RECORD DETAILS\n` +
+        `${'â”€'.repeat(44)}\n` +
         `Internal Bill No : ${p.purchaseNo || p.billNo || 'N/A'}\n` +
         `Supplier Inv No  : ${p.supplierInvoiceNo || 'N/A'}\n` +
         `Supplier         : ${p.supplierName || 'N/A'}\n` +
         `Date             : ${formattedDate}\n` +
         `Payment Mode     : ${p.paymentMode || 'N/A'}\n` +
         `Remarks          : ${p.remarks || '-'}\n` +
-        `${'─'.repeat(44)}\n` +
+        `${'â”€'.repeat(44)}\n` +
         `ITEMS (${items.length}):\n${itemLines}\n` +
-        `${'─'.repeat(44)}\n` +
-        `Taxable   : ₹${Number(p.subTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}\n` +
-        `GST       : ₹${Number(p.gstAmount || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}\n` +
-        `Round Off : ${p.roundOff >= 0 ? '+' : ''}₹${Number(p.roundOff || 0).toFixed(2)}\n` +
-        `GRAND TOTAL: ₹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`
+        `${'â”€'.repeat(44)}\n` +
+        `Taxable   : â‚¹${Number(p.subTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}\n` +
+        `GST       : â‚¹${Number(p.gstAmount || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}\n` +
+        `Round Off : ${p.roundOff >= 0 ? '+' : ''}â‚¹${Number(p.roundOff || 0).toFixed(2)}\n` +
+        `GRAND TOTAL: â‚¹${Number(p.grandTotal || 0).toLocaleString('en-IN', {minimumFractionDigits:2})}`
     );
 }
 
@@ -4983,7 +4990,7 @@ function updateProductEntryMeta(id) {
 async function generateReport(type) {
     // This function now opens the visual report modal
     document.getElementById('current-report-type').value = type;
-    document.getElementById('report-modal-title').innerText = `📊 Report: ${type.toUpperCase().replace(/-/g, ' ')}`;
+    document.getElementById('report-modal-title').innerText = `ðŸ“Š Report: ${type.toUpperCase().replace(/-/g, ' ')}`;
     
     // Default dates: First day of current month to today
     const today = new Date();
@@ -5443,7 +5450,7 @@ async function loadFailedEmails() {
         const failed = await res.json();
         
         if (failed.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #10b981; padding: 20px;">✅ All system emails delivered successfully.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #10b981; padding: 20px;">âœ… All system emails delivered successfully.</td></tr>`;
             return;
         }
 
@@ -5453,8 +5460,8 @@ async function loadFailedEmails() {
                 <td style="font-size: 0.8rem;">${e.subject}</td>
                 <td style="color: #ef4444; font-size: 0.75rem;">${e.error}</td>
                 <td style="text-align: right;">
-                    <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.7rem;" onclick="retryEmail('${e._id}', this)">🔄 RETRY</button>
-                    <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444;" onclick="deleteFailedEmail('${e._id}')">🗑️</button>
+                    <button class="btn btn-primary" style="padding: 5px 10px; font-size: 0.7rem;" onclick="retryEmail('${e._id}', this)">ðŸ”„ RETRY</button>
+                    <button class="btn btn-ghost" style="padding: 5px 10px; color: #ef4444;" onclick="deleteFailedEmail('${e._id}')">ðŸ—‘ï¸</button>
                 </td>
             </tr>
         `).join('');
@@ -5464,16 +5471,16 @@ async function loadFailedEmails() {
 async function retryEmail(id, btn) {
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `⏳`;
+    btn.innerHTML = `â³`;
 
     try {
         const res = await fetch(`${API_BASE}/admin/failed-emails/${id}/retry`, { method: 'POST' });
         const result = await res.json();
         if (result.success) {
-            alert("✅ Email delivered successfully on retry!");
+            alert("âœ… Email delivered successfully on retry!");
             loadFailedEmails();
         } else {
-            alert("❌ Retry failed: " + (result.message || "Unknown error"));
+            alert("âŒ Retry failed: " + (result.message || "Unknown error"));
         }
     } catch (e) { alert("Retry failed"); }
     finally {
@@ -5523,13 +5530,13 @@ function renderPayments() {
     const monthlyReceipts = allPayments.filter(p => p.type === 'RECEIPT' && new Date(p.date).getMonth() === currentMonth && new Date(p.date).getFullYear() === currentYear).reduce((s, x) => s + x.amount, 0);
     const monthlyPayouts = allPayments.filter(p => p.type === 'PAYMENT' && new Date(p.date).getMonth() === currentMonth && new Date(p.date).getFullYear() === currentYear).reduce((s, x) => s + x.amount, 0);
 
-    document.getElementById('stat-receipts-total').innerText = `₹${monthlyReceipts.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
-    document.getElementById('stat-payouts-total').innerText = `₹${monthlyPayouts.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
-    document.getElementById('stat-net-flow').innerText = `₹${(monthlyReceipts - monthlyPayouts).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('stat-receipts-total').innerText = `â‚¹${monthlyReceipts.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('stat-payouts-total').innerText = `â‚¹${monthlyPayouts.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('stat-net-flow').innerText = `â‚¹${(monthlyReceipts - monthlyPayouts).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
     document.getElementById('stat-net-flow').style.color = (monthlyReceipts - monthlyPayouts) >= 0 ? '#10b981' : '#ef4444';
 
     // Update Page Header
-    document.getElementById('payment-page-title').innerText = currentPaymentTypeFilter === 'RECEIPT' ? "💰 Customer Collections (Payment In)" : "💸 Supplier Payouts (Payment Out)";
+    document.getElementById('payment-page-title').innerText = currentPaymentTypeFilter === 'RECEIPT' ? "ðŸ’° Customer Collections (Payment In)" : "ðŸ’¸ Supplier Payouts (Payment Out)";
 
     tbody.innerHTML = filtered.map(p => `
         <tr>
@@ -5538,11 +5545,11 @@ function renderPayments() {
             <td style="font-weight:600;">${p.partyName}</td>
             <td>${p.method}</td>
             <td>${p.refNo || '-'}</td>
-            <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">₹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">â‚¹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
             <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:var(--primary);" onclick="editPayment('${p._id}')">✏️ EDIT</button>
-                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">✕ DELETE</button>
+                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:var(--primary);" onclick="editPayment('${p._id}')">âœï¸ EDIT</button>
+                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">âœ• DELETE</button>
             </td>
         </tr>
     `).join('');
@@ -5554,8 +5561,8 @@ async function editPayment(id) {
 
     openPaymentModal();
     // Update Modal for Edit Mode
-    document.getElementById('payment-modal-title').innerText = "✏️ Edit Payment Voucher";
-    document.getElementById('pay-submit-btn').innerHTML = "💾 UPDATE VOUCHER";
+    document.getElementById('payment-modal-title').innerText = "âœï¸ Edit Payment Voucher";
+    document.getElementById('pay-submit-btn').innerHTML = "ðŸ’¾ UPDATE VOUCHER";
     
     // Set values
     safeSetVal('pay-id', p._id);
@@ -5583,15 +5590,15 @@ function openPaymentModal() {
     
     // Reset badges and amounts for memory-free UI
     const unallocatedEl = document.getElementById('unallocated-amount');
-    if (unallocatedEl) unallocatedEl.innerText = '₹0.00';
+    if (unallocatedEl) unallocatedEl.innerText = 'â‚¹0.00';
     const linkedBadge = document.getElementById('linked-total-badge');
-    if (linkedBadge) linkedBadge.innerText = 'LINKED: ₹0.00';
+    if (linkedBadge) linkedBadge.innerText = 'LINKED: â‚¹0.00';
     const balanceEl = document.getElementById('party-total-due');
-    if (balanceEl) balanceEl.innerText = 'Outstanding: ₹0.00';
+    if (balanceEl) balanceEl.innerText = 'Outstanding: â‚¹0.00';
     const listEl = document.getElementById('bill-preview-list');
     if (listEl) listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem; font-style: italic;">Select a party to see outstanding bills...</div>';
     const submitBtn = document.getElementById('pay-submit-btn');
-    if (submitBtn) submitBtn.innerHTML = "✓ CONFIRM & POST";
+    if (submitBtn) submitBtn.innerHTML = "âœ“ CONFIRM & POST";
 
     updatePaymentContext();
     modal.classList.remove('hidden');
@@ -5631,7 +5638,7 @@ function updatePaymentContext() {
             vPlaceholder.innerText = `PAY${type === 'RECEIPT' ? 'IN' : 'OUT'}-${yearTag}-XXXX`;
         });
 
-    modalTitle.innerText = type === 'RECEIPT' ? "💰 Customer Collection (Pay-In)" : "💸 Supplier Settlement (Pay-Out)";
+    modalTitle.innerText = type === 'RECEIPT' ? "ðŸ’° Customer Collection (Pay-In)" : "ðŸ’¸ Supplier Settlement (Pay-Out)";
     partyLabel.innerText = type === 'RECEIPT' ? "1. SELECT CUSTOMER / STOCKIST" : "1. SELECT SUPPLIER / VENDOR";
 
     partySelect.innerHTML = `<option value="">-- Choose Party --</option>`;
@@ -5651,7 +5658,7 @@ function updatePartyBalanceDisplay() {
 
     if (!partyId) {
         if (balanceEl) {
-            balanceEl.innerText = "Outstanding: ₹0.00";
+            balanceEl.innerText = "Outstanding: â‚¹0.00";
             balanceEl.style.color = 'var(--text-muted)';
         }
         if (listEl) listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem; font-style: italic;">Select a party to see outstanding bills...</div>';
@@ -5679,7 +5686,7 @@ function previewBillAdjustment() {
     const totalActualOutstanding = bills.reduce((sum, b) => sum + Number(b.outstandingAmount ?? b.grandTotal), 0);
     
     if (balanceEl) {
-        balanceEl.innerText = `Outstanding: ₹${totalActualOutstanding.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+        balanceEl.innerText = `Outstanding: â‚¹${totalActualOutstanding.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
         balanceEl.style.color = totalActualOutstanding > 0 ? '#f59e0b' : '#10b981';
     }
 
@@ -5688,10 +5695,10 @@ function previewBillAdjustment() {
         if (listEl) listEl.innerHTML = emptyMsg;
         
         const unallocatedEl = document.getElementById('unallocated-amount');
-        if (unallocatedEl) unallocatedEl.innerText = `₹0.00`;
+        if (unallocatedEl) unallocatedEl.innerText = `â‚¹0.00`;
         
         const linkedBadge = document.getElementById('linked-total-badge');
-        if (linkedBadge) linkedBadge.innerText = `LINKED: ₹0.00`;
+        if (linkedBadge) linkedBadge.innerText = `LINKED: â‚¹0.00`;
         return;
     }
 
@@ -5712,8 +5719,8 @@ function previewBillAdjustment() {
         // Form Preview
         previewHtml += `<tr style="border-bottom:1px solid rgba(255,255,255,0.03); opacity: ${adj > 0 ? 1 : 0.4};">
             <td style="padding:8px; font-family:monospace;">${b.invoiceNo || b.purchaseNo}</td>
-            <td style="text-align:right; padding:8px;">₹${due.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-            <td style="text-align:right; padding:8px; font-weight:800; color:var(--accent);">₹${adj.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; padding:8px;">â‚¹${due.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; padding:8px; font-weight:800; color:var(--accent);">â‚¹${adj.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
         </tr>`;
 
         remaining -= adj;
@@ -5725,13 +5732,13 @@ function previewBillAdjustment() {
     // Update unallocated and linked badges
     const unallocatedEl = document.getElementById('unallocated-amount');
     if (unallocatedEl) {
-        unallocatedEl.innerText = `₹${remaining.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+        unallocatedEl.innerText = `â‚¹${remaining.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
         unallocatedEl.style.color = remaining > 0 ? '#ef4444' : '#10b981';
     }
     
     const linkedBadge = document.getElementById('linked-total-badge');
     if (linkedBadge) {
-        linkedBadge.innerText = `LINKED: ₹${totalLinked.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+        linkedBadge.innerText = `LINKED: â‚¹${totalLinked.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
     }
 }
 
@@ -5756,7 +5763,7 @@ async function savePayment(e) {
 
     try {
         btn.disabled = true;
-        btn.innerHTML = "⏳ POSTING VOUCHER...";
+        btn.innerHTML = "â³ POSTING VOUCHER...";
 
         const payId = document.getElementById('pay-id').value;
         const method = payId ? 'PUT' : 'POST';
@@ -5769,7 +5776,7 @@ async function savePayment(e) {
         });
         const result = await res.json();
         if (result.success) {
-            alert(`✅ Voucher ${result.payment.paymentNo} ${payId ? 'updated' : 'posted'} successfully!`);
+            alert(`âœ… Voucher ${result.payment.paymentNo} ${payId ? 'updated' : 'posted'} successfully!`);
             closePaymentModal();
             await loadPayments();
             renderPayments();
@@ -5814,10 +5821,10 @@ function filterPayments() {
             <td style="font-weight:600;">${p.partyName}</td>
             <td>${p.method}</td>
             <td>${p.refNo || '-'}</td>
-            <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">₹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+            <td style="text-align:right; font-weight:800; color:${p.type === 'RECEIPT' ? '#10b981' : '#ef4444'};">â‚¹${p.amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
             <td>${new Date(p.date).toLocaleDateString('en-GB')}</td>
             <td style="text-align:right;">
-                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">✕ DELETE</button>
+                <button class="btn btn-ghost" style="padding:4px 8px; font-size:0.6rem; color:#ef4444;" onclick="deletePayment('${p._id}')">âœ• DELETE</button>
             </td>
         </tr>
     `).join('');
@@ -5938,7 +5945,7 @@ function exportReportPDF() {
 }
 
 async function exportAllReports() {
-    alert("🚀 Generating Consolidated Intelligence Pack... Please wait.");
+    alert("ðŸš€ Generating Consolidated Intelligence Pack... Please wait.");
     try {
         const res = await fetch(`${API_BASE}/admin/reports/full-audit`);
         const data = await res.json();
@@ -6077,7 +6084,7 @@ async function saveExpense(e) {
 
     try {
         btn.disabled = true;
-        btn.innerHTML = '⏳ POSTING...';
+        btn.innerHTML = 'â³ POSTING...';
 
         const res = await fetch(`${API_BASE}/admin/expenses`, {
             method: 'POST',
@@ -6087,7 +6094,7 @@ async function saveExpense(e) {
         const result = await res.json();
 
         if (result.success) {
-            alert(`✅ Expense posted successfully!`);
+            alert(`âœ… Expense posted successfully!`);
             document.getElementById('expenseModal').classList.add('hidden');
             loadExpenses();
             document.getElementById('expenseForm').reset();
@@ -6539,8 +6546,8 @@ function handleProductSearch(input, context) {
             </td>
             <td>${p.packing || '-'}</td>
             <td><span class="stock-badge ${stockClass}">${stockLabel}</span></td>
-            <td>₹${p.mrp}</td>
-            <td style="color:var(--accent); font-weight:700;">₹${p.pts}</td>
+            <td>â‚¹${p.mrp}</td>
+            <td style="color:var(--accent); font-weight:700;">â‚¹${p.pts}</td>
         </tr>`;
     });
 
@@ -6644,7 +6651,7 @@ function handlePartySearch(input, context) {
                 <div style="font-size:0.6rem; color:var(--text-muted);">${s.gst || 'No GST'}</div>
             </td>
             <td>${s.city || '-'}</td>
-            <td style="color:#f59e0b; font-weight:700;">₹${(s.outstandingBalance || 0).toLocaleString()}</td>
+            <td style="color:#f59e0b; font-weight:700;">â‚¹${(s.outstandingBalance || 0).toLocaleString()}</td>
         </tr>`;
     });
 
@@ -6736,7 +6743,7 @@ function renderPDCNClaims() {
             <td style="font-weight: 700; color: #fff;">${c.Stockist ? c.Stockist.name : 'Unknown'}</td>
             <td style="font-family: monospace; color: #fff; font-weight: 700;">${c.invoiceNo}</td>
             <td style="text-align: center;">${c.items.length}</td>
-            <td style="text-align: right; font-weight: 800; color: var(--primary);">₹${parseFloat(c.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td style="text-align: right; font-weight: 800; color: var(--primary);">â‚¹${parseFloat(c.totalAmount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
             <td style="text-align: center;">
                 <span class="badge ${c.status === 'approved' ? 'badge-approved' : (c.status === 'rejected' ? 'badge-pending' : 'badge-pending')}" 
                       style="${c.status === 'rejected' ? 'background: #ef4444; color: #fff;' : ''}">
@@ -6834,7 +6841,7 @@ function renderPDCNReviewItems() {
                 <td style="padding: 12px; font-weight: 700; color: #fff; width: 250px; overflow: hidden; text-overflow: ellipsis;">${item.name}</td>
                 <td style="padding: 12px; text-align: center; color: #fff; width: 60px;">${qty}</td>
                 <td style="padding: 12px; text-align: center; color: #fff; font-size: 0.75rem; width: 60px;">${gstPct}%</td>
-                <td style="padding: 12px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.75rem; width: 100px;">₹${billed.toFixed(2)}</td>
+                <td style="padding: 12px; text-align: right; color: rgba(255,255,255,0.6); font-size: 0.75rem; width: 100px;">â‚¹${billed.toFixed(2)}</td>
                 <td style="padding: 12px; text-align: center; width: 100px;">
                     <input type="number" step="0.01" value="${special}" 
                         oninput="updateAdminPDCNItem(${idx}, 'specialPrice', this.value)"
@@ -6846,7 +6853,7 @@ function renderPDCNReviewItems() {
                         style="width: 45px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); color: var(--primary); font-weight: 800; text-align: center; font-size: 0.8rem; border-radius: 4px; padding: 4px;">
                     <span style="font-size: 0.6rem; color: var(--text-muted);">%</span>
                 </td>
-                <td id="admin-pdcn-row-final-${idx}" style="padding: 12px; text-align: right; font-weight: 800; color: #fff; width: 120px; background: rgba(255,255,255,0.02);">₹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                <td id="admin-pdcn-row-final-${idx}" style="padding: 12px; text-align: right; font-weight: 800; color: #fff; width: 120px; background: rgba(255,255,255,0.02);">â‚¹${finalItemPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                 <td style="padding: 12px; font-size: 0.65rem; color: var(--text-muted); font-style: italic;">${item.remarks || '-'}</td>
             </tr>
         `;
@@ -6863,9 +6870,9 @@ function updatePDCNTotals(unroundedSum) {
     const rounded = Math.round(unroundedSum);
     const roundOff = rounded - unroundedSum;
 
-    if (subtotalEl) subtotalEl.innerText = `₹${unroundedSum.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    if (roundoffEl) roundoffEl.innerText = `₹${roundOff.toFixed(2)}`;
-    if (grandTotalEl) grandTotalEl.innerText = `₹${rounded.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (subtotalEl) subtotalEl.innerText = `â‚¹${unroundedSum.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (roundoffEl) roundoffEl.innerText = `â‚¹${roundOff.toFixed(2)}`;
+    if (grandTotalEl) grandTotalEl.innerText = `â‚¹${rounded.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 }
 
 function updateAdminPDCNItem(idx, field, val) {
@@ -6894,7 +6901,7 @@ function updateAdminPDCNItem(idx, field, val) {
     // Update row total cell
     const rowTotalEl = document.getElementById(`admin-pdcn-row-final-${idx}`);
     if (rowTotalEl) {
-        rowTotalEl.innerText = `₹${item.finalPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        rowTotalEl.innerText = `â‚¹${item.finalPDCN.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     }
 
     // Update Grand Total
@@ -6949,7 +6956,7 @@ async function processPDCNClaim(action) {
         console.log(`PDCN Action [${action}] Result:`, result);
 
         if (result.success) {
-            alert(`✅ Claim ${action === 'approve' ? 'Approved & CN Generated' : 'Rejected'} Successfully!`);
+            alert(`âœ… Claim ${action === 'approve' ? 'Approved & CN Generated' : 'Rejected'} Successfully!`);
             closePDCNClaimModal();
             fetchPDCNClaims();
         } else {
@@ -7202,8 +7209,8 @@ function calculateJvTotals() {
         else cr += amt;
     });
     
-    document.getElementById('jv-total-dr').innerText = '₹' + dr.toFixed(2);
-    document.getElementById('jv-total-cr').innerText = '₹' + cr.toFixed(2);
+    document.getElementById('jv-total-dr').innerText = 'â‚¹' + dr.toFixed(2);
+    document.getElementById('jv-total-cr').innerText = 'â‚¹' + cr.toFixed(2);
     
     const saveBtn = document.getElementById('save-jv-btn');
     if (dr > 0 && Math.abs(dr - cr) < 0.01) {
@@ -7212,7 +7219,7 @@ function calculateJvTotals() {
         saveBtn.style.opacity = '1';
     } else {
         saveBtn.disabled = true;
-        saveBtn.innerHTML = '⚠️ TOTALS MUST MATCH';
+        saveBtn.innerHTML = 'âš ï¸ TOTALS MUST MATCH';
         saveBtn.style.opacity = '0.5';
     }
 }
@@ -7240,7 +7247,7 @@ async function saveJv(e) {
 
     const btn = document.getElementById('save-jv-btn');
     btn.disabled = true;
-    btn.innerHTML = '⏳ POSTING...';
+    btn.innerHTML = 'â³ POSTING...';
 
     try {
         const res = await fetch('/api/admin/journal-vouchers', {
@@ -7293,8 +7300,8 @@ function renderJvs() {
                 <td><strong style="color: #a855f7;">${jv.jvNo}</strong></td>
                 <td>${new Date(jv.date).toLocaleDateString()}</td>
                 <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${jv.narration}">${jv.narration}</td>
-                <td style="color: #ef4444; font-weight: bold;">₹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
-                <td style="color: #10b981; font-weight: bold;">₹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                <td style="color: #ef4444; font-weight: bold;">â‚¹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+                <td style="color: #10b981; font-weight: bold;">â‚¹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
                 <td>
                     <button class="btn btn-ghost" onclick="viewJv(${jv.id})" style="padding: 4px 8px; font-size: 0.7rem;"><i class="fas fa-eye"></i> View Details</button>
                 </td>
@@ -7313,7 +7320,7 @@ function viewJv(id) {
     
     document.getElementById('view-jv-no').innerText = jv.jvNo;
     document.getElementById('view-jv-date').innerText = new Date(jv.date).toLocaleDateString();
-    document.getElementById('view-jv-total').innerText = `₹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    document.getElementById('view-jv-total').innerText = `â‚¹${Number(jv.totalAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}`;
     document.getElementById('view-jv-narration').innerText = jv.narration || '-';
     
     const tbody = document.getElementById('view-jv-lines');
@@ -7332,10 +7339,10 @@ function viewJv(id) {
                 </td>
                 <td style="padding: 12px 10px; color: var(--text-muted); font-size: 0.8rem;">${l.notes || '-'}</td>
                 <td style="padding: 12px 10px; text-align: right; color: ${isDr ? '#ef4444' : '#444'}; font-weight: ${isDr ? 'bold' : 'normal'};">
-                    ${isDr ? `₹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}` : '-'}
+                    ${isDr ? `â‚¹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}` : '-'}
                 </td>
                 <td style="padding: 12px 10px; text-align: right; color: ${!isDr ? '#10b981' : '#444'}; font-weight: ${!isDr ? 'bold' : 'normal'};">
-                    ${!isDr ? `₹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}` : '-'}
+                    ${!isDr ? `â‚¹${Number(l.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}` : '-'}
                 </td>
             </tr>
         `;
@@ -7471,8 +7478,8 @@ function renderLedgerMasterList() {
             html += '<div style="display:flex; align-items:center; gap:0.5rem; padding:5px 8px; border-radius:6px; margin-bottom:2px; background:rgba(255,255,255,0.02);">';
             html += '<span style="font-size:0.65rem; font-weight:800; background:' + (l.nature==='DR'?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)') + '; color:' + (l.nature==='DR'?'#10b981':'#ef4444') + '; padding:1px 6px; border-radius:4px;">' + l.nature + '</span>';
             html += '<span style="flex:1; font-size:0.78rem; color:#fff;">' + l.name + '</span>';
-            html += '<span style="font-size:0.7rem; color:var(--text-muted);">Bal: ₹' + Number(l.openingBalance||0).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
-            html += '<button onclick="deleteLedger(' + l.id + ')" class="btn btn-ghost" style="padding:2px 6px; font-size:0.65rem; color:#ef4444;">✕</button>';
+            html += '<span style="font-size:0.7rem; color:var(--text-muted);">Bal: â‚¹' + Number(l.openingBalance||0).toLocaleString('en-IN',{minimumFractionDigits:2}) + '</span>';
+            html += '<button onclick="deleteLedger(' + l.id + ')" class="btn btn-ghost" style="padding:2px 6px; font-size:0.65rem; color:#ef4444;">âœ•</button>';
             html += '</div>';
         });
         html += '</div>';
@@ -7548,7 +7555,7 @@ function addJvLine() {
         </div>
         <input type="text" class="jv-notes" placeholder="Notes (optional)" style="padding:7px 10px; background:rgba(0,0,0,0.4); border:1px solid var(--glass-border); border-radius:8px; color:#fff; font-size:0.75rem;">
         <input type="number" class="jv-amount" required step="0.01" min="0.01" value="" oninput="calculateJvTotals()" style="padding:7px 10px; background:rgba(0,0,0,0.4); border:1px solid #a855f7; border-radius:8px; color:#a855f7; font-weight:900; font-size:0.9rem; text-align:right;">
-        <button type="button" onclick="removeJvLine(this)" class="btn btn-ghost" style="color:#ef4444; padding:5px; border-radius:6px; font-size:0.9rem;">✕</button>
+        <button type="button" onclick="removeJvLine(this)" class="btn btn-ghost" style="color:#ef4444; padding:5px; border-radius:6px; font-size:0.9rem;">âœ•</button>
     `;
     container.appendChild(row);
 }
@@ -7623,7 +7630,7 @@ function renderExpenseRegister() {
     const direct   = expensesFiltered.filter(e => e.type === 'Direct').reduce((s, e) => s + Number(e.amount || 0), 0);
     const indirect = expensesFiltered.filter(e => e.type === 'Indirect').reduce((s, e) => s + Number(e.amount || 0), 0);
 
-    const fmt = v => '₹' + Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const fmt = v => 'â‚¹' + Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 });
     const el = id => document.getElementById(id);
     if (el('exp-stat-total'))   el('exp-stat-total').innerText   = fmt(total);
     if (el('exp-stat-direct'))  el('exp-stat-direct').innerText  = fmt(direct);
@@ -7765,7 +7772,7 @@ async function loadTrialBalance() {
         let html = '';
         let totalDr = 0;
         let totalCr = 0;
-        const fmt = v => '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2});
+        const fmt = v => 'â‚¹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2});
 
         // Grouping
         const groups = {};
@@ -7852,7 +7859,7 @@ async function loadLedgerStatement() {
         let runningBal = data.openingBalance;
         let balType = data.obType; // DR or CR
 
-        const fmt = v => '₹' + Number(Math.abs(v)).toLocaleString('en-IN', {minimumFractionDigits:2});
+        const fmt = v => 'â‚¹' + Number(Math.abs(v)).toLocaleString('en-IN', {minimumFractionDigits:2});
         
         // Header
         let html = `
@@ -7962,7 +7969,7 @@ async function loadFinancialStatements() {
 function renderPL(pl) {
     const container = document.getElementById('pl-results');
     if (!container) return;
-    const fmt = v => '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2});
+    const fmt = v => 'â‚¹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2});
 
     let html = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
@@ -7993,7 +8000,7 @@ function renderPL(pl) {
 function renderBS(bs) {
     const container = document.getElementById('bs-results');
     if (!container) return;
-    const fmt = v => '₹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2});
+    const fmt = v => 'â‚¹' + Number(v).toLocaleString('en-IN', {minimumFractionDigits:2});
 
     let html = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
@@ -8069,8 +8076,8 @@ function renderPendingBills() {
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <div>
-                        <div style="font-size: 0.85rem; font-weight: 900; color: #fff;">₹${Number(bill.outstandingAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
-                        <div style="font-size: 0.55rem; color: var(--text-muted); font-weight: 700;">PENDING / ₹${Number(bill.grandTotal).toLocaleString('en-IN')}</div>
+                        <div style="font-size: 0.85rem; font-weight: 900; color: #fff;">â‚¹${Number(bill.outstandingAmount).toLocaleString('en-IN', {minimumFractionDigits:2})}</div>
+                        <div style="font-size: 0.55rem; color: var(--text-muted); font-weight: 700;">PENDING / â‚¹${Number(bill.grandTotal).toLocaleString('en-IN')}</div>
                     </div>
                     <input type="number" step="0.01" class="bill-link-amt" data-index="${index}" placeholder="0.00" oninput="updateLinkedTotal()" style="width: 100px; padding: 6px 10px; background: rgba(0,0,0,0.3); border: 1.5px solid var(--glass-border); border-radius: 8px; color: #fff; font-size: 0.8rem; text-align: right; font-weight: 800;">
                 </div>
@@ -8088,12 +8095,12 @@ function updateLinkedTotal() {
     });
 
     const badge = document.getElementById('linked-total-badge');
-    if(badge) badge.innerText = `LINKED: ₹${linked.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
+    if(badge) badge.innerText = `LINKED: â‚¹${linked.toLocaleString('en-IN', {minimumFractionDigits:2})}`;
     
     const unallocated = totalAmt - linked;
     const unallocatedEl = document.getElementById('unallocated-amount');
     if(unallocatedEl) {
-        unallocatedEl.innerText = `₹${Math.abs(unallocated).toLocaleString('en-IN', {minimumFractionDigits:2})} ${unallocated < 0 ? 'OVER' : ''}`;
+        unallocatedEl.innerText = `â‚¹${Math.abs(unallocated).toLocaleString('en-IN', {minimumFractionDigits:2})} ${unallocated < 0 ? 'OVER' : ''}`;
         unallocatedEl.style.color = unallocated < 0 ? '#ef4444' : (unallocated === 0 ? '#10b981' : '#f59e0b');
     }
 }
