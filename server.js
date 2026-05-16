@@ -2326,7 +2326,7 @@ async function autoPostInvoiceJV(invoice, stockist, t) {
             type: 'DR',
             amount: invoice.grandTotal,
             entityType: 'Ledger',
-            entityName: 'Sundry Debtors',
+            entityName: 'Sundry Debtor',
             notes: `Sales Billing - Party: ${stockist ? stockist.name : 'Unknown'}`
         },
         {
@@ -2379,7 +2379,7 @@ async function autoPostPurchaseJV(purchase, stockist, t) {
             type: 'CR',
             amount: purchase.grandTotal,
             entityType: 'Ledger',
-            entityName: 'Sundry Creditors',
+            entityName: 'Sundry Creditor',
             notes: `Purchase Billing - Supplier: ${stockist ? stockist.name : 'Unknown'}`
         }
     ];
@@ -2417,7 +2417,7 @@ async function autoPostNoteJV(note, t) {
             type: isCN ? 'CR' : 'DR', 
             amount: note.amount, 
             entityType: 'Ledger', 
-            entityName: isCN ? 'Sundry Debtors' : 'Sundry Creditors', 
+            entityName: isCN ? 'Sundry Debtor' : 'Sundry Creditor', 
             notes: `${isCN ? 'CN' : 'DN'} - Party: ${stockist ? stockist.name : 'Unknown'}` 
         },
         { jvId: jv.id, type: isCN ? 'DR' : 'CR', amount: note.amount, entityType: 'Ledger', entityName: 'Adjustment Account', notes: note.description || '' }
@@ -2463,7 +2463,7 @@ async function autoPostPaymentJV(payment, stockist, t) {
             type: isReceipt ? 'CR' : 'DR',
             amount: payment.amount,
             entityType: 'Ledger',
-            entityName: isReceipt ? 'Sundry Debtors' : 'Sundry Creditors',
+            entityName: isReceipt ? 'Sundry Debtor' : 'Sundry Creditor',
             notes: `${isReceipt ? 'Receipt' : 'Payment'} - Party: ${stockist ? stockist.name : 'Unknown'}`
         }
     ], { transaction: t });
@@ -2745,7 +2745,7 @@ app.get('/api/admin/financial-statements', async (req, res) => {
             return true;
         };
 
-        const getNetBal = (type, id, nature) => {
+        const getNetBal = (type, id, nature, name = null) => {
             let dr = 0, cr = 0;
             if (type === 'Ledger') {
                 const l = ledgers.find(x => x.id == id);
@@ -2760,7 +2760,18 @@ app.get('/api/admin/financial-statements', async (req, res) => {
                     if (s.partyType === 'SUPPLIER') cr += ob; else dr += ob;
                 }
             }
-            const relevantLines = (lines || []).filter(line => line.entityType === type && line.entityId == id && dateFilter(line));
+
+            const relevantLines = (lines || []).filter(line => {
+                if (line.entityType !== type) return false;
+                // Match by ID or by Name (for generic ledgers)
+                if (line.entityId == id) return true;
+                if (type === 'Ledger' && name && line.entityName === name) return true;
+                // Handle plural/singular mismatches
+                if (type === 'Ledger' && name === 'Sundry Debtor' && line.entityName === 'Sundry Debtors') return true;
+                if (type === 'Ledger' && name === 'Sundry Creditor' && line.entityName === 'Sundry Creditors') return true;
+                return false;
+            }).filter(dateFilter);
+
             relevantLines.forEach(line => {
                 if (line.type === 'DR') dr += Number(line.amount);
                 else cr += Number(line.amount);
@@ -2772,7 +2783,7 @@ app.get('/api/admin/financial-statements', async (req, res) => {
 
         // 1. Process Master Ledgers
         ledgers.forEach(l => {
-            const bal = getNetBal('Ledger', l.id, l.nature);
+            const bal = getNetBal('Ledger', l.id, l.nature, l.name);
             if (bal === 0) return;
             const item = { name: l.name, amount: Math.abs(bal) };
             
@@ -2806,7 +2817,10 @@ app.get('/api/admin/financial-statements', async (req, res) => {
         });
 
         res.json({ success: true, assets, liabilities, income, expenses });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
+    } catch (e) { 
+        console.error('[ERROR] Financial Statement Generation Failed:', e);
+        res.status(500).json({ success: false, error: e.message }); 
+    }
 });
 
 
