@@ -491,8 +491,14 @@ async function saveSettings(e) {
             alert("✅ Global Settings Saved Successfully!");
             companyProfile = result.settings;
             renderSettings();
+        } else {
+            console.error("Server error saving settings:", result);
+            alert("❌ FAILED: " + (result.error || result.message || "Unknown server error"));
         }
-    } catch (e) { alert("Failed to save settings"); }
+    } catch (e) { 
+        console.error("Network/Client error saving settings:", e);
+        alert("🚨 CRITICAL ERROR: Could not save settings.\n" + (e.message || "Check your connection."));
+    }
     finally { if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; } }
 }
 
@@ -1173,23 +1179,23 @@ function closeProductModal() {
 
 async function saveProduct(e) {
     e.preventDefault();
-    const id = document.getElementById('prod-id').value;
+    const id = safeGetVal('prod-id');
     const data = {
-        name: document.getElementById('prod-name').value,
-        manufacturer: document.getElementById('prod-manufacturer').value || '',
-        hsn: document.getElementById('prod-hsn').value,
-        category: document.getElementById('prod-cat').value,
-        group: document.getElementById('prod-group').value,
-        packing: document.getElementById('prod-packing').value,
-        mrp: Number(document.getElementById('prod-mrp').value),
-        gstPercent: Math.floor(Number(document.getElementById('prod-gst').value || 12)),
-        ptr: Number(document.getElementById('prod-ptr').value),
-        pts: Number(document.getElementById('prod-pts').value),
-        purchaseRate: Number(document.getElementById('prod-purchase-rate').value || 0),
-        qtyAvailable: Math.floor(Number(document.getElementById('prod-qty').value || 0)),
+        name: safeGetVal('prod-name'),
+        manufacturer: safeGetVal('prod-manufacturer'),
+        hsn: safeGetVal('prod-hsn'),
+        category: safeGetVal('prod-cat'),
+        group: safeGetVal('prod-group'),
+        packing: safeGetVal('prod-packing'),
+        mrp: Number(safeGetVal('prod-mrp')),
+        gstPercent: Math.floor(Number(safeGetVal('prod-gst') || 12)),
+        ptr: Number(safeGetVal('prod-ptr')),
+        pts: Number(safeGetVal('prod-pts')),
+        purchaseRate: Number(safeGetVal('prod-purchase-rate') || 0),
+        qtyAvailable: Math.floor(Number(safeGetVal('prod-qty') || 0)),
         batches: currentProductBatches,
-        bonusBuy: Math.floor(Number(document.getElementById('prod-buy').value || 0)),
-        bonusGet: Math.floor(Number(document.getElementById('prod-get').value || 0))
+        bonusBuy: Math.floor(Number(safeGetVal('prod-buy') || 0)),
+        bonusGet: Math.floor(Number(safeGetVal('prod-get') || 0))
     };
 
     const saveBtn = document.getElementById('btn-save-product');
@@ -1927,8 +1933,8 @@ function closePartyModal() {
 
 async function saveParty(e) {
     e.preventDefault();
-    const id = document.getElementById('party-id').value;
-    const hq = document.getElementById('party-hq').value;
+    const id = safeGetVal('party-id');
+    const hq = safeGetVal('party-hq');
 
     // Enforce HQ Selection
     if (!hq) {
@@ -1936,26 +1942,26 @@ async function saveParty(e) {
     }
 
     const data = {
-        name: document.getElementById('party-name').value,
-        partyType: document.getElementById('party-type').value,
-        loginId: document.getElementById('party-login').value,
-        password: document.getElementById('party-pass').value,
-        email: document.getElementById('party-email').value,
-        creditLimit: Number(document.getElementById('party-limit').value),
-        outstandingBalance: Number(document.getElementById('party-balance').value),
-        panNo: document.getElementById('party-pan').value,
-        gstNo: document.getElementById('party-gst').value,
-        dlNo: document.getElementById('party-dl').value,
-        fssaiNo: document.getElementById('party-fssai').value,
-        city: document.getElementById('party-city').value,
-        state: document.getElementById('party-state').value,
-        phone: document.getElementById('party-phone').value,
-        address: document.getElementById('party-address').value,
-        pincode: document.getElementById('party-pincode').value,
+        name: safeGetVal('party-name'),
+        partyType: safeGetVal('party-type'),
+        loginId: safeGetVal('party-login'),
+        password: safeGetVal('party-pass'),
+        email: safeGetVal('party-email'),
+        creditLimit: Number(safeGetVal('party-limit')),
+        outstandingBalance: Number(safeGetVal('party-balance')),
+        panNo: safeGetVal('party-pan'),
+        gstNo: safeGetVal('party-gst'),
+        dlNo: safeGetVal('party-dl'),
+        fssaiNo: safeGetVal('party-fssai'),
+        city: safeGetVal('party-city'),
+        state: safeGetVal('party-state'),
+        phone: safeGetVal('party-phone'),
+        address: safeGetVal('party-address'),
+        pincode: safeGetVal('party-pincode'),
         hq: hq,
-        bankName: document.getElementById('party-bank-name').value,
-        bankAccountNo: document.getElementById('party-bank-acc').value,
-        bankIfsc: document.getElementById('party-bank-ifsc').value,
+        bankName: safeGetVal('party-bank-name'),
+        bankAccountNo: safeGetVal('party-bank-acc'),
+        bankIfsc: safeGetVal('party-bank-ifsc'),
         approved: true 
     };
 
@@ -3031,13 +3037,13 @@ async function savePurchaseEntry(event) {
     if (event) event.preventDefault();
     if (!purchaseItems.length) return alert('⚠️ Please add at least one item to the purchase list.');
 
-    const supplier = document.getElementById('pur-supplier').value;
+    const supplier = safeGetVal('pur-supplier');
     if (!supplier) return alert('⚠️ Please select a Supplier first.');
 
-    const billNo = document.getElementById('pur-bill-no').value;
+    const billNo = safeGetVal('pur-bill-no');
     if (!billNo) return alert('⚠️ Internal Bill No is missing. Please close and reopen the form — the number is auto-generated from the server.');
 
-    const billDate = document.getElementById('pur-date').value;
+    const billDate = safeGetVal('pur-date');
     if (!billDate) return alert('⚠️ Please select a Purchase Date.');
 
     // Detect the button that triggered the POST (works for both form submit and onclick)
@@ -3056,11 +3062,11 @@ async function savePurchaseEntry(event) {
         const payload = {
             supplierId: supplier,
             billNo,
-            supplierInvoiceNo: document.getElementById('pur-supplier-inv-no')?.value?.trim() || '',
+            supplierInvoiceNo: safeGetVal('pur-supplier-inv-no'),
             date: billDate,
-            paymentMode: document.getElementById('pur-payment-mode').value,
-            warehouse: document.getElementById('pur-warehouse')?.value || 'MAIN',
-            remarks: document.getElementById('pur-remarks').value,
+            paymentMode: safeGetVal('pur-payment-mode'),
+            warehouse: safeGetVal('pur-warehouse') || 'MAIN',
+            remarks: safeGetVal('pur-remarks'),
             items: purchaseItems,
             additionalCharges: purchaseCharges,
             otherChargesTotal,
@@ -3266,6 +3272,7 @@ function updateSaleProductMeta(prodId) {
     safeSetVal('sale-hsn', prod.hsn || '');
     safeSetVal('sale-mrp', prod.mrp || 0);
     safeSetVal('sale-ptr', prod.ptr || 0);
+    safeSetVal('sale-rate', prod.pts || 0); // Default to PTS as rate
     safeSetVal('sale-gst-pct', prod.gstPercent || 0);
 
     // Populate Batch Dropdown
@@ -3321,6 +3328,8 @@ function updateSaleBatchMeta(batchNo) {
     if (prod && batchNo) {
         const batch = prod.batches.find(b => b.batchNo === batchNo);
         if (batch) {
+            safeSetVal('sale-pack', prod.packing || '');
+            safeSetVal('sale-mfg-dt', batch.mfgDate || '');
             safeSetVal('sale-exp-dt', batch.expDate || '');
             if (batch.mrp) safeSetVal('sale-mrp', batch.mrp);
             if (batch.ptr) safeSetVal('sale-ptr', batch.ptr);
@@ -3353,6 +3362,8 @@ function addSaleItem() {
     const ptr = Number(document.getElementById('sale-ptr').value || 0);
     const gstPct = Number(document.getElementById('sale-gst-pct').value);
     const hsn = safeGetVal('sale-hsn');
+    const pack = safeGetVal('sale-pack');
+    const mfg = safeGetVal('sale-mfg-dt');
     const exp = safeGetVal('sale-exp-dt');
     const mrp = safeGetVal('sale-mrp');
 
@@ -3364,6 +3375,8 @@ function addSaleItem() {
         name: prod.name,
         batch: batchNo,
         hsn: hsn,
+        pack: pack,
+        mfgDate: mfg,
         expDate: exp,
         mrp: mrp,
         ptr: ptr,
@@ -3382,6 +3395,8 @@ function addSaleItem() {
     document.getElementById('sale-prod-select').value = '';
     document.getElementById('sale-batch-select').innerHTML = '';
     document.getElementById('sale-hsn').value = '';
+    document.getElementById('sale-pack').value = '';
+    document.getElementById('sale-mfg-dt').value = '';
     document.getElementById('sale-exp-dt').value = '';
     document.getElementById('sale-mrp').value = '';
     document.getElementById('sale-ptr').value = '';
@@ -3456,8 +3471,10 @@ function renderSaleItems() {
                 <button type="button" onclick="directSaleItems.splice(${index}, 1); renderSaleItems();" style="color:#fff; background:#ef4444; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.6rem; font-weight:800;">DEL</button>
             </td>
             <td><div style="font-weight:700; color:#fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div></td>
-            <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
             <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.hsn || '-'}</div></td>
+            <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.pack || '-'}</div></td>
+            <td><div style="font-weight:600; font-size:0.7rem;">${item.batch}</div></td>
+            <td><div style="font-size:0.65rem; color:var(--text-muted);">${item.mfgDate || '-'}</div></td>
             <td><div style="font-weight:600; font-size:0.7rem; color:var(--accent);">${item.expDate || item.exp || item.expiry || '-'}</div></td>
             <td>₹${Number(item.mrp || 0).toFixed(2)}</td>
             <td style="font-size: 0.65rem; opacity: 0.6;">₹${Number(item.ptr || 0).toFixed(2)}</td>
@@ -3479,23 +3496,7 @@ function renderSaleItems() {
     }).join('');
 
 
-    const total = subTotal + gstTotal;
-    const rounded = Math.round(total);
-    const roundOff = rounded - total;
-
-    // Safety checks for element existence
-    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
-
-    setVal('sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('sale-gst-total', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    
-    const roEl = document.getElementById('sale-roundoff');
-    if (roEl) roEl.innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
-
-    // Update Strip
-    setVal('strip-sale-count', directSaleItems.length);
-    setVal('strip-sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    updateSaleStripTotals();
     // GST Split Monitoring (Telangana Compliance)
     const supplyState = (document.getElementById('sale-supply')?.value || '').toLowerCase();
     const partyId = document.getElementById('sale-party').value;
@@ -3591,20 +3592,21 @@ function renderSaleCharges() {
 }
 
 function updateSaleStripTotals() {
-    let subTotal = 0;
+    let prodTotal = 0;
     let gstTotal = 0;
     
     directSaleItems.forEach(item => {
         const val = (item.qty || 0) * (item.rate || 0);
         const gst = (val * (item.gstPercent || 0)) / 100;
-        subTotal += val;
+        prodTotal += val;
         gstTotal += gst;
     });
 
     // Add Additional Charges
     const chargesTaxable = saleCharges.reduce((acc, c) => acc + (c.amount || 0), 0);
     const chargesGst = saleCharges.reduce((acc, c) => acc + (c.gstAmount || 0), 0);
-    subTotal += chargesTaxable;
+    
+    const subTotal = prodTotal + chargesTaxable;
     gstTotal += chargesGst;
     
     const total = subTotal + gstTotal;
@@ -3613,15 +3615,9 @@ function updateSaleStripTotals() {
     
     const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
     
-    setVal('sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('sale-gst-total', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    setVal('sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
-    
-    const roEl = document.getElementById('sale-roundoff');
-    if (roEl) roEl.innerText = (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2);
-    
     setVal('strip-sale-count', directSaleItems.length);
-    setVal('strip-sale-subtotal', '₹' + subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-subtotal', '₹' + prodTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
+    setVal('strip-sale-charges', '₹' + chargesTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2}));
     setVal('strip-sale-gst', '₹' + gstTotal.toLocaleString('en-IN', {minimumFractionDigits: 2}));
     setVal('strip-sale-roundoff', (roundOff >= 0 ? '+' : '') + '₹' + roundOff.toFixed(2));
     setVal('strip-sale-total', '₹' + rounded.toLocaleString('en-IN', {minimumFractionDigits: 2}));
@@ -3644,6 +3640,9 @@ function updateSaleStripTotals() {
             if (labelEl) labelEl.innerText = "IGST:";
             if (splitEl) splitEl.innerText = `(INTER-STATE)`;
         }
+    } else {
+        if (labelEl) labelEl.innerText = "GST:";
+        if (splitEl) splitEl.innerText = "";
     }
 }
 
@@ -3651,8 +3650,8 @@ async function saveDirectSale(e) {
     e.preventDefault();
     if (!directSaleItems.length) return alert("Add at least one item");
 
-    const partyId = document.getElementById('sale-party').value;
-    const party = allStockists.find(s => s._id === partyId);
+    const partyId = safeGetVal('sale-party');
+    const party = allStockists.find(s => (s._id || s.id) == partyId);
 
     // Robust button selection to prevent UI hang
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
@@ -3677,20 +3676,20 @@ async function saveDirectSale(e) {
     const data = {
         party: partyId,
         partyName: party ? (party.companyName || party.name) : 'Direct Customer',
-        refNo: document.getElementById('sale-ref-no').value,
-        date: document.getElementById('sale-date').value,
-        channel: document.getElementById('sale-channel').value,
-        paymentMode: document.getElementById('sale-payment-mode').value,
-        remarks: document.getElementById('sale-remarks').value,
-        placeOfSupply: (document.getElementById('sale-supply') ? document.getElementById('sale-supply').value : '') || companyProfile.defaultPlaceOfSupply,
-        dueDate: document.getElementById('sale-due-date') ? document.getElementById('sale-due-date').value : '',
+        refNo: safeGetVal('sale-ref-no'),
+        date: safeGetVal('sale-date'),
+        channel: safeGetVal('sale-channel'),
+        paymentMode: safeGetVal('sale-payment-mode'),
+        remarks: safeGetVal('sale-remarks'),
+        placeOfSupply: safeGetVal('sale-supply') || (companyProfile ? companyProfile.defaultPlaceOfSupply : ''),
+        dueDate: safeGetVal('sale-due-date'),
         items: directSaleItems,
         additionalCharges: saleCharges,
         otherChargesTotal,
         subTotal,
         gstAmount,
         grandTotal,
-        type: document.getElementById('sale-type-input').value
+        type: safeGetVal('sale-type-input')
     };
 
 
@@ -5138,11 +5137,13 @@ function getReportDataByType(type, data, fromDate, toDate) {
                 }));
             } else {
                 fileName = `Statement_${selectedParty.name.replace(/\s+/g,'_')}`;
-                const pid = selectedParty._id || selectedParty.id;
+                const pid = (selectedParty._id || selectedParty.id).toString();
+                const isSupplier = selectedParty.partyType === 'SUPPLIER';
                 
-                const pInvs = filteredInvoices.filter(i => (i.stockistId || i.stockist?._id || '').toString() === pid.toString());
-                const pNotes = filteredNotes.filter(n => (n.stockistId || n.stockist?._id || '').toString() === pid.toString());
-                const pPays = filteredPayments.filter(p => (p.stockistId || p.stockist?._id || '').toString() === pid.toString());
+                const pInvs = filteredInvoices.filter(i => (i.stockistId || i.stockist?._id || '').toString() === pid);
+                const pNotes = filteredNotes.filter(n => (n.stockistId || n.stockist?._id || '').toString() === pid);
+                const pPays = filteredPayments.filter(p => (p.stockistId || p.stockist?._id || '').toString() === pid);
+                const pPurchases = filteredPurchases.filter(p => (p.supplierId || p.Supplier?._id || '').toString() === pid);
                 
                 let runningBal = 0;
                 const rows = [];
@@ -5153,6 +5154,9 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     if (hasItem && matchStatus) {
                         rows.push({ date: i.createdAt, ref: i.invoiceNo, type: 'INV', desc: 'Sales Invoice', dr: i.grandTotal, cr: 0 });
                     }
+                });
+                pPurchases.forEach(p => {
+                    rows.push({ date: p.invoiceDate || p.date || p.createdAt, ref: p.supplierInvoiceNo || p.purchaseNo, type: 'PUR', desc: 'Purchase Inward', dr: 0, cr: p.grandTotal });
                 });
                 pNotes.forEach(n => {
                     if (!itemFilter && !payStatusFilter) {
@@ -5168,7 +5172,10 @@ function getReportDataByType(type, data, fromDate, toDate) {
                 rows.sort((a,b) => new Date(a.date) - new Date(b.date));
                 
                 reportData = rows.map(r => {
-                    runningBal += (r.dr - r.cr);
+                    // For Customers: DR increases balance. For Suppliers: CR increases balance.
+                    if (isSupplier) runningBal += (r.cr - r.dr);
+                    else runningBal += (r.dr - r.cr);
+
                     return {
                         "Date": new Date(r.date).toLocaleDateString('en-GB'),
                         "Ref No": r.ref,
@@ -5176,7 +5183,7 @@ function getReportDataByType(type, data, fromDate, toDate) {
                         "Description": r.desc,
                         "Debit (Dr)": r.dr.toFixed(2),
                         "Credit (Cr)": r.cr.toFixed(2),
-                        "Running Balance": runningBal.toFixed(2) + (runningBal >= 0 ? ' Dr' : ' Cr')
+                        "Running Balance": runningBal.toFixed(2) + (isSupplier ? (runningBal >= 0 ? ' Cr' : ' Dr') : (runningBal >= 0 ? ' Dr' : ' Cr'))
                     };
                 });
             }
@@ -5190,13 +5197,12 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     const prodId = (item.product || item.productId || '').toString();
                     const prod = (products || []).find(p => (p._id || p.id || '').toString() === prodId);
                     
-                    const costRate = prod ? Number(prod.purchaseRate || 0) : 0;
+                    const costRate = Number(item.pts || (prod ? prod.purchaseRate : 0)); // Use item PTS if saved
                     const saleRate = Number(item.priceUsed || 0);
                     const qty = Number(item.qty || 0);
                     const brand = prod ? (prod.category || prod.group || 'GENERAL') : 'GENERAL';
                     
                     const profitAmt = (saleRate - costRate) * qty;
-                    // Margin Formula: ((Sale - Cost) / Sale) * 100
                     const marginPct = saleRate > 0 ? (((saleRate - costRate) / saleRate) * 100).toFixed(2) : '0';
 
                     reportData.push({
@@ -5218,7 +5224,11 @@ function getReportDataByType(type, data, fromDate, toDate) {
         case 'p-and-l':
             fileName = "Profit_and_Loss_Statement";
             const totalSales = filteredInvoices.reduce((s, x) => s + x.subTotal, 0);
+            const totalPurchases = filteredPurchases.reduce((s, x) => s + x.subTotal, 0);
             const totalExpenses = filteredExpenses.reduce((s, x) => s + x.amount, 0);
+            const salesReturns = filteredNotes.filter(n => n.noteType === 'CN').reduce((s, x) => s + x.amount, 0);
+            const purchaseReturns = filteredNotes.filter(n => n.noteType === 'DN').reduce((s, x) => s + x.amount, 0);
+            
             let totalCogs = 0;
             filteredInvoices.forEach(inv => {
                 inv.items.forEach(item => {
@@ -5227,12 +5237,15 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     totalCogs += (prod ? Number(prod.purchaseRate || 0) : 0) * Number(item.qty || 0);
                 });
             });
+            
             reportData = [
                 { "Metric": "Total Sales (Revenue)", "Amount": totalSales.toFixed(2) },
+                { "Metric": "Less: Sales Returns (CN)", "Amount": salesReturns.toFixed(2) },
+                { "Metric": "Net Sales", "Amount": (totalSales - salesReturns).toFixed(2) },
                 { "Metric": "Cost of Goods Sold (COGS)", "Amount": totalCogs.toFixed(2) },
-                { "Metric": "Gross Profit", "Amount": (totalSales - totalCogs).toFixed(2) },
+                { "Metric": "Gross Profit", "Amount": (totalSales - salesReturns - totalCogs).toFixed(2) },
                 { "Metric": "Total Indirect Expenses", "Amount": totalExpenses.toFixed(2) },
-                { "Metric": "NET PROFIT / LOSS", "Amount": (totalSales - totalCogs - totalExpenses).toFixed(2) }
+                { "Metric": "NET PROFIT / LOSS", "Amount": (totalSales - salesReturns - totalCogs - totalExpenses).toFixed(2) }
             ];
             break;
 

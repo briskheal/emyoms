@@ -1245,7 +1245,7 @@ app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
 
         const tInv = await db.sequelize.transaction();
         await order.update({ status: 'invoiced' }, { transaction: tInv });
-        await autoPostInvoiceJV(newInvoice, tInv);
+        await autoPostInvoiceJV(newInvoice, stockist, tInv);
         await tInv.commit();
         res.json({ success: true, invoice: newInvoice });
     } catch (err) { 
@@ -2308,7 +2308,7 @@ app.get('/api/admin/pdcn/eligibility/:partyId', async (req, res) => {
 
 // --- AUTO JOURNAL POSTING ENGINE ---
 
-async function autoPostInvoiceJV(invoice, stockist) {
+async function autoPostInvoiceJV(invoice, stockist, t) {
     console.log(`[DEBUG] Triggering Auto JV for Sales: ${invoice.invoiceNo}`);
     const jvNo = await getNextDocNo('jv');
     const jv = await db.JournalVoucher.create({
@@ -2318,7 +2318,7 @@ async function autoPostInvoiceJV(invoice, stockist) {
         totalAmount: invoice.grandTotal,
         refType: 'Sales',
         refId: invoice.id
-    });
+    }, { transaction: t });
 
     const lines = [
         {
@@ -2351,10 +2351,10 @@ async function autoPostInvoiceJV(invoice, stockist) {
         });
     }
 
-    await db.JournalEntryLine.bulkCreate(lines);
+    await db.JournalEntryLine.bulkCreate(lines, { transaction: t });
 }
 
-async function autoPostPurchaseJV(purchase, stockist) {
+async function autoPostPurchaseJV(purchase, stockist, t) {
     console.log(`[DEBUG] Triggering Auto JV for Purchase: ${purchase.purchaseNo}`);
     const jvNo = await getNextDocNo('jv');
     const jv = await db.JournalVoucher.create({
@@ -2364,7 +2364,7 @@ async function autoPostPurchaseJV(purchase, stockist) {
         totalAmount: purchase.grandTotal,
         refType: 'Purchase',
         refId: purchase.id
-    });
+    }, { transaction: t });
 
     const lines = [
         {
@@ -2397,7 +2397,27 @@ async function autoPostPurchaseJV(purchase, stockist) {
         });
     }
 
-    await db.JournalEntryLine.bulkCreate(lines);
+    await db.JournalEntryLine.bulkCreate(lines, { transaction: t });
+}
+
+async function autoPostNoteJV(note, t) {
+    console.log(`[DEBUG] Triggering Auto JV for Financial Note: ${note.noteNo}`);
+    const stockist = await db.Stockist.findByPk(note.stockistId, { transaction: t });
+    const jvNo = await getNextDocNo('jv');
+    const isCN = note.noteType === 'CN';
+    const jv = await db.JournalVoucher.create({
+        jvNo,
+        date: note.createdAt || new Date(),
+        narration: `Auto JV: ${isCN ? 'Credit Note' : 'Debit Note'} ${note.noteNo} for ${stockist ? stockist.name : 'Unknown Party'} - ${note.reason || ''}`,
+        totalAmount: note.amount,
+        refType: 'FinancialNote',
+        refId: note.id
+    }, { transaction: t });
+    const lines = [
+        { jvId: jv.id, type: isCN ? 'CR' : 'DR', amount: note.amount, entityType: 'Stockist', entityId: stockist ? stockist.id : null, entityName: stockist ? stockist.name : 'Unknown Party', notes: note.reason || 'Financial Adjustment' },
+        { jvId: jv.id, type: isCN ? 'DR' : 'CR', amount: note.amount, entityType: 'Ledger', entityName: 'Adjustment Account', notes: note.description || '' }
+    ];
+    await db.JournalEntryLine.bulkCreate(lines, { transaction: t });
 }
 
 // --- PAYMENTS & EXPENSES ---
@@ -2745,18 +2765,40 @@ app.get('/api/admin/financial-statements', async (req, res) => {
         };
 
         const assets = [], liabilities = [], income = [], expenses = [];
+
+        // 1. Process Master Ledgers
         ledgers.forEach(l => {
             const bal = getNetBal('Ledger', l.id, l.nature);
             if (bal === 0) return;
             const item = { name: l.name, amount: Math.abs(bal) };
-            if (l.nature === 'DR') assets.push(item); else liabilities.push(item);
+            
+            const grp = (l.group || '').toLowerCase();
+            // Categorize by Group
+            if (grp.includes('sales') || grp.includes('income')) {
+                income.push(item);
+            } else if (grp.includes('purchase') || grp.includes('expense')) {
+                expenses.push(item);
+            } else if (l.nature === 'DR') {
+                assets.push(item);
+            } else {
+                liabilities.push(item);
+            }
         });
 
+        // 2. Process Stockists (Sundry Debtors/Creditors)
         stockists.forEach(s => {
             const bal = getNetBal('Stockist', s.id, 'DR');
             if (bal === 0) return;
-            if (bal > 0) assets.push({ name: `Debtor: ${s.name}`, amount: Math.abs(bal) });
-            else liabilities.push({ name: `Creditor: ${s.name}`, amount: Math.abs(bal) });
+            const item = { name: (s.partyType === 'SUPPLIER' ? 'Creditor: ' : 'Debtor: ') + s.name, amount: Math.abs(bal) };
+            if (bal > 0) assets.push(item);
+            else liabilities.push(item);
+        });
+
+        // 3. Process Expense Categories
+        expCats.forEach(c => {
+            const bal = getNetBal('ExpenseCategory', c.id, 'DR');
+            if (bal === 0) return;
+            expenses.push({ name: c.name, amount: Math.abs(bal) });
         });
 
         res.json({ success: true, assets, liabilities, income, expenses });
@@ -2823,7 +2865,7 @@ app.post('/api/admin/journal-vouchers', async (req, res) => {
             }, { transaction: t });
 
             // FINANCIAL INTEGRATION: Update Stockist Balance if applicable
-            if (line.entityType === 'Stockist' && line.entityId) {
+            if (false && line.entityType === 'Stockist' && line.entityId) { // DE-LINKED
                 const stockist = await db.Stockist.findByPk(line.entityId, { transaction: t });
                 if (stockist) {
                     const adj = (line.type === 'DR') ? Number(line.amount) : -Number(line.amount);
@@ -2863,16 +2905,18 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
     try {
         const partyId = req.params.id;
         
-        const [invoices, notes, payments, purchases, jvLines] = await Promise.all([
+        const [invoices, notes, payments, purchases] = await Promise.all([
             db.Invoice.findAll({ where: { stockistId: partyId } }),
             db.FinancialNote.findAll({ where: { stockistId: partyId } }),
             db.Payment.findAll({ where: { stockistId: partyId } }),
-            db.PurchaseEntry.findAll({ where: { supplierId: partyId } }),
+            db.PurchaseEntry.findAll({ where: { supplierId: partyId } })
+        ]);
+        /* [REMOVED]
             db.JournalEntryLine.findAll({ 
                 where: { entityType: 'Stockist', entityId: partyId },
                 include: [{ model: db.JournalVoucher, attributes: ['jvNo', 'date', 'narration'] }]
             })
-        ]);
+        */
 
         const ledger = [];
         
@@ -2917,7 +2961,8 @@ app.get('/api/admin/parties/:id/ledger', async (req, res) => {
         }));
 
         // 5. Journal Entries (Manual Adjustments)
-        jvLines.forEach(l => ledger.push({
+        // [REMOVED] Journal Entries are strictly for bookkeeping and excluded from operational statement.
+        if (false) jvLines.forEach(l => ledger.push({
             date: l.JournalVoucher?.date || l.createdAt,
             refNo: l.JournalVoucher?.jvNo || `JV-${l.jvId}`,
             type: 'JOURNAL ENTRY',
@@ -2945,7 +2990,7 @@ app.get('/api/admin/reports/gstr1', async (req, res) => {
         });
 
         const report = invoices.map(inv => ({
-            "GSTIN of Recipient": inv.Stockist?.gstNo || "N/A",
+            "GSTIN of Recipient": inv.Stockist?.gstNo || "URD",
             "Receiver Name": inv.Stockist?.name || "N/A",
             "Invoice Number": inv.invoiceNo,
             "Invoice Date": inv.createdAt,

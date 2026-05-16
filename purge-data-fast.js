@@ -16,8 +16,11 @@ async function purge() {
             { m: db.PDCNClaim, name: 'PDCNClaim' },
             { m: db.NoteItem, name: 'NoteItem' },
             { m: db.FinancialNote, name: 'FinancialNote' },
+            { m: db.PaymentLink, name: 'PaymentLink' },
             { m: db.Payment, name: 'Payment' },
             { m: db.Expense, name: 'Expense' },
+            { m: db.JournalEntryLine, name: 'JournalEntryLine' },
+            { m: db.JournalVoucher, name: 'JournalVoucher' },
             { m: db.Media, name: 'Media' }
         ];
 

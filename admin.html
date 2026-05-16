@@ -2928,53 +2928,53 @@
 
     <!-- MODAL (Direct Sales / Online & Direct) -->
     <div id="directSaleModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.94); backdrop-filter: blur(24px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="glass-card" style="width: 1250px; height: 95vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--accent); border-radius: 20px; position: relative;">
+        <div class="glass-card" style="width: 98vw; height: 95vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border-top: 4px solid var(--accent); border-radius: 20px; position: relative;">
             
             <!-- FIXED HEADER -->
-            <div style="padding: 1.2rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); flex: 0 0 auto;">
+            <div style="padding: 0.45rem 2rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); flex: 0 0 auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div id="sale-modal-subtitle" style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;opacity:0.9;">DIRECT SALES MODULE</div>
-                        <div id="sale-modal-title" style="font-size:1.05rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 New Direct Order</div>
+                        <div id="sale-modal-subtitle" style="font-size:0.5rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);opacity:0.9;">DIRECT SALES MODULE</div>
+                        <div id="sale-modal-title" style="font-size:0.9rem;font-weight:800;color:#f8fafc;letter-spacing:-0.03em;">🛒 Generate Direct Invoice</div>
                     </div>
-                    <button type="button" class="btn btn-ghost" onclick="closeSaleModal()" style="padding:5px 12px;font-size:0.72rem;opacity:0.7;">✕ Close</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeSaleModal()" style="padding:4px 10px;font-size:0.7rem;opacity:0.7;">✕ Close</button>
                 </div>
             </div>
             
             <!-- SCROLLABLE CONTENT -->
-            <div style="flex: 1 1 auto; overflow-y: auto; padding: 0.8rem 1.5rem;">
-                <form id="saleForm" onsubmit="saveDirectSale(event)" style="height: 100%; display: flex; flex-direction: column;">
+            <div style="flex: 1 1 auto; overflow: hidden; display: flex; flex-direction: column; padding: 0.4rem 1.5rem 0.4rem 1.5rem;">
+                <form id="saleForm" onsubmit="saveDirectSale(event)" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     <input type="hidden" id="sale-type-input">
                     
                     <!-- PARTY & HEADER INFO -->
-                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1.5fr 0.85fr 1fr 0.8fr 0.75fr 0.75fr; gap: 0.4rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Select Party / Customer</label>
-                            <input type="text" id="sale-party-search" autocomplete="off" placeholder="Type Name/City..." onfocus="handlePartySearch(this, 'SALE')" oninput="handlePartySearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-party-search-results')" style="font-size: 0.8rem; height: 32px;">
+                            <input type="text" id="sale-party-search" autocomplete="off" placeholder="Type Name/City..." onfocus="handlePartySearch(this, 'SALE')" oninput="handlePartySearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-party-search-results')" style="font-size: 0.75rem; height: 30px;">
                             <input type="hidden" id="sale-party" required>
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Ref / Bill No</label>
-                            <input type="text" id="sale-ref-no" required placeholder="ORD-001" style="font-size: 0.8rem; height: 32px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7; color: var(--accent);">Ref / Bill No</label>
+                            <input type="text" id="sale-ref-no" required placeholder="ORD-001" style="font-size: 0.75rem; height: 30px;">
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Sale Date</label>
-                            <input type="date" id="sale-date" required style="font-size: 0.8rem; height: 32px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Sale Date</label>
+                            <input type="date" id="sale-date" required style="font-size: 0.75rem; height: 30px;">
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Place of Supply</label>
-                            <input type="text" id="sale-supply" placeholder="e.g. Telangana" oninput="renderSaleItems()" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: var(--accent); font-weight: 700; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Place of Supply</label>
+                            <input type="text" id="sale-supply" placeholder="e.g. Telangana" oninput="renderSaleItems()" style="font-size: 0.75rem; height: 30px; background: rgba(255,255,255,0.05); color: var(--accent); font-weight: 700; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Channel</label>
-                            <select id="sale-channel" onchange="updateSaleChannelContext(this.value)" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Channel</label>
+                            <select id="sale-channel" onchange="updateSaleChannelContext(this.value)" style="font-size: 0.75rem; height: 30px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 4px;">
                                 <option value="DIRECT">Direct Sale</option>
                                 <option value="ONLINE">Online</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label style="font-size: 0.6rem; opacity: 0.7;">Payment</label>
-                            <select id="sale-payment-mode" style="font-size: 0.8rem; height: 32px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 8px;">
+                            <label style="font-size: 0.55rem; opacity: 0.7;">Payment</label>
+                            <select id="sale-payment-mode" style="font-size: 0.75rem; height: 30px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0 4px;">
                                 <option value="CASH">CASH</option>
                                 <option value="UPI">UPI</option>
                                 <option value="CREDIT">CREDIT</option>
@@ -2983,44 +2983,50 @@
                     </div>
                     
                     <!-- CONSOLIDATED GRID ENTRY TABLE -->
-                    <div style="flex: 1; min-height: 400px; display: flex; flex-direction: column; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
-                        <div class="table-container" style="flex: 1; overflow-y: auto;">
-                            <table style="font-size: 0.72rem; table-layout: fixed; border-collapse: separate; border-spacing: 0;">
+                    <div style="flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border); overflow: hidden;">
+                        <div class="table-container" style="flex: 1; overflow-y: auto; overflow-x: auto;">
+                            <table style="font-size: 0.72rem; table-layout: auto; border-collapse: separate; border-spacing: 0; min-width: 1200px; width: 100%;">
                                 <thead style="position: sticky; top: 0; background: #0f172a; z-index: 100;">
-                                    <tr>
-                                        <th style="width: 45px; text-align: center;">ACT</th>
-                                        <th style="width: 22%;">Product Details</th>
-                                        <th style="width: 12%;">Batch</th>
-                                        <th style="width: 7%;">HSN</th>
-                                        <th style="width: 7%;">Exp</th>
-                                        <th style="width: 6%;">MRP</th>
-                                        <th style="width: 6%;">PTR</th>
-                                        <th style="width: 6%;">PTS</th>
-                                        <th style="width: 5%;">Qty</th>
-                                        <th style="width: 5%;">Free</th>
-                                        <th style="width: 5%;">GST%</th>
-                                        <th style="width: 10%; text-align: right;">Line Total</th>
+                                    <tr style="height: 28px;">
+                                        <th style="width: 35px; min-width: 35px; text-align: center; padding: 4px 2px;">ACT</th>
+                                        <th style="width: 16%; min-width: 160px; padding: 4px 5px;">Product Details</th>
+                                        <th style="width: 6%; min-width: 65px; padding: 4px 5px;">HSN</th>
+                                        <th style="width: 5%; min-width: 55px; padding: 4px 5px;">Pack</th>
+                                        <th style="width: 10%; min-width: 100px; padding: 4px 5px;">Batch</th>
+                                        <th style="width: 6%; min-width: 65px; padding: 4px 5px;">Mfg</th>
+                                        <th style="width: 6%; min-width: 65px; padding: 4px 5px;">Exp</th>
+                                        <th style="width: 6%; min-width: 65px; padding: 4px 5px;">MRP</th>
+                                        <th style="width: 6%; min-width: 65px; padding: 4px 5px;">PTR</th>
+                                        <th style="width: 6%; min-width: 65px; padding: 4px 5px;">Rate</th>
+                                        <th style="width: 4%; min-width: 45px; padding: 4px 5px;">Qty</th>
+                                        <th style="width: 4%; min-width: 45px; padding: 4px 5px;">Free</th>
+                                        <th style="width: 4%; min-width: 45px; padding: 4px 5px;">GST%</th>
+                                        <th style="width: 9%; min-width: 90px; text-align: right; padding: 4px 10px 4px 5px;">Line Total</th>
                                     </tr>
                                     <!-- INTEGRATED INPUT ROW -->
-                                    <tr style="background: rgba(16, 185, 129, 0.12); position: sticky; top: 32px; z-index: 99;">
-                                        <td style="text-align: center;">⚡</td>
-                                        <td style="overflow: visible;">
+                                    <tr style="background: rgba(16, 185, 129, 0.12); position: sticky; top: 26px; z-index: 99;">
+                                        <td style="text-align: center;">
+                                            <button type="button" onclick="addSaleItem()" title="Add Item (Enter)" style="background: var(--accent); border: none; color: #000; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 0.9rem; font-weight: 900; line-height: 1;">+</button>
+                                        </td>
+                                        <td style="overflow: visible; padding: 2px 4px;">
                                             <div class="search-container" style="position: relative;">
-                                                <input type="text" id="sale-prod-search" autocomplete="off" placeholder="Type name..." onfocus="handleProductSearch(this, 'SALE')" oninput="handleProductSearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-search-results'); handleSalesRowKey(event, 'sale-prod-search')" style="font-size: 0.75rem; padding: 4px 8px; background: rgba(0,0,0,0.4); height: 30px;">
+                                                <input type="text" id="sale-prod-search" autocomplete="off" placeholder="Search..." onfocus="handleProductSearch(this, 'SALE')" oninput="handleProductSearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-search-results'); handleSalesRowKey(event, 'sale-prod-search')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;">
                                                 <input type="hidden" id="sale-prod-select">
                                             </div>
                                         </td>
-                                        <td><select id="sale-batch-select" onchange="updateSaleBatchMeta(this.value)" onkeydown="handleSalesRowKey(event, 'sale-batch-select')" style="font-size: 0.75rem; padding: 2px 4px; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; height: 30px;"></select></td>
-                                        <td><input type="text" id="sale-hsn" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px; border:none; background:transparent; height: 30px; width: 100%;"></td>
-                                        <td><input type="text" id="sale-exp-dt" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px; border:none; background:transparent; height: 30px; width: 100%;"></td>
-                                        <td><input type="text" id="sale-mrp" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px; border:none; background:transparent; height: 30px; width: 100%;"></td>
-                                        <td><input type="number" id="sale-ptr" step="0.01" onkeydown="handleSalesRowKey(event, 'sale-ptr')" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px; width: 100%;"></td>
-                                        <td><input type="number" id="sale-rate" step="0.01" oninput="calculateSaleLineTotal()" onkeydown="handleSalesRowKey(event, 'sale-rate')" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px; width: 100%;"></td>
-                                        <td><input type="number" id="sale-qty" oninput="calculateSaleLineTotal()" onkeydown="handleSalesRowKey(event, 'sale-qty')" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px; width: 100%;"></td>
-                                        <td><input type="number" id="sale-free" value="0" onkeydown="handleSalesRowKey(event, 'sale-free')" style="font-size: 0.75rem; padding: 4px; background: rgba(0,0,0,0.4); height: 30px; width: 100%;"></td>
-                                        <td><input type="number" id="sale-gst-pct" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px; border:none; background:transparent; height: 30px; width: 100%;"></td>
-                                        <td style="text-align: right; padding-right: 12px;">
-                                            <div id="sale-line-total" style="font-weight: 800; color: var(--accent); font-size: 0.8rem;">₹0.00</div>
+                                        <td style="padding: 2px 4px;"><input type="text" id="sale-hsn" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
+                                        <td style="padding: 2px 4px;"><input type="text" id="sale-pack" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
+                                        <td style="padding: 2px 4px;"><select id="sale-batch-select" onchange="updateSaleBatchMeta(this.value)" onkeydown="handleSalesRowKey(event, 'sale-batch-select')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 2px; height: 24px; width: 100%;"></select></td>
+                                        <td style="padding: 2px 4px;"><input type="text" id="sale-mfg-dt" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
+                                        <td style="padding: 2px 4px;"><input type="text" id="sale-exp-dt" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
+                                        <td style="padding: 2px 4px;"><input type="text" id="sale-mrp" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
+                                        <td style="padding: 2px 4px;"><input type="number" id="sale-ptr" step="0.01" onkeydown="handleSalesRowKey(event, 'sale-ptr')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
+                                        <td style="padding: 2px 4px;"><input type="number" id="sale-rate" step="0.01" oninput="calculateSaleLineTotal()" onkeydown="handleSalesRowKey(event, 'sale-rate')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
+                                        <td style="padding: 2px 4px;"><input type="number" id="sale-qty" oninput="calculateSaleLineTotal()" onkeydown="handleSalesRowKey(event, 'sale-qty')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
+                                        <td style="padding: 2px 4px;"><input type="number" id="sale-free" value="0" onkeydown="handleSalesRowKey(event, 'sale-free')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
+                                        <td style="padding: 2px 4px;"><input type="number" id="sale-gst-pct" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
+                                        <td style="text-align: right; padding-right: 10px;">
+                                            <div id="sale-line-total" style="font-weight: 800; color: var(--accent); font-size: 0.75rem;">₹0.00</div>
                                         </td>
                                     </tr>
                                 </thead>
@@ -3030,33 +3036,36 @@
                     </div>
 
                     <!-- ADDITIONAL CHARGES FOR SALE -->
-                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; margin-top: 1rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
+                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem;">
                         <!-- Charges Entry -->
-                        <div style="background: rgba(255,255,255,0.02); padding: 0.8rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="font-size: 0.55rem; font-weight: 900; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">➕ Add Courier / Other Charges</div>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="text" id="sale-charge-name" autocomplete="off" placeholder="Charge Name" style="flex: 1.5; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); color: #fff;">
-                                <input type="text" id="sale-charge-hsn" autocomplete="off" placeholder="HSN" style="flex: 0.7; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); color: #fff;">
-                                <input type="number" id="sale-charge-amount" placeholder="Amt" style="flex: 0.8; font-size: 0.75rem; height: 30px; background: rgba(0,0,0,0.3); text-align: right; color: #fff;">
-                                <select id="sale-charge-gst" style="flex: 0.7; font-size: 0.75rem; height: 30px; background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;">
-                                    <option value="18">18% GST</option>
-                                    <option value="12" selected>12% GST</option>
-                                    <option value="5">5% GST</option>
-                                    <option value="0">Exempted</option>
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 10px; padding: 0.6rem;">
+                            <div style="font-size: 0.6rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                                <span>Add Courier / Other Charges</span>
+                                <span style="opacity: 0.6;">GST 12% or 18%</span>
+                            </div>
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <input type="text" id="sale-charge-name" autocomplete="off" placeholder="Charge Name..." style="flex: 1.5; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="text" id="sale-charge-hsn" autocomplete="off" placeholder="HSN" style="flex: 0.7; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <input type="number" id="sale-charge-amount" placeholder="Amount" style="flex: 1; font-size: 0.75rem; height: 28px; background: rgba(0,0,0,0.3); color: #fff;">
+                                <select id="sale-charge-gst" style="flex: 0.8; font-size: 0.75rem; height: 28px; background: #1e293b; color: #fff; border: 1px solid rgba(255,255,255,0.1);">
+                                    <option value="18">18%</option>
+                                    <option value="12" selected>12%</option>
+                                    <option value="5">5%</option>
+                                    <option value="0">0%</option>
                                 </select>
-                                <button type="button" onclick="addSaleCharge()" style="background: var(--accent); border: none; color: #000; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-weight: 900;">+</button>
+                                <button type="button" onclick="addSaleCharge()" class="btn btn-primary" style="padding: 0 12px; height: 28px; font-size: 1rem; background: var(--accent); color: #000;">+</button>
                             </div>
                         </div>
                         <!-- Charges List -->
-                        <div style="background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border);">
-                            <table style="width: 100%; font-size: 0.65rem;">
-                                <thead style="background: rgba(255,255,255,0.03);">
+                        <div style="background: rgba(0,0,0,0.2); border-radius: 10px; overflow: hidden; border: 1px solid var(--glass-border);">
+                            <table style="width: 100%; font-size: 0.65rem; border-collapse: collapse;">
+                                <thead style="background: rgba(255,255,255,0.03); height: 24px;">
                                     <tr>
-                                        <th style="padding: 4px 8px; text-align: left;">Charge Name</th>
-                                        <th style="padding: 4px 8px; text-align: right;">Amt</th>
-                                        <th style="padding: 4px 8px; text-align: center;">GST%</th>
-                                        <th style="padding: 4px 8px; text-align: right;">Total</th>
-                                        <th style="padding: 4px 8px;"></th>
+                                        <th style="padding: 2px 8px; text-align: left; opacity: 0.7;">Charge Name</th>
+                                        <th style="padding: 2px 8px; text-align: right; opacity: 0.7;">Amt</th>
+                                        <th style="padding: 2px 8px; text-align: center; opacity: 0.7;">GST%</th>
+                                        <th style="padding: 2px 8px; text-align: right; opacity: 0.7;">Total</th>
+                                        <th style="padding: 2px 8px; width: 30px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="sale-charges-body"></tbody>
@@ -3064,11 +3073,11 @@
                         </div>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; margin-top: auto; padding-top: 1rem;">
+                    <div style="flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin-top: 0.5rem; padding-bottom: 0.5rem;">
                         <div style="flex: 1;">
                             <div class="form-group" style="width: 100%; margin: 0;">
                                 <label style="font-size: 0.55rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;">Remarks & Dispatch Details</label>
-                                <input type="text" id="sale-remarks" style="height: 32px; font-size: 0.75rem; background: rgba(255,255,255,0.03);" placeholder="Any notes for this bill...">
+                                <input type="text" id="sale-remarks" style="height: 30px; font-size: 0.75rem; background: rgba(255,255,255,0.03);" placeholder="Any notes for this bill...">
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.8rem; align-items: center;">
@@ -3081,29 +3090,33 @@
                 </form>
             </div>
 
-            <!-- FROZEN FOOTER STRIP (ABSOLUTE BOTTOM) -->
-            <div id="sale-calc-strip" style="background: #020617; border-top: 1px solid rgba(255,255,255,0.1); padding: 0.8rem 2.5rem; display: flex; align-items: center; gap: 1.5rem; z-index: 1000; flex: 0 0 auto; box-shadow: 0 -15px 50px rgba(0,0,0,0.8);">
+            <!-- CALCULATION FOOTER (FROZEN) -->
+            <div id="sale-calc-strip" style="flex: 0 0 auto; background: #0f172a; border-top: 2px solid var(--accent); padding: 0.35rem 1.5rem; display: flex; align-items: center; gap: 2rem; border-radius: 10px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 0.55rem; font-weight: 900; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase;">Items:</span>
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--accent); letter-spacing: 1px;">TOTAL ITEMS:</span>
                     <span id="strip-sale-count" style="font-size: 1rem; font-weight: 800; color: #fff;">0</span>
                 </div>
-                <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1); margin: 0 10px;"></div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;">Taxable:</span>
-                    <span id="strip-sale-subtotal" style="font-size: 0.95rem; font-weight: 800; color: #fff;">₹0.00</span>
+                <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">PROD TOTAL:</span>
+                    <span id="strip-sale-subtotal" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span id="label-sale-gst" style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;">GST:</span>
-                    <span id="strip-sale-gst" style="font-size: 0.95rem; font-weight: 800; color: #fff;">₹0.00</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: #f59e0b; letter-spacing: 1px;">CHARGES:</span>
+                    <span id="strip-sale-charges" style="font-size: 1rem; font-weight: 800; color: #f59e0b;">₹0.00</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="label-sale-gst" style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">GST:</span>
+                    <span id="strip-sale-gst" style="font-size: 1rem; font-weight: 800; color: #fff;">₹0.00</span>
                     <span id="strip-sale-gst-split" style="font-size: 0.65rem; color: var(--accent); font-weight: 800; margin-left: 5px;"></span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.55rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase;">Round:</span>
-                    <span id="strip-sale-roundoff" style="font-size: 0.95rem; font-weight: 800; color: #fff; opacity: 0.7;">₹0.00</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-muted); letter-spacing: 1px;">ROUND:</span>
+                    <span id="strip-sale-roundoff" style="font-size: 0.9rem; font-weight: 700; color: #f59e0b;">+₹0.00</span>
                 </div>
-                <div style="margin-left: auto; background: var(--accent); padding: 6px 25px; border-radius: 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);">
-                    <span style="font-size: 0.65rem; font-weight: 900; color: #000; letter-spacing: 1.5px; text-transform: uppercase;">Net Payable:</span>
-                    <span id="strip-sale-total" style="font-size: 1.4rem; font-weight: 950; color: #000;">₹0.00</span>
+                <div style="margin-left: auto; background: var(--accent); padding: 5px 16px; border-radius: 10px; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 0.65rem; font-weight: 900; color: #000; letter-spacing: 1px;">NET PAYABLE:</span>
+                    <span id="strip-sale-total" style="font-size: 1.15rem; font-weight: 900; color: #000;">₹0.00</span>
                 </div>
             </div>
         </div>
