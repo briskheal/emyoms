@@ -670,7 +670,7 @@
             <div id="tab-masters" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <h2 class="section-title title-orange" style="margin: 0;"><i class="fas fa-cogs"></i> Global Master Data</h2>
-                    <button class="btn btn-primary" id="btn-sync-masters" onclick="(async()=>{ const btn=document.getElementById('btn-sync-masters'); btn.disabled=true; btn.innerHTML='â ³ SAVING...'; try{ await saveSettings(null); await loadMasters(); btn.innerHTML='✅ SAVED &amp; REFRESHED'; } catch(err){ btn.innerHTML='â Œ FAILED'; console.error(err); } setTimeout(()=>{ btn.innerHTML='💾 SAVE &amp; REFRESH ALL'; btn.disabled=false; },2500); })()">💾 SAVE &amp; REFRESH ALL</button>
+                    <button class="btn btn-primary" id="btn-sync-masters" onclick="(async()=>{ const btn=document.getElementById('btn-sync-masters'); btn.disabled=true; btn.innerHTML='⌛ SAVING...'; try{ await saveSettings(null); await loadMasters(); btn.innerHTML='✅ SAVED &amp; REFRESHED'; } catch(err){ btn.innerHTML='❌ FAILED'; console.error(err); } setTimeout(()=>{ btn.innerHTML='💾 SAVE &amp; REFRESH ALL'; btn.disabled=false; },2500); })()">💾 SAVE &amp; REFRESH ALL</button>
                 </div>
 
 
