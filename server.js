@@ -2244,16 +2244,13 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             });
         }
 
-        // 4. Extract Items (Specific to EMYRIS/HD Layout)
+        // 4. Extract Items (ROBUST VERSION)
         const itemLines = text.split('\n');
         let capturing = false;
         console.log("--- START PDF TEXT EXTRACTION ---");
         console.log(text);
         console.log("--- END PDF TEXT EXTRACTION ---");
 
-        // 4. Extract Items (ROBUST VERSION)
-        const itemLines = text.split('\n');
-        let capturing = false;
         for (let i = 0; i < itemLines.length; i++) {
             const line = itemLines[i].trim();
             if (line.includes("#Item name") || line.includes("HSN/ SAC") || line.includes("Product Description")) {
