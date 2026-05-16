@@ -2247,70 +2247,83 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         // 4. Extract Items (Specific to EMYRIS/HD Layout)
         const itemLines = text.split('\n');
         let capturing = false;
+        console.log("--- START PDF TEXT EXTRACTION ---");
+        console.log(text);
+        console.log("--- END PDF TEXT EXTRACTION ---");
+
+        // 4. Extract Items (ROBUST VERSION)
+        const itemLines = text.split('\n');
+        let capturing = false;
         for (let i = 0; i < itemLines.length; i++) {
             const line = itemLines[i].trim();
-            if (line.includes("#Item name") || line.includes("HSN/ SAC")) {
+            if (line.includes("#Item name") || line.includes("HSN/ SAC") || line.includes("Product Description")) {
                 capturing = true;
                 continue;
             }
             if (line.includes("Total") && capturing) break;
 
-            if (capturing && /^\d+$/.test(line)) { // Starts with item number
-                const name = itemLines[i+1]?.trim();
-                let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 5;
+            // Look for a line that looks like a new item (either a digit or a product name following a digit)
+            const isNewItem = /^\d+$/.test(line) || (capturing && /^\d+\s+[A-Z]/.test(line));
+
+            if (capturing && isNewItem) {
+                let name = "", hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
                 
-                // Advanced scanning for this specific layout
-                for (let j = i + 2; j < i + 15; j++) {
+                // If the line is just a digit, name is usually the next line
+                if (/^\d+$/.test(line)) {
+                    name = itemLines[i+1]?.trim() || "";
+                } else {
+                    name = line.replace(/^\d+\s+/, '').trim();
+                }
+
+                // Scan the next 15 lines for details
+                for (let j = i + 1; j < i + 16; j++) {
                     const l = itemLines[j]?.trim();
-                    if (!l || /^\d+$/.test(l)) break; // Next item or end
-                    
-                    // HSN (8 digits usually)
-                    if (l.match(/^\d{6,8}$/) && !hsn) hsn = l;
-                    
-                    // Batch (Alphanumeric, often after HSN)
-                    if (l.match(/^[A-Z0-9]{5,}/) && !batch && !l.includes("GSTIN") && l !== hsn) {
-                        batch = l;
-                        // Sometimes batch and exp are merged or split
-                        const nextLine = itemLines[j+1]?.trim();
-                        if (nextLine && nextLine.length === 1) batch += nextLine; // Handle single char split
-                    }
-                    
-                    // Exp Date (MM/YYYY)
+                    if (!l) continue;
+                    if (/^\d+$/.test(l) && j > i + 1) break; // Next item index found
+
+                    // Extract HSN
+                    const hsnMatch = l.match(/^(\d{6,8})$/);
+                    if (hsnMatch && !hsn) hsn = hsnMatch[1];
+
+                    // Extract MM/YYYY
                     const expMatch = l.match(/(\d{2}\/\d{4})/);
                     if (expMatch && !expDate) expDate = expMatch[1];
-                    
-                    // MRP (Usually follows Exp Date)
-                    if (expDate && l.includes(expDate)) {
-                         const valAfterExp = l.replace(expDate, '').trim();
-                         if (valAfterExp && !isNaN(valAfterExp)) mrp = parseFloat(valAfterExp);
-                    } else if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) {
-                        mrp = parseFloat(l);
+
+                    // Extract MRP (follows MM/YYYY or is a float)
+                    if (l.match(/^\d+\.\d{2}$/) && expDate && !mrp) mrp = parseFloat(l);
+                    if (l.includes("/") && l.match(/\d{2}\/\d{4}\s*(\d+\.\d{2})/)) {
+                        mrp = parseFloat(l.match(/\d{2}\/\d{4}\s*(\d+\.\d{2})/)[1]);
                     }
-                    
-                    // Quantity
-                    if (l.match(/^\d+$/) && !qty && mrp) qty = parseInt(l);
-                    
-                    // Rate/Unit
-                    if (l.includes("₹")) {
-                        const rateMatch = l.match(/₹\s*([\d,]+\.\d{2})/);
-                        if (rateMatch && !rate) rate = parseFloat(rateMatch[1].replace(/,/g,''));
+
+                    // Extract Qty (Integer after MRP or in isolation)
+                    if (l.match(/^\d+$/) && mrp && !qty) qty = parseInt(l);
+
+                    // Extract Batch (Alphanumeric, not HSN, not Date)
+                    if (l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !l.includes("GSTIN") && !batch) {
+                         batch = l;
                     }
-                    
-                    // GST
+
+                    // Extract Rate (₹ or float near Qty)
+                    if (l.includes("₹") && !rate) {
+                        const rMatch = l.match(/₹\s*([\d,]+\.\d{2})/);
+                        if (rMatch) rate = parseFloat(rMatch[1].replace(/,/g,''));
+                    }
+
+                    // Extract GST
                     if (l.includes("%")) {
-                        const gstMatch = l.match(/(\d+\.?\d*)\s*%/);
-                        if (gstMatch) gst = parseFloat(gstMatch[1]) * 2; 
+                        const gMatch = l.match(/(\d+\.?\d*)\s*%/);
+                        if (gMatch) gst = parseFloat(gMatch[1]) * 2;
                     }
                 }
 
-                if (name && qty) {
+                if (name && (qty || mrp || batch)) {
                     extractedData.items.push({
                         name: name.toUpperCase(),
                         hsn: hsn,
-                        batch: batch.toUpperCase(),
+                        batch: batch.toUpperCase() || "EXTRACTED",
                         expDate: expDate,
                         mrp: mrp,
-                        qty: qty,
+                        qty: qty || 0,
                         rate: rate || 0,
                         gst: gst || 12
                     });
