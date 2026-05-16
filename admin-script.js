@@ -7313,19 +7313,34 @@ function viewJv(id) {
 function downloadAllJvs() {
     if (!jvDataList || jvDataList.length === 0) return alert("No Journal Entries to download.");
     
-    let csv = "JV NO,DATE,NARRATION,TOTAL AMOUNT,LINE TYPE,ACCOUNT TYPE,ACCOUNT NAME,LINE AMOUNT,LINE NOTES\n";
+    const fromDate = document.getElementById('jv-from-date').value;
+    const toDate = document.getElementById('jv-to-date').value;
     
-    jvDataList.forEach(jv => {
+    let filtered = jvDataList;
+    if (fromDate) filtered = filtered.filter(j => new Date(j.date) >= new Date(fromDate));
+    if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(j => new Date(j.date) <= end);
+    }
+    
+    if (filtered.length === 0) return alert("No Journal Entries found for the selected date range.");
+
+    let csv = "DATE,JV NO,ACCOUNT/ENTITY,TYPE,REMARKS,DEBIT (DR),CREDIT (CR),NARRATION\n";
+    
+    filtered.sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(jv => {
         jv.lines.forEach((l, idx) => {
-            csv += `"${idx===0?jv.jvNo:''}","${idx===0?new Date(jv.date).toLocaleDateString():''}","${idx===0?(jv.narration||'').replace(/"/g, '""'):''}","${idx===0?jv.totalAmount:''}","${l.type}","${l.entityType}","${(l.entityName||'').replace(/"/g, '""')}","${l.amount}","${(l.notes||'').replace(/"/g, '""')}"\n`;
+            const isDr = l.type === 'DR';
+            csv += `"${idx===0?new Date(jv.date).toLocaleDateString():''}","${idx===0?jv.jvNo:''}","${(l.entityName||'').replace(/"/g, '""')} [${l.entityType}]","${l.type}","${(l.notes||'').replace(/"/g, '""')}","${isDr ? l.amount : ''}","${!isDr ? l.amount : ''}","${idx===0?(jv.narration||'').replace(/"/g, '""'):''}"\n`;
         });
+        csv += "\n"; // Empty line between JVs for readability
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Journal_Register_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Journal_Register_${fromDate || 'start'}_to_${toDate || 'end'}.csv`;
     a.click();
 }
 
