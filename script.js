@@ -2420,6 +2420,13 @@ async function uploadExtInvoice() {
     btn.innerHTML = "<i class='fas fa-spinner fa-spin'></i> READING...";
     btn.disabled = true;
 
+    // --- RESET PREVIEW UI FOR NEW UPLOAD ---
+    document.getElementById('ext-inv-no').value = '';
+    document.getElementById('ext-inv-date').value = '';
+    document.getElementById('ext-inv-pos').value = '';
+    document.getElementById('ext-preview-body').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; opacity:0.5;">Reading new invoice...</td></tr>';
+    lastExtractedData = null;
+
     try {
         const formData = new FormData();
         formData.append('invoice', fileInput.files[0]);

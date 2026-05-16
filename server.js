@@ -2318,10 +2318,6 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             }
         }
 
-        // Fallback for specific HD test invoice if parsing logic needs refinement
-        if (extractedData.items.length === 0 && text.includes("ASCOCID")) {
-             extractedData.items.push({ name: "ASCOCID-1.5GM/6ML", hsn: "30041090", batch: "L0942511A", expDate: "11/2027", mrp: 309.37, qty: 210, rate: 100.00, gst: 5 });
-        }
 
         // Return extracted data + Current Stockist Profile for verification
         const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
