@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EMYRIS OMS | Stockist Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -734,6 +735,7 @@
                     </div>
 
                     <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button class="btn" style="width: auto; padding: 12px 30px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); font-weight: 800;" onclick="downloadParsedInvoiceAsExcel()"><i class="fas fa-file-excel"></i> 📊 DOWNLOAD AS EXCEL</button>
                         <button class="btn" style="width: auto; padding: 12px 30px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);" onclick="cancelUpload()">DISCARD</button>
                         <button class="btn-primary" style="width: auto; padding: 12px 40px;" onclick="postToRegistry()">CONFIRM & SAVE TO REGISTRY</button>
                     </div>

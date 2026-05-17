@@ -2162,11 +2162,117 @@ app.post('/api/stockist/pdcn/submit', async (req, res) => {
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
+// --- OCR TEMPLATE MANAGER (ADMIN CENTER) ---
+
+app.post('/api/admin/ocr-templates', async (req, res) => {
+    try {
+        const {
+            stockistId, colProductStart, colProductEnd, colHSNStart, colHSNEnd,
+            colBatchStart, colBatchEnd, colExpStart, colExpEnd, colMRPStart, colMRPEnd,
+            colRateStart, colRateEnd, colQtyStart, colQtyEnd, anchorKeyword
+        } = req.body;
+
+        if (!stockistId) {
+            return res.status(400).json({ success: false, message: 'Stockist ID is required.' });
+        }
+
+        let template = await db.InvoiceTemplate.findOne({ where: { stockistId } });
+        const templateData = {
+            stockistId: parseInt(stockistId),
+            anchorKeyword: anchorKeyword || 'HSN',
+            colProductStart: parseFloat(colProductStart),
+            colProductEnd: parseFloat(colProductEnd),
+            colHSNStart: parseFloat(colHSNStart),
+            colHSNEnd: parseFloat(colHSNEnd),
+            colBatchStart: parseFloat(colBatchStart),
+            colBatchEnd: parseFloat(colBatchEnd),
+            colExpStart: parseFloat(colExpStart),
+            colExpEnd: parseFloat(colExpEnd),
+            colMRPStart: parseFloat(colMRPStart),
+            colMRPEnd: parseFloat(colMRPEnd),
+            colRateStart: parseFloat(colRateStart),
+            colRateEnd: parseFloat(colRateEnd),
+            colQtyStart: parseFloat(colQtyStart),
+            colQtyEnd: parseFloat(colQtyEnd)
+        };
+
+        if (template) {
+            await template.update(templateData);
+        } else {
+            template = await db.InvoiceTemplate.create(templateData);
+        }
+
+        res.json({ success: true, message: 'Layout template saved successfully!', template });
+    } catch (e) {
+        console.error("❌ Save OCR Template Error:", e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.get('/api/admin/ocr-templates/:stockistId', async (req, res) => {
+    try {
+        const template = await db.InvoiceTemplate.findOne({ where: { stockistId: req.params.stockistId } });
+        res.json({ success: true, template });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/admin/ocr-analyze-pdf', docUpload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No PDF file uploaded.' });
+        }
+
+        const PDFParser = require('pdf2json');
+        const pdfParser = new PDFParser();
+        
+        pdfParser.on("pdfParser_dataError", errData => {
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            res.status(500).json({ success: false, message: errData.parserError });
+        });
+        
+        pdfParser.on("pdfParser_dataReady", pdfData => {
+            const pages = pdfData.Pages;
+            let tokens = [];
+            pages.forEach((page, pageIdx) => {
+                const texts = page.Texts;
+                texts.forEach(textObj => {
+                    const x = textObj.x;
+                    const y = textObj.y;
+                    const w = textObj.w;
+                    const rawText = decodeURIComponent(textObj.R[0].T);
+                    tokens.push({
+                        text: rawText.trim(),
+                        x: parseFloat(x.toFixed(3)),
+                        y: parseFloat(y.toFixed(3)),
+                        w: parseFloat(w.toFixed(3)),
+                        page: pageIdx + 1
+                    });
+                });
+            });
+
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            res.json({ success: true, tokens });
+        });
+        
+        pdfParser.loadPDF(req.file.path);
+    } catch (e) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 // --- EXTERNAL INVOICE ---
 
 app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
     try {
-        const { stockistName } = req.body;
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "No invoice file uploaded." });
+        }
+
+        const { stockistName, stockistId } = req.body;
+        const stockist = await db.Stockist.findByPk(stockistId || 0);
         const pdf = require('pdf-parse');
         
         // Since we use disk storage, req.file.buffer is null. Read from disk instead.
@@ -2239,86 +2345,321 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             if (emailMatch) extractedData.email = emailMatch[1].trim().toLowerCase();
         }
 
-        // VALIDATION: Check if the invoice belongs to the logged-in stockist
-        if (stockistName && extractedData.customerName.toUpperCase().replace(/[^A-Z]/g,'') !== stockistName.toUpperCase().replace(/[^A-Z]/g,'')) {
+        // VALIDATION: Check if the invoice belongs to the logged-in stockist (Robust Fallback System)
+        let identityVerified = false;
+        if (stockistName) {
+            const cleanStockistName = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanExtractedName = (extractedData.customerName || "").toUpperCase().replace(/[^A-Z0-9]/g, '');
+            
+            if (cleanExtractedName && cleanExtractedName.includes(cleanStockistName)) {
+                identityVerified = true;
+            } else if (text.toUpperCase().replace(/[^A-Z0-9]/g, '').includes(cleanStockistName)) {
+                identityVerified = true;
+            }
+        } else {
+            identityVerified = true; // No stockistName provided, skip check
+        }
+
+        // Additional fallback: GST and DL comparison
+        if (!identityVerified && stockist) {
+            const cleanGST = (stockist.gstNo || "").toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const cleanDL = (stockist.dlNo || "").toUpperCase().replace(/[^A-Z0-9]/g, '');
+            
+            if (cleanGST && text.toUpperCase().replace(/[^A-Z0-9]/g, '').includes(cleanGST)) {
+                identityVerified = true;
+            } else if (cleanDL && text.toUpperCase().replace(/[^A-Z0-9]/g, '').includes(cleanDL)) {
+                identityVerified = true;
+            }
+        }
+
+        if (stockistName && !identityVerified) {
+            if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
             return res.status(400).json({ 
                 success: false, 
                 message: `ERROR: UPLOAD YOUR OWN INVOICE FROM SUPER DISTRIBUTOR. This invoice belongs to: ${extractedData.customerName || "UNKNOWN"}` 
             });
         }
 
-        // 4. Extract Items (PHASE 1 RESTORED + RESILIENT FALLBACK)
-        const itemLines = text.split('\n').map(l => l.trim()).filter(l => l);
-        let capturing = false;
-        
-        for (let i = 0; i < itemLines.length; i++) {
-            const line = itemLines[i];
-            
-            // Re-detect Header strictly like in Phase 1
-            if (line.includes("#Item name") || line.includes("HSN/ SAC") || line.includes("Product Description")) {
-                capturing = true;
-                continue;
-            }
-            if (line.includes("Total") && capturing) break;
+        // 4. Extract Items (VISUAL COORDINATE BLUEPRINT ENGINE + FALLBACK)
+        let extractedItems = [];
+        const template = await db.InvoiceTemplate.findOne({ where: { stockistId: stockistId || 0 } });
 
-            // Start Item Capture
-            if (capturing && (/^\d+$/.test(line) || /^[A-Z0-9\s]{8,}$/.test(line))) {
-                let name = "";
-                if (/^\d+$/.test(line)) {
-                    name = itemLines[i+1] || "";
-                } else {
-                    name = line;
-                }
-
-                let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
+        if (template) {
+            console.log(`🎯 [OCR] Applying saved coordinate template blueprint for stockistId: ${stockistId}`);
+            try {
+                const PDFParser = require('pdf2json');
+                const pdfParser = new PDFParser();
                 
-                // Neighborhood scan (Restored from successful test)
-                for (let j = i + 1; j < i + 12; j++) {
-                    const l = itemLines[j];
-                    if (!l || (/^\d+$/.test(l) && j > i + 1)) break;
+                const parsePromise = new Promise((resolve, reject) => {
+                    pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+                    pdfParser.on("pdfParser_dataReady", pdfData => {
+                        const pages = pdfData.Pages;
+                        let tokens = [];
+                        pages.forEach((page, pageIdx) => {
+                            const texts = page.Texts;
+                            texts.forEach(textObj => {
+                                const x = textObj.x;
+                                const y = textObj.y;
+                                const w = textObj.w;
+                                const rawText = decodeURIComponent(textObj.R[0].T);
+                                tokens.push({
+                                    text: rawText.trim(),
+                                    x: parseFloat(x.toFixed(3)),
+                                    y: parseFloat(y.toFixed(3)),
+                                    w: parseFloat(w.toFixed(3)),
+                                    page: pageIdx + 1
+                                });
+                            });
+                        });
+                        resolve(tokens);
+                    });
+                });
+                
+                pdfParser.loadPDF(req.file.path);
+                const tokens = await parsePromise;
 
-                    const hMatch = l.match(/^(\d{6,8})$/) || l.match(/HSN:\s*(\d{6,8})/);
-                    if (hMatch && !hsn) hsn = hMatch[1];
+                // Locate visual header anchor
+                const anchorToken = tokens.find(t => t.text.toUpperCase().includes(template.anchorKeyword.toUpperCase()));
+                const anchorY = anchorToken ? anchorToken.y : 0;
 
-                    const bMatch = l.match(/^[A-Z0-9]{5,}/) && !l.includes("/") && l !== hsn && !l.includes("GSTIN");
-                    if (bMatch && !batch) batch = l;
+                // Group tokens by Y coordinate lines (with tolerance)
+                let rows = [];
+                let currentY = -1;
+                let currentRow = [];
+                let yThreshold = 0.25;
 
-                    const eMatch = l.match(/(\d{2}\/\d{4})/);
-                    if (eMatch && !expDate) expDate = eMatch[1];
+                tokens.sort((a, b) => {
+                    if (a.page !== b.page) return a.page - b.page;
+                    return a.y - b.y;
+                });
 
-                    if (l.match(/^\d+\.\d{2}$/) && !mrp && expDate) mrp = parseFloat(l);
+                tokens.forEach(token => {
+                    if (anchorToken && token.page === 1 && token.y <= anchorY) return;
                     
-                    if (l.match(/^\d+$/) && !qty && (mrp || j > i + 5)) qty = parseInt(l);
-                    
-                    if (!rate && (l.match(/[^\d\.\s]*\s*([\d,]+\.\d{2})/) || (l.match(/^\d+\.\d{2}$/) && mrp > 0))) {
-                         const rMatch = l.match(/[^\d\.\s]*\s*([\d,]+\.\d{2})/);
-                         if (rMatch && parseFloat(rMatch[1]) !== mrp) rate = parseFloat(rMatch[1].replace(/,/g,''));
-                    }
+                    const lower = token.text.toLowerCase();
+                    if (lower === 'total' || lower === 'grand total' || lower.includes('for ') || lower.includes('authorized')) return;
 
-                    if (l.includes("%")) {
-                        const gMatch = l.match(/(\d+\.?\d*)\s*%/);
-                        if (gMatch) gst = parseFloat(gMatch[1]) * 2;
+                    if (currentY === -1 || Math.abs(token.y - currentY) > yThreshold) {
+                         if (currentRow.length > 0) {
+                             rows.push({ y: currentY, page: token.page, tokens: currentRow });
+                         }
+                         currentRow = [token];
+                         currentY = token.y;
+                    } else {
+                         currentRow.push(token);
                     }
+                });
+                if (currentRow.length > 0) {
+                    rows.push({ y: currentY, page: tokens[tokens.length - 1].page, tokens: currentRow });
                 }
 
-                if (name && name.length > 5 && (qty > 0 || mrp > 0 || batch)) {
-                    extractedData.items.push({
-                        name: name.toUpperCase(),
-                        hsn: hsn || "3004",
-                        batch: batch.toUpperCase() || "EXTRACTED",
-                        expDate: expDate || "12/2026",
-                        mrp: mrp || 0,
-                        qty: qty || 0,
-                        rate: rate || 0,
-                        gst: gst || 12
+                rows.forEach(row => {
+                    let productText = [];
+                    let hsnText = "";
+                    let batchText = "";
+                    let expText = "";
+                    let mrpText = "";
+                    let rateText = "";
+                    let qtyText = "";
+
+                    row.tokens.forEach(tok => {
+                        const centerX = tok.x + tok.w / 2;
+                        const inCol = (start, end) => (centerX >= start && centerX <= end);
+
+                        if (inCol(template.colProductStart, template.colProductEnd)) {
+                            productText.push(tok.text);
+                        } else if (inCol(template.colHSNStart, template.colHSNEnd)) {
+                            hsnText = tok.text;
+                        } else if (inCol(template.colBatchStart, template.colBatchEnd)) {
+                            batchText = tok.text;
+                        } else if (inCol(template.colExpStart, template.colExpEnd)) {
+                            expText = tok.text;
+                        } else if (inCol(template.colMRPStart, template.colMRPEnd)) {
+                            mrpText = tok.text;
+                        } else if (inCol(template.colRateStart, template.colRateEnd)) {
+                            rateText = tok.text;
+                        } else if (inCol(template.colQtyStart, template.colQtyEnd)) {
+                            qtyText = tok.text;
+                        }
                     });
+
+                    const name = productText.join(" ").trim().toUpperCase();
+                    const cleanNum = (txt) => {
+                        if (!txt) return 0;
+                        return parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+                    };
+
+                    const qty = cleanNum(qtyText);
+                    const mrp = cleanNum(mrpText);
+                    const rate = cleanNum(rateText);
+
+                    if (name && name.length > 2 && (qty > 0 || mrp > 0 || batchText)) {
+                        extractedItems.push({
+                            name,
+                            hsn: hsnText.trim() || "3004",
+                            batch: batchText.trim().toUpperCase() || "EXTRACTED",
+                            expDate: expText.trim() || "12/2026",
+                            mrp: mrp || 0,
+                            qty: qty || 0,
+                            rate: rate || 0,
+                            gst: 12
+                        });
+                    }
+                });
+            } catch (err) {
+                console.error("❌ Template extraction crashed; falling back to sequential parser:", err);
+            }
+        }
+
+        if (extractedItems.length > 0) {
+            extractedData.items = extractedItems;
+        } else {
+            console.log("ℹ️ [OCR] Template empty or missing. Applying upgraded Phase 1 heuristic parser.");
+            const itemLines = text.split('\n').map(l => l.trim()).filter(l => l);
+            let capturing = false;
+            
+            for (let i = 0; i < itemLines.length; i++) {
+                const line = itemLines[i];
+                
+                // Re-detect Header strictly like in Phase 1
+                if (line.includes("#Item name") || line.includes("HSN/ SAC") || line.includes("Product Description") || line.includes("Item nameHSN/ SAC")) {
+                    capturing = true;
+                    continue;
+                }
+                if (line.includes("Total") && capturing) break;
+
+                // Start Item Capture: ONLY trigger on sequential small serial numbers when in capturing mode
+                const isSerialNumber = /^\d+$/.test(line) && parseInt(line) < 100;
+
+                if (capturing && isSerialNumber) {
+                    const name = itemLines[i+1] || "";
+
+                    // Validate name
+                    if (!name || name.length < 3 || name === "A" || name === "B" || name.toUpperCase().includes("MFG NAME")) {
+                        continue;
+                    }
+
+                    let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
+                    
+                    // Neighborhood scan of next 12 lines
+                    let neighborhoodLines = [];
+                    for (let j = i + 1; j < i + 13; j++) {
+                        if (itemLines[j]) neighborhoodLines.push(itemLines[j]);
+                    }
+                    
+                    // Find HSN (6 to 8 digits)
+                    const hsnLine = neighborhoodLines.find(l => /^\d{6,8}$/.test(l));
+                    if (hsnLine) hsn = hsnLine;
+
+                    // Find Expiry (without word boundaries to support squashed layouts)
+                    const expLine = neighborhoodLines.find(l => /(\d{2}\/\d{4})/.test(l) || /(\d{2}\/\d{2})/.test(l));
+                    if (expLine) {
+                        const eMatch = expLine.match(/(\d{2}\/\d{4})/) || expLine.match(/(\d{2}\/\d{2})/);
+                        expDate = eMatch[1];
+                    }
+
+                    // Create a cleaned search space for floats to prevent false decimal merges
+                    let cleanedSearchText = neighborhoodLines.join(" ");
+
+                    if (hsn) {
+                        cleanedSearchText = cleanedSearchText.replaceAll(hsn, ' ');
+                    }
+                    if (expDate) {
+                        cleanedSearchText = cleanedSearchText.replaceAll(expDate, ' ');
+                    }
+
+                    // 3. Extract Squashed Expiry + MRP + Qty (from original search text first, but with boundary safeguards)
+                    const squashedMatch = neighborhoodLines.join(" ").match(/(\d{2}\/\d{4})\s*(\d+\.\d{2})(\d+)\s*(Pcs|Box|Tab|Nos|Caps)?/i) || 
+                                         neighborhoodLines.join(" ").match(/(\d{2}\/\d{2})\s*(\d+\.\d{2})(\d+)\s*(Pcs|Box|Tab|Nos|Caps)?/i);
+                    if (squashedMatch) {
+                        expDate = squashedMatch[1];
+                        mrp = parseFloat(squashedMatch[2]);
+                        qty = parseInt(squashedMatch[3]);
+                        
+                        // Crucial: Wipe out the squashed block from cleanedSearchText to prevent float overlaps
+                        cleanedSearchText = cleanedSearchText.replaceAll(squashedMatch[0], ' ');
+                    }
+
+                    // 4. Standalone MRP and Quantity Extraction from cleanedSearchText if squashed matching was not found
+                    if (!mrp) {
+                        const floatMatch = cleanedSearchText.match(/\b(\d+\.\d{2})\b/);
+                        if (floatMatch) mrp = parseFloat(floatMatch[1]);
+                    }
+                    if (!qty) {
+                        const intMatch = cleanedSearchText.match(/\b(\d+)\b/g);
+                        if (intMatch) {
+                            const validInt = intMatch.find(x => x.length >= 2 && x !== hsn);
+                            if (validInt) qty = parseInt(validInt);
+                        }
+                    }
+
+                    // 5. Extract Rate from cleanedSearchText
+                    const rateMatch = cleanedSearchText.match(/(?:Pcs|Box|Tab|Nos|Caps)?\s*[^0-9\.]*\s*([\d,]+\.\d{2})/i);
+                    if (rateMatch) {
+                        const val = parseFloat(rateMatch[1].replace(/,/g,'').replace(/[^0-9.]/g, ''));
+                        if (val !== mrp) rate = val;
+                    }
+
+                    // Fallback: If rate is still not found or matches mrp, classify floats
+                    if (!rate || rate === mrp) {
+                        const allFloats = [];
+                        const floatRegex = /\b[\d,]+\.\d{2}\b/g;
+                        let match;
+                        while ((match = floatRegex.exec(cleanedSearchText)) !== null) {
+                            const val = parseFloat(match[0].replace(/,/g, ''));
+                            if (val !== parseFloat(hsn) && !allFloats.includes(val) && val > 0) {
+                                allFloats.push(val);
+                            }
+                        }
+                        if (allFloats.length > 0) {
+                            allFloats.sort((a, b) => a - b);
+                            rate = allFloats[0];
+                            if (!mrp && allFloats.length >= 2) mrp = allFloats[1];
+                        }
+                    }
+
+                    // 6. Extract Batch Code (Strictly uppercase alphanumeric only!)
+                    for (let l of neighborhoodLines) {
+                        const looksLikeBatch = /^[A-Z0-9\-\/]{4,15}$/.test(l) && 
+                                              !l.includes(".") && 
+                                              l !== hsn && 
+                                              !l.includes("%") && 
+                                              !l.toUpperCase().includes("GSTIN") &&
+                                              !l.toUpperCase().includes("PCS");
+                        if (looksLikeBatch) {
+                            batch = l;
+                            break;
+                        }
+                    }
+
+                    // 7. Extract GST percentage
+                    const gstMatch = cleanedSearchText.match(/(\d+\.?\d*)\s*%/);
+                    if (gstMatch) {
+                        const val = parseFloat(gstMatch[1]);
+                        gst = val <= 9 ? val * 2 : val;
+                    }
+
+                    // Fallback Defaults
+                    if (name && (qty > 0 || mrp > 0 || batch)) {
+                        extractedData.items.push({
+                            name: name.toUpperCase(),
+                            hsn: hsn || "3004",
+                            batch: batch.toUpperCase() || "EXTRACTED",
+                            expDate: expDate || "12/2026",
+                            mrp: mrp || 0,
+                            qty: qty || 0,
+                            rate: rate || 0,
+                            gst: gst || 12
+                        });
+                    }
+
+                    // Skip the lines we parsed to avoid duplicate item matches
+                    i++; 
                 }
             }
         }
 
-        const stockist = await db.Stockist.findByPk(req.body.stockistId || 0);
-
-        if (req.file) fs.unlinkSync(req.file.path);
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.json({ 
             success: true, 
             data: extractedData, 
@@ -2327,7 +2668,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         });
 
     } catch (innerErr) {
-        if (req.file) fs.unlinkSync(req.file.path);
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: innerErr.message });
     }
 });

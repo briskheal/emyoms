@@ -62,6 +62,7 @@ db.JournalVoucher = require('./journalVoucher')(sequelize, DataTypes);
 db.JournalEntryLine = require('./journalEntryLine')(sequelize, DataTypes);
 db.Ledger = require('./ledger')(sequelize, DataTypes);
 db.PaymentLink = require('./paymentLink')(sequelize, DataTypes);
+db.InvoiceTemplate = require('./invoiceTemplate')(sequelize, DataTypes);
 
 // Define Relationships
 db.Payment.hasMany(db.PaymentLink, { as: 'links', foreignKey: 'paymentId' });
@@ -115,5 +116,9 @@ db.PurchaseItem.belongsTo(db.Product, { foreignKey: 'productId' });
 
 db.FinancialNote.hasMany(db.NoteItem, { as: 'items', foreignKey: 'financialNoteId' });
 db.NoteItem.belongsTo(db.FinancialNote, { foreignKey: 'financialNoteId' });
+
+// OCR Template relations
+db.Stockist.hasOne(db.InvoiceTemplate, { as: 'ocrTemplate', foreignKey: 'stockistId', onDelete: 'CASCADE' });
+db.InvoiceTemplate.belongsTo(db.Stockist, { foreignKey: 'stockistId' });
 
 module.exports = db;

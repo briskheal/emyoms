@@ -618,6 +618,9 @@ function switchTab(tabId, el, subType = null) {
             currentPaymentTypeFilter = subType || 'RECEIPT';
             renderPayments();
         }
+        if (tabId === 'ocr-templates') {
+            initOCRTemplateManager();
+        }
         if (tabId === 'reports') refreshInventoryVal();
         if (tabId === 'system') loadFailedEmails();
     } catch (err) {
@@ -8094,6 +8097,307 @@ function autoAllocatePayment() {
         }
     });
     updateLinkedTotal();
+}
+
+// --- OCR BLUEPRINT CALIBRATION INTERFACE ---
+
+window.ocrTokens = [];
+
+async function initOCRTemplateManager() {
+    console.log("🎯 Initializing OCR Template Manager...");
+    const selectEl = document.getElementById('ocr-stockist-select');
+    if (!selectEl) return;
+    
+    // Clear and add placeholder
+    selectEl.innerHTML = '<option value="">-- Choose Stockist --</option>';
+
+    try {
+        // Fetch stockists
+        const res = await fetch('/api/admin/stockists');
+        const data = await res.json();
+        
+        if (data.success && data.stockists) {
+            data.stockists.forEach(st => {
+                const opt = document.createElement('option');
+                opt.value = st.id;
+                opt.innerText = `${st.name} (${st.hq || 'NO HQ'})`.toUpperCase();
+                selectEl.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.error("❌ Failed to populate OCR Stockist list:", e);
+    }
+
+    // Default sliders to standard layout heuristic ranges
+    resetOCRFormValues();
+    updateOCRGuides();
+}
+
+function resetOCRFormValues() {
+    document.getElementById('ocr-product-start').value = "5.0";
+    document.getElementById('ocr-product-end').value = "35.0";
+    document.getElementById('ocr-hsn-start').value = "36.0";
+    document.getElementById('ocr-hsn-end').value = "42.0";
+    document.getElementById('ocr-batch-start').value = "43.0";
+    document.getElementById('ocr-batch-end').value = "55.0";
+    document.getElementById('ocr-exp-start').value = "56.0";
+    document.getElementById('ocr-exp-end').value = "64.0";
+    document.getElementById('ocr-mrp-start').value = "65.0";
+    document.getElementById('ocr-mrp-end').value = "72.0";
+    document.getElementById('ocr-rate-start').value = "73.0";
+    document.getElementById('ocr-rate-end').value = "82.0";
+    document.getElementById('ocr-qty-start').value = "83.0";
+    document.getElementById('ocr-qty-end').value = "95.0";
+    document.getElementById('ocr-anchor').value = "HSN";
+    document.getElementById('ocr-filename').innerText = "No file uploaded";
+    document.getElementById('ocr-pdf-file').value = "";
+    document.getElementById('ocr-tokens-board').innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 5rem 0;">
+            Upload a sample PDF invoice above to view interactive coordinate tokens...
+        </div>
+    `;
+    window.ocrTokens = [];
+}
+
+async function loadStockistOCRTemplate() {
+    const stockistId = document.getElementById('ocr-stockist-select').value;
+    if (!stockistId) {
+        resetOCRFormValues();
+        updateOCRGuides();
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/ocr-templates/${stockistId}`);
+        const data = await res.json();
+        
+        if (data.success && data.template) {
+            const t = data.template;
+            document.getElementById('ocr-anchor').value = t.anchorKeyword || 'HSN';
+            document.getElementById('ocr-product-start').value = t.colProductStart;
+            document.getElementById('ocr-product-end').value = t.colProductEnd;
+            document.getElementById('ocr-hsn-start').value = t.colHSNStart !== undefined ? t.colHSNStart : "36.0";
+            document.getElementById('ocr-hsn-end').value = t.colHSNEnd !== undefined ? t.colHSNEnd : "42.0";
+            document.getElementById('ocr-batch-start').value = t.colBatchStart;
+            document.getElementById('ocr-batch-end').value = t.colBatchEnd;
+            document.getElementById('ocr-exp-start').value = t.colExpStart;
+            document.getElementById('ocr-exp-end').value = t.colExpEnd;
+            document.getElementById('ocr-mrp-start').value = t.colMRPStart;
+            document.getElementById('ocr-mrp-end').value = t.colMRPEnd;
+            document.getElementById('ocr-rate-start').value = t.colRateStart;
+            document.getElementById('ocr-rate-end').value = t.colRateEnd;
+            document.getElementById('ocr-qty-start').value = t.colQtyStart;
+            document.getElementById('ocr-qty-end').value = t.colQtyEnd;
+            showToast("✅ Saved template loaded successfully!", "info");
+        } else {
+            // Keep default ranges so admin doesn't start from empty
+            showToast("ℹ️ No saved blueprint for this stockist. Using standard default template.", "info");
+        }
+    } catch (e) {
+        console.error("❌ Failed to fetch OCR Template:", e);
+    }
+    updateOCRGuides();
+}
+
+function updateOCRGuides() {
+    const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+    const pS = getVal('ocr-product-start'), pE = getVal('ocr-product-end');
+    const hS = getVal('ocr-hsn-start'), hE = getVal('ocr-hsn-end');
+    const bS = getVal('ocr-batch-start'), bE = getVal('ocr-batch-end');
+    const eS = getVal('ocr-exp-start'), eE = getVal('ocr-exp-end');
+    const mS = getVal('ocr-mrp-start'), mE = getVal('ocr-mrp-end');
+    const rS = getVal('ocr-rate-start'), rE = getVal('ocr-rate-end');
+    const qS = getVal('ocr-qty-start'), qE = getVal('ocr-qty-end');
+
+    // Update textual badges
+    document.getElementById('label-val-product').innerText = `${pS.toFixed(1)} - ${pE.toFixed(1)}`;
+    document.getElementById('label-val-hsn').innerText = `${hS.toFixed(1)} - ${hE.toFixed(1)}`;
+    document.getElementById('label-val-batch').innerText = `${bS.toFixed(1)} - ${bE.toFixed(1)}`;
+    document.getElementById('label-val-exp').innerText = `${eS.toFixed(1)} - ${eE.toFixed(1)}`;
+    document.getElementById('label-val-mrp').innerText = `${mS.toFixed(1)} - ${mE.toFixed(1)}`;
+    document.getElementById('label-val-rate').innerText = `${rS.toFixed(1)} - ${rE.toFixed(1)}`;
+    document.getElementById('label-val-qty').innerText = `${qS.toFixed(1)} - ${qE.toFixed(1)}`;
+
+    // Shift transparent guide overlay rectangles
+    const setGuide = (id, start, end) => {
+        const el = document.getElementById(`guide-${id}`);
+        if (el) {
+            el.style.left = `${start * 10}px`;
+            el.style.width = `${(end - start) * 10}px`;
+        }
+    };
+
+    setGuide('product', pS, pE);
+    setGuide('hsn', hS, hE);
+    setGuide('batch', bS, bE);
+    setGuide('exp', eS, eE);
+    setGuide('mrp', mS, mE);
+    setGuide('rate', rS, rE);
+    setGuide('qty', qS, qE);
+
+    // Colorize rendered token elements in real-time
+    const tokens = document.querySelectorAll('.ocr-token-item');
+    tokens.forEach(tok => {
+        const x = parseFloat(tok.dataset.x);
+        const w = parseFloat(tok.dataset.w);
+        const cx = x + w / 2;
+
+        const inside = (start, end) => (cx >= start && cx <= end);
+
+        // Reset styling
+        tok.style.color = '#fff';
+        tok.style.background = 'rgba(255,255,255,0.02)';
+        tok.style.borderColor = 'rgba(255,255,255,0.05)';
+        tok.style.boxShadow = 'none';
+
+        if (inside(pS, pE)) {
+            tok.style.color = '#818cf8'; // product
+            tok.style.background = 'rgba(99, 102, 241, 0.15)';
+            tok.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+        } else if (inside(hS, hE)) {
+            tok.style.color = '#fbbf24'; // hsn
+            tok.style.background = 'rgba(245, 158, 11, 0.15)';
+            tok.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        } else if (inside(bS, bE)) {
+            tok.style.color = '#34d399'; // batch
+            tok.style.background = 'rgba(16, 185, 129, 0.15)';
+            tok.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        } else if (inside(eS, eE)) {
+            tok.style.color = '#a78bfa'; // exp
+            tok.style.background = 'rgba(139, 92, 246, 0.15)';
+            tok.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+        } else if (inside(mS, mE)) {
+            tok.style.color = '#f472b6'; // mrp
+            tok.style.background = 'rgba(236, 72, 153, 0.15)';
+            tok.style.borderColor = 'rgba(236, 72, 153, 0.4)';
+        } else if (inside(rS, rE)) {
+            tok.style.color = '#38bdf8'; // rate
+            tok.style.background = 'rgba(14, 165, 233, 0.15)';
+            tok.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+        } else if (inside(qS, qE)) {
+            tok.style.color = '#f87171'; // qty
+            tok.style.background = 'rgba(239, 68, 68, 0.15)';
+            tok.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        }
+    });
+}
+
+async function handleOCRTemplateUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    document.getElementById('ocr-filename').innerText = file.name;
+
+    const board = document.getElementById('ocr-tokens-board');
+    board.innerHTML = `
+        <div style="text-align: center; color: var(--accent); padding: 5rem 0;">
+            <div class="spinner" style="margin: 0 auto 15px auto;"></div>
+            🤖 AI Engine parsing PDF coordinates, please wait...
+        </div>
+    `;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/admin/ocr-analyze-pdf', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.success && data.tokens) {
+            window.ocrTokens = data.tokens;
+            
+            // Build the visual coordinate board elements
+            board.innerHTML = '';
+            
+            if (data.tokens.length === 0) {
+                board.innerHTML = '<div style="text-align: center; color:#ef4444; padding:5rem 0;">No text tokens extracted from this PDF.</div>';
+                return;
+            }
+
+            data.tokens.forEach(tok => {
+                const div = document.createElement('div');
+                div.style.position = 'absolute';
+                div.style.left = `${tok.x * 10}px`;
+                div.style.top = `${tok.y * 30 + (tok.page - 1) * 1300}px`; // Stack pages with vertical gap
+                div.style.width = `${tok.w * 10}px`;
+                div.style.padding = '2px';
+                div.style.fontSize = '9px';
+                div.style.fontWeight = 'bold';
+                div.style.color = '#fff';
+                div.style.background = 'rgba(255,255,255,0.02)';
+                div.style.border = '1px solid rgba(255,255,255,0.05)';
+                div.style.borderRadius = '3px';
+                div.style.whiteSpace = 'nowrap';
+                div.style.overflow = 'hidden';
+                div.innerText = tok.text;
+                div.className = 'ocr-token-item';
+                div.dataset.x = tok.x;
+                div.dataset.w = tok.w;
+                board.appendChild(div);
+            });
+
+            // Adjust workspace container size to fit height
+            const maxPage = Math.max(...data.tokens.map(t => t.page));
+            board.style.height = `${maxPage * 1350}px`;
+            
+            showToast("🎉 PDF coordinate matrix computed! Column guides applied.", "success");
+            updateOCRGuides();
+        } else {
+            board.innerHTML = `<div style="text-align: center; color:#ef4444; padding:5rem 0;">Extraction Error: ${data.message || 'Unknown error'}</div>`;
+        }
+    } catch (e) {
+        console.error("❌ PDF extraction failure:", e);
+        board.innerHTML = `<div style="text-align: center; color:#ef4444; padding:5rem 0;">Connection Error: ${e.message}</div>`;
+    }
+}
+
+async function saveOCRTemplate() {
+    const stockistId = document.getElementById('ocr-stockist-select').value;
+    if (!stockistId) {
+        showToast("⚠️ Select a Target Stockist before saving!", "warning");
+        return;
+    }
+
+    const payload = {
+        stockistId,
+        anchorKeyword: document.getElementById('ocr-anchor').value.trim() || 'HSN',
+        colProductStart: parseFloat(document.getElementById('ocr-product-start').value),
+        colProductEnd: parseFloat(document.getElementById('ocr-product-end').value),
+        colHSNStart: parseFloat(document.getElementById('ocr-hsn-start').value),
+        colHSNEnd: parseFloat(document.getElementById('ocr-hsn-end').value),
+        colBatchStart: parseFloat(document.getElementById('ocr-batch-start').value),
+        colBatchEnd: parseFloat(document.getElementById('ocr-batch-end').value),
+        colExpStart: parseFloat(document.getElementById('ocr-exp-start').value),
+        colExpEnd: parseFloat(document.getElementById('ocr-exp-end').value),
+        colMRPStart: parseFloat(document.getElementById('ocr-mrp-start').value),
+        colMRPEnd: parseFloat(document.getElementById('ocr-mrp-end').value),
+        colRateStart: parseFloat(document.getElementById('ocr-rate-start').value),
+        colRateEnd: parseFloat(document.getElementById('ocr-rate-end').value),
+        colQtyStart: parseFloat(document.getElementById('ocr-qty-start').value),
+        colQtyEnd: parseFloat(document.getElementById('ocr-qty-end').value)
+    };
+
+    try {
+        const res = await fetch('/api/admin/ocr-templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            showToast("🎯 PDF Layout Template Blueprint saved to database successfully!", "success");
+        } else {
+            showToast(`❌ Failed to save: ${data.message}`, "danger");
+        }
+    } catch (e) {
+        console.error("❌ Failed to save OCR Template:", e);
+        showToast(`❌ Connection error: ${e.message}`, "danger");
+    }
 }
 
 

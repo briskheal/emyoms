@@ -398,6 +398,7 @@ async function uploadExtInvoice() {
         const formData = new FormData();
         formData.append('invoice', fileInput.files[0]);
         formData.append('stockistName', sessionParty.name);
+        formData.append('stockistId', sessionParty._id || sessionParty.id);
 
         const res = await fetch(`${API}/api/stockist/upload-invoice-read`, {
             method: 'POST',

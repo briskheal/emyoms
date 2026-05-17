@@ -2664,3 +2664,49 @@ function closeAlert() {
         setTimeout(() => overlay.classList.add('hidden'), 300);
     }
 }
+
+function downloadParsedInvoiceAsExcel() {
+    if (!lastExtractedData || !lastExtractedData.items || lastExtractedData.items.length === 0) {
+        showCenteredMessage("No extracted data available to download.", "error");
+        return;
+    }
+
+    try {
+        const invoiceNo = document.getElementById('ext-inv-no').value || lastExtractedData.invoiceNo || 'DRAFT';
+        const invoiceDate = document.getElementById('ext-inv-date').value || lastExtractedData.date || '';
+
+        // Construct rows for SheetJS
+        const excelRows = lastExtractedData.items.map((item, idx) => ({
+            "S.No": idx + 1,
+            "Product Name": (item.name || '').toUpperCase(),
+            "HSN Code": item.hsn || '',
+            "Batch": (item.batch || '').toUpperCase(),
+            "Expiry": item.expDate || '',
+            "MRP (INR)": Number(item.mrp) || 0,
+            "Quantity": Number(item.qty) || 0,
+            "Billed Rate (INR)": Number(item.rate) || 0,
+            "GST %": Number(item.gst) || 12,
+            "Total Value (Ex. GST) (INR)": (Number(item.qty) || 0) * (Number(item.rate) || 0),
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(excelRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Invoice Data");
+
+        // Beautify column widths
+        const maxLens = {};
+        excelRows.forEach(row => {
+            Object.keys(row).forEach(key => {
+                const val = String(row[key]);
+                maxLens[key] = Math.max(maxLens[key] || 10, val.length + 3);
+            });
+        });
+        ws['!cols'] = Object.keys(maxLens).map(key => ({ wch: maxLens[key] }));
+
+        XLSX.writeFile(wb, `EMYRIS_Invoice_${invoiceNo}_${invoiceDate}.xlsx`);
+        showCenteredMessage("📊 Excel sheet downloaded successfully!", "success");
+    } catch (err) {
+        console.error("❌ Failed to download Excel:", err);
+        showCenteredMessage(`Failed to generate Excel: ${err.message}`, "error");
+    }
+}
