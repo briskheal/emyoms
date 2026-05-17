@@ -2515,8 +2515,24 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
             extractedData.items = extractedItems;
         } else {
             console.log("ℹ️ [OCR] Template empty or missing. Applying upgraded Phase 1 heuristic parser.");
-            const itemLines = text.split('\n').map(l => l.trim()).filter(l => l);
+            
+            // HEALING PHASE 1: Reconnect split HSN and split decimals/floats
+            let rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
+            let itemLines = [];
+            for (let k = 0; k < rawLines.length; k++) {
+                let line = rawLines[k];
+                if (/^\d{7}$/.test(line) && k + 1 < rawLines.length && /^\d{1}$/.test(rawLines[k+1])) {
+                    line = line + rawLines[k+1];
+                    k++;
+                } else if (/^\d+\.\d$/.test(line) && k + 1 < rawLines.length && /^\d{1}$/.test(rawLines[k+1])) {
+                    line = line + rawLines[k+1];
+                    k++;
+                }
+                itemLines.push(line);
+            }
+
             let capturing = false;
+            let expectedSerial = 1;
             
             for (let i = 0; i < itemLines.length; i++) {
                 const line = itemLines[i];
@@ -2528,11 +2544,29 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 }
                 if (line.includes("Total") && capturing) break;
 
-                // Start Item Capture: ONLY trigger on sequential small serial numbers when in capturing mode
-                const isSerialNumber = /^\d+$/.test(line) && parseInt(line) < 100;
+                // Start Item Capture: ONLY trigger on strict expected sequential serial numbers
+                const isSerialNumber = /^\d+$/.test(line) && parseInt(line) === expectedSerial;
 
                 if (capturing && isSerialNumber) {
-                    const name = itemLines[i+1] || "";
+                    // Reconstruct product name: combine consecutive alphabetic lines (which don't start with Mfg Name)
+                    let nameParts = [];
+                    let nextIdx = i + 1;
+                    while (nextIdx < itemLines.length) {
+                        const nextLine = itemLines[nextIdx];
+                        if (nextLine.toUpperCase().includes("MFG NAME") || 
+                            /^\d{6,8}$/.test(nextLine) || 
+                            /\d{2}\/\d{2,4}/.test(nextLine) || 
+                            /^\d+$/.test(nextLine)) {
+                            break;
+                        }
+                        if (/[a-zA-Z]/.test(nextLine)) {
+                            nameParts.push(nextLine);
+                        }
+                        nextIdx++;
+                    }
+                    
+                    let name = nameParts.join(" ").trim();
+                    if (!name) name = itemLines[i+1] || "";
 
                     // Validate name
                     if (!name || name.length < 3 || name === "A" || name === "B" || name.toUpperCase().includes("MFG NAME")) {
@@ -2540,10 +2574,11 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     }
 
                     let hsn = "", batch = "", expDate = "", mrp = 0, qty = 0, rate = 0, gst = 12;
+                    let isDateFirst = false;
                     
-                    // Neighborhood scan of next 12 lines
+                    // Neighborhood scan of next 17 lines
                     let neighborhoodLines = [];
-                    for (let j = i + 1; j < i + 13; j++) {
+                    for (let j = i + 1; j < i + 18; j++) {
                         if (itemLines[j]) neighborhoodLines.push(itemLines[j]);
                     }
                     
@@ -2551,39 +2586,75 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     const hsnLine = neighborhoodLines.find(l => /^\d{6,8}$/.test(l));
                     if (hsnLine) hsn = hsnLine;
 
-                    // Find Expiry (without word boundaries to support squashed layouts)
-                    const expLine = neighborhoodLines.find(l => /(\d{2}\/\d{4})/.test(l) || /(\d{2}\/\d{2})/.test(l));
-                    if (expLine) {
-                        const eMatch = expLine.match(/(\d{2}\/\d{4})/) || expLine.match(/(\d{2}\/\d{2})/);
-                        expDate = eMatch[1];
-                    }
-
-                    // Create a cleaned search space for floats to prevent false decimal merges
+                    // Find squashed line (strictly contains exp date pattern xx/xxxx or xx/xx)
+                    let squashedLine = neighborhoodLines.find(l => /\d{2}\/\d{2,4}/.test(l));
+                    
                     let cleanedSearchText = neighborhoodLines.join(" ");
 
-                    if (hsn) {
-                        cleanedSearchText = cleanedSearchText.replaceAll(hsn, ' ');
-                    }
-                    if (expDate) {
-                        cleanedSearchText = cleanedSearchText.replaceAll(expDate, ' ');
-                    }
-
-                    // 3. Extract Squashed Expiry + MRP + Qty (from original search text first, but with boundary safeguards)
-                    const squashedMatch = neighborhoodLines.join(" ").match(/(\d{2}\/\d{4})\s*(\d+\.\d{2})(\d+)\s*(Pcs|Box|Tab|Nos|Caps)?/i) || 
-                                         neighborhoodLines.join(" ").match(/(\d{2}\/\d{2})\s*(\d+\.\d{2})(\d+)\s*(Pcs|Box|Tab|Nos|Caps)?/i);
-                    if (squashedMatch) {
-                        expDate = squashedMatch[1];
-                        mrp = parseFloat(squashedMatch[2]);
-                        qty = parseInt(squashedMatch[3]);
+                    if (squashedLine) {
+                        isDateFirst = /^\d{2}\//.test(squashedLine);
                         
-                        // Crucial: Wipe out the squashed block from cleanedSearchText to prevent float overlaps
-                        cleanedSearchText = cleanedSearchText.replaceAll(squashedMatch[0], ' ');
+                        if (isDateFirst) {
+                            // Pattern 1: Starts with Expiry (e.g. "11/2027309.3745Pcs")
+                            const formatMatch = squashedLine.match(/^(\d{2}\/\d{2,4})\s*(\d+\.\d{2})(\d+)\s*(Pcs|Box|Tab|Nos|Caps|Btl|Vial)/i);
+                            if (formatMatch) {
+                                expDate = formatMatch[1];
+                                mrp = parseFloat(formatMatch[2]);
+                                qty = parseInt(formatMatch[3]);
+                                
+                                // Remaining part to scan for rate
+                                let remaining = squashedLine.replace(formatMatch[0], ' ');
+                                const floatRegex = /\b[\d,]+\.\d{2}\b/g;
+                                let match;
+                                const patternFloats = [];
+                                while ((match = floatRegex.exec(remaining)) !== null) {
+                                    const val = parseFloat(match[0].replace(/,/g, ''));
+                                    if (val > 0 && val !== mrp) {
+                                        patternFloats.push(val);
+                                    }
+                                }
+                                if (patternFloats.length > 0) {
+                                    patternFloats.sort((a, b) => a - b);
+                                    rate = patternFloats[0];
+                                }
+                            }
+                        } else {
+                            // Pattern 2: Starts with PTR (e.g. "342.46DKT25004/2027450.0020Btl")
+                            const formatMatch = squashedLine.match(/^([\d\.,]+)\s*([A-Z0-9\-]{4,12})\s*(\d{2}\/\d{2,4})\s*(?:(\d+\.\d{2})(\d+)\s*(Pcs|Box|Tab|Nos|Caps|Btl|Vial)?)?/i);
+                            if (formatMatch) {
+                                rate = parseFloat(formatMatch[1].replace(/,/g, ''));
+                                batch = formatMatch[2];
+                                expDate = formatMatch[3];
+                                if (formatMatch[4]) mrp = parseFloat(formatMatch[4]);
+                                if (formatMatch[5]) qty = parseInt(formatMatch[5]);
+                            }
+                        }
                     }
 
-                    // 4. Standalone MRP and Quantity Extraction from cleanedSearchText if squashed matching was not found
-                    if (!mrp) {
-                        const floatMatch = cleanedSearchText.match(/\b(\d+\.\d{2})\b/);
-                        if (floatMatch) mrp = parseFloat(floatMatch[1]);
+                    let ptr = rate; // Save the squashed rate as PTR reference
+
+                    // Expiry Date fallback
+                    if (!expDate) {
+                        const expLine = neighborhoodLines.find(l => /(\d{2}\/\d{4})/.test(l) || /(\d{2}\/\d{2})/.test(l));
+                        if (expLine) {
+                            const eMatch = expLine.match(/(\d{2}\/\d{4})/) || expLine.match(/(\d{2}\/\d{2})/);
+                            expDate = eMatch[1];
+                        }
+                    }
+
+                    // Clean search text
+                    if (hsn) cleanedSearchText = cleanedSearchText.replaceAll(hsn, ' ');
+                    if (expDate) cleanedSearchText = cleanedSearchText.replaceAll(expDate, ' ');
+                    if (squashedLine) cleanedSearchText = cleanedSearchText.replaceAll(squashedLine, ' ');
+                    if (batch) cleanedSearchText = cleanedSearchText.replaceAll(batch, ' ');
+
+                    // Quantity fallback
+                    if (!qty) {
+                        const qtyUnitLine = neighborhoodLines.find(l => /^\d+(?:Pcs|Box|Tab|Nos|Caps|Btl|Vial)/i.test(l));
+                        if (qtyUnitLine) {
+                            const qm = qtyUnitLine.match(/^(\d+)/);
+                            if (qm) qty = parseInt(qm[1]);
+                        }
                     }
                     if (!qty) {
                         const intMatch = cleanedSearchText.match(/\b(\d+)\b/g);
@@ -2593,50 +2664,97 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                         }
                     }
 
-                    // 5. Extract Rate from cleanedSearchText
-                    const rateMatch = cleanedSearchText.match(/(?:Pcs|Box|Tab|Nos|Caps)?\s*[^0-9\.]*\s*([\d,]+\.\d{2})/i);
-                    if (rateMatch) {
-                        const val = parseFloat(rateMatch[1].replace(/,/g,'').replace(/[^0-9.]/g, ''));
-                        if (val !== mrp) rate = val;
-                    }
-
-                    // Fallback: If rate is still not found or matches mrp, classify floats
-                    if (!rate || rate === mrp) {
-                        const allFloats = [];
-                        const floatRegex = /\b[\d,]+\.\d{2}\b/g;
+                    // MRP fallback (exclude already isolated PTR)
+                    if (!mrp) {
+                        const floatRegex = /\b(\d+\.\d{2})\b/g;
                         let match;
                         while ((match = floatRegex.exec(cleanedSearchText)) !== null) {
-                            const val = parseFloat(match[0].replace(/,/g, ''));
-                            if (val !== parseFloat(hsn) && !allFloats.includes(val) && val > 0) {
-                                allFloats.push(val);
+                            const val = parseFloat(match[0]);
+                            if (val !== ptr && val > 0) {
+                                mrp = val;
+                                break;
                             }
                         }
-                        if (allFloats.length > 0) {
-                            allFloats.sort((a, b) => a - b);
-                            rate = allFloats[0];
-                            if (!mrp && allFloats.length >= 2) mrp = allFloats[1];
+                    }
+
+                    // Collect all floats in the neighborhood for validation
+                    const floatRegexAll = /\b[\d,]+\.\d{2}\b/g;
+                    let matchAll;
+                    const neighborhoodFloats = [];
+                    const fullTextCleaned = neighborhoodLines.join(" ");
+                    while ((matchAll = floatRegexAll.exec(fullTextCleaned)) !== null) {
+                        const val = parseFloat(matchAll[0].replace(/,/g, ''));
+                        if (val > 0 && !neighborhoodFloats.includes(val)) {
+                            neighborhoodFloats.push(val);
                         }
                     }
 
-                    // 6. Extract Batch Code (Strictly uppercase alphanumeric only!)
-                    for (let l of neighborhoodLines) {
-                        const looksLikeBatch = /^[A-Z0-9\-\/]{4,15}$/.test(l) && 
-                                              !l.includes(".") && 
-                                              l !== hsn && 
-                                              !l.includes("%") && 
-                                              !l.toUpperCase().includes("GSTIN") &&
-                                              !l.toUpperCase().includes("PCS");
-                        if (looksLikeBatch) {
-                            batch = l;
-                            break;
+                    // Perform mathematical validation check only for Pattern 2 (non-date first squashed lines)
+                    if (!isDateFirst && qty > 0) {
+                        const allFloats = [];
+                        floatRegexAll.lastIndex = 0; // reset
+                        while ((matchAll = floatRegexAll.exec(fullTextCleaned)) !== null) {
+                            const val = parseFloat(matchAll[0].replace(/,/g, ''));
+                            if (val !== parseFloat(hsn) && val !== mrp && val !== ptr && val > 0) {
+                                const idx = matchAll.index;
+                                const contextAfter = fullTextCleaned.substring(idx, idx + 25);
+                                if (contextAfter.includes("%") || contextAfter.includes("(") || contextAfter.includes("CGST") || contextAfter.includes("SGST")) {
+                                    continue; // Skip tax amount floats
+                                }
+                                if (!allFloats.includes(val)) {
+                                    allFloats.push(val);
+                                }
+                            }
+                        }
+
+                        let verifiedRate = allFloats.find(r => 
+                            neighborhoodFloats.some(f => Math.abs(r * qty - f) < 1.0)
+                        );
+                        if (!verifiedRate && ptr > 0 && neighborhoodFloats.some(f => Math.abs(ptr * qty - f) < 1.0)) {
+                            verifiedRate = ptr;
+                        }
+
+                        if (verifiedRate) {
+                            rate = verifiedRate;
+                        } else {
+                            if (allFloats.length > 0) {
+                                allFloats.sort((a, b) => a - b);
+                                rate = allFloats[0];
+                            } else if (!rate) {
+                                rate = ptr;
+                            }
                         }
                     }
 
-                    // 7. Extract GST percentage
+                    // Batch code fallback
+                    if (!batch) {
+                        for (let l of neighborhoodLines) {
+                            const looksLikeBatch = /^[A-Z0-9\-\/]{4,15}$/.test(l) && 
+                                                  !l.includes(".") && 
+                                                  l !== hsn && 
+                                                  !l.includes("%") && 
+                                                  !l.toUpperCase().includes("GSTIN") &&
+                                                  !l.toUpperCase().includes("PCS") &&
+                                                  !l.toUpperCase().includes("VIAL") &&
+                                                  !name.includes(l.toUpperCase());
+                            if (looksLikeBatch) {
+                                batch = l;
+                                break;
+                            }
+                        }
+                    }
+
+                    // GST extract
                     const gstMatch = cleanedSearchText.match(/(\d+\.?\d*)\s*%/);
                     if (gstMatch) {
                         const val = parseFloat(gstMatch[1]);
                         gst = val <= 9 ? val * 2 : val;
+                    } else {
+                        const cgstMatch = neighborhoodLines.join(" ").match(/(\d+\.?\d*)\s*%\s*\)/) || neighborhoodLines.join(" ").match(/\(\s*(\d+\.?\d*)\s*%\s*\)/);
+                        if (cgstMatch) {
+                            const val = parseFloat(cgstMatch[1]);
+                            gst = val * 2;
+                        }
                     }
 
                     // Fallback Defaults
@@ -2644,13 +2762,14 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                         extractedData.items.push({
                             name: name.toUpperCase(),
                             hsn: hsn || "3004",
-                            batch: batch.toUpperCase() || "EXTRACTED",
+                            batch: (batch || "EXTRACTED").toUpperCase(),
                             expDate: expDate || "12/2026",
                             mrp: mrp || 0,
                             qty: qty || 0,
                             rate: rate || 0,
                             gst: gst || 12
                         });
+                        expectedSerial++; // Only increment when successfully saved
                     }
 
                     // Skip the lines we parsed to avoid duplicate item matches
