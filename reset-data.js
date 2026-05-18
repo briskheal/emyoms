@@ -50,11 +50,19 @@ async function resetData() {
         console.log("💰 Resetting Stockist and Supplier balances to zero...");
         await db.Stockist.update({ outstandingBalance: 0 }, { where: {} });
 
-        // 8. Reset Document Counters
+        // 8. Reset Document Counters (Preserving Prefix Templates)
         console.log("🔢 Resetting document counters...");
         const company = await db.Company.findOne();
         if (company) {
-            await company.update({ documentCounters: {} });
+            const currentCounters = company.documentCounters || {};
+            const resetCounters = {};
+            for (const key of Object.keys(currentCounters)) {
+                resetCounters[key] = {
+                    prefix: currentCounters[key]?.prefix || "",
+                    nextNumber: 0
+                };
+            }
+            await company.update({ documentCounters: resetCounters });
         }
 
         console.log("✅ System Reset Complete! Master data preserved.");

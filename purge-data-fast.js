@@ -42,7 +42,15 @@ async function purge() {
         console.log("🔢 Resetting document counters...");
         const company = await db.Company.findOne();
         if (company) {
-            await company.update({ documentCounters: {} });
+            const currentCounters = company.documentCounters || {};
+            const resetCounters = {};
+            for (const key of Object.keys(currentCounters)) {
+                resetCounters[key] = {
+                    prefix: currentCounters[key]?.prefix || "",
+                    nextNumber: 0
+                };
+            }
+            await company.update({ documentCounters: resetCounters });
         }
 
         console.log("✅ Selective purge complete!");

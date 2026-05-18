@@ -4109,10 +4109,18 @@ app.post('/api/admin/system/reset', async (req, res) => {
         await db.Batch.update({ qtyAvailable: 0 }, { where: {} });
         await db.Stockist.update({ outstandingBalance: 0 }, { where: {} });
 
-        // Reset Document Counters
+        // Reset Document Counters (Preserving Prefix Templates)
         const company = await db.Company.findOne();
         if (company) {
-            await company.update({ documentCounters: {} });
+            const currentCounters = company.documentCounters || {};
+            const resetCounters = {};
+            for (const key of Object.keys(currentCounters)) {
+                resetCounters[key] = {
+                    prefix: currentCounters[key]?.prefix || "",
+                    nextNumber: 0
+                };
+            }
+            await company.update({ documentCounters: resetCounters });
         }
 
         res.json({ success: true, message: "System reset successful. All transactional data cleared." });
