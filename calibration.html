@@ -427,7 +427,7 @@
                 <button onclick="saveCalibrationTemplate()" class="btn btn-primary">
                     <i class="fas fa-save"></i> 💾 SAVE BLUEPRINT & PARSE
                 </button>
-                <a href="/index.html" class="btn btn-secondary">
+                <a href="/" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> BACK TO REGISTRY
                 </a>
             </div>
@@ -1017,7 +1017,7 @@
                 const data = await res.json();
                 if (data.success) {
                     showAlert("🎉 Mappings successfully synchronized to database! Mappings locked.", "success");
-                    setTimeout(() => window.location.href = "/index.html", 1500);
+                    setTimeout(() => window.location.href = "/", 1500);
                 } else {
                     showAlert(`Save Error: ${data.message}`, "warning");
                 }
