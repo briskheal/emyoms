@@ -2942,11 +2942,13 @@ function openPurchaseModal(id = null) {
         purchaseCharges = [];
         renderPurchaseItems();
         renderPurchaseCharges();
+        closePurchasePDFPanel(); // Clear any visual coordinate parser traces
         document.getElementById('purchaseModal').classList.remove('hidden');
     } catch (e) { console.error('Error opening purchase modal', e); }
 }
 
 function closePurchaseModal() {
+    closePurchasePDFPanel(); // Clear visual frames
     document.getElementById('purchaseModal').classList.add('hidden');
 }
 
@@ -3028,6 +3030,17 @@ async function handlePurchaseOCR(event) {
     const supplierId = document.getElementById('pur-supplier').value;
     const filenameEl = document.getElementById('pur-ocr-filename');
     if (filenameEl) filenameEl.innerText = file.name;
+
+    // Show PDF inside the iframe side-by-side!
+    try {
+        const pdfURL = URL.createObjectURL(file);
+        const iframe = document.getElementById('pur-pdf-iframe');
+        if (iframe) iframe.src = pdfURL;
+        const pdfPanel = document.getElementById('pur-pdf-view-panel');
+        if (pdfPanel) pdfPanel.classList.remove('hidden');
+    } catch (e) {
+        console.warn("Failed to create object URL for PDF preview:", e);
+    }
 
     showToast("⏳ Uploading & parsing supplier invoice PDF...", "info");
 
@@ -3136,6 +3149,15 @@ async function handlePurchaseOCR(event) {
     } finally {
         event.target.value = "";
     }
+}
+
+function closePurchasePDFPanel() {
+    const pdfPanel = document.getElementById('pur-pdf-view-panel');
+    const iframe = document.getElementById('pur-pdf-iframe');
+    const filenameEl = document.getElementById('pur-ocr-filename');
+    if (pdfPanel) pdfPanel.classList.add('hidden');
+    if (iframe) iframe.src = "";
+    if (filenameEl) filenameEl.innerText = "No file uploaded";
 }
 
 // --- ADDITIONAL CHARGES LOGIC ---

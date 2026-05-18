@@ -2991,6 +2991,21 @@
                         </div>
                     </div>
                     
+                    <!-- SPLIT WORKSPACE CONTAINER (Manual full-width by default, side-by-side when PDF uploaded) -->
+                    <div id="pur-split-workspace" style="flex: 1 1 0; min-height: 0; display: flex; gap: 1rem; width: 100%;">
+                        
+                        <!-- LEFT SIDE: PDF VIEW PANEL (hidden by default) -->
+                        <div id="pur-pdf-view-panel" class="hidden" style="width: 38%; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--glass-border); overflow: hidden;">
+                            <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto;">
+                                <span style="font-size: 0.7rem; font-weight: 800; color: #10b981;"><i class="fas fa-file-pdf"></i> SUPPLIER BILL PDF VIEW</span>
+                                <button type="button" onclick="closePurchasePDFPanel()" style="background: none; border: none; color: #ef4444; font-size: 0.7rem; cursor: pointer; font-weight: bold; padding: 0; outline: none;">✕ Hide PDF</button>
+                            </div>
+                            <iframe id="pur-pdf-iframe" style="flex: 1; border: none; background: #fff;" src=""></iframe>
+                        </div>
+
+                        <!-- RIGHT SIDE: THE ENTIRE ITEMS GRID AND INPUTS TABLE -->
+                        <div id="pur-grid-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 0.3rem;">
+
                     <!-- CONSOLIDATED GRID ENTRY TABLE -->
                     <div style="flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--glass-border); overflow: hidden;">
                         <div class="table-container" style="flex: 1; overflow-y: auto; overflow-x: auto;">
@@ -3081,6 +3096,9 @@
                          <div style="display: flex; gap: 10px;">
                               <button type="button" onclick="savePurchaseEntry(event)" class="btn btn-primary" style="padding: 10px 40px; font-weight: 900; font-size: 0.8rem; background: var(--primary); color: #fff; box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);">✓ POST PURCHASE INWARD</button>
                          </div>
+                    </div>
+
+                        </div>
                     </div>
 
                     <!-- CALCULATION FOOTER (FROZEN) -->
