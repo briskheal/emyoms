@@ -16,6 +16,83 @@ const safeSetHTML = (id, html) => {
     if (el) el.innerText = (html !== undefined && html !== null) ? String(html) : '';
 };
 
+// Premium Global Glassmorphic Toast Notification System
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.position = 'fixed';
+        container.style.top = '24px';
+        container.style.right = '24px';
+        container.style.zIndex = '999999';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '10px';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '12px';
+    toast.style.backdropFilter = 'blur(20px)';
+    toast.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+    toast.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.4)';
+    toast.style.color = '#fff';
+    toast.style.fontSize = '0.85rem';
+    toast.style.fontWeight = '700';
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+    toast.style.gap = '10px';
+    toast.style.transform = 'translateX(100px)';
+    toast.style.opacity = '0';
+    toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+
+    let iconClass = 'fa-info-circle';
+    let bgColor = 'rgba(30, 41, 59, 0.9)'; 
+    let borderColor = 'rgba(99, 102, 241, 0.3)'; 
+
+    if (type === 'success') {
+        iconClass = 'fa-check-circle';
+        bgColor = 'rgba(16, 185, 129, 0.9)'; 
+        borderColor = 'rgba(16, 185, 129, 0.4)';
+    } else if (type === 'warning') {
+        iconClass = 'fa-exclamation-triangle';
+        bgColor = 'rgba(245, 158, 11, 0.9)'; 
+        borderColor = 'rgba(245, 158, 11, 0.4)';
+    } else if (type === 'danger' || type === 'error') {
+        iconClass = 'fa-exclamation-circle';
+        bgColor = 'rgba(239, 68, 68, 0.9)'; 
+        borderColor = 'rgba(239, 68, 68, 0.4)';
+    } else if (type === 'info') {
+        iconClass = 'fa-info-circle';
+        bgColor = 'rgba(99, 102, 241, 0.9)'; 
+        borderColor = 'rgba(99, 102, 241, 0.4)';
+    }
+
+    toast.style.background = bgColor;
+    toast.style.borderColor = borderColor;
+    toast.innerHTML = `<i class="fas ${iconClass}" style="font-size: 1rem;"></i> <span>${message}</span>`;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+        toast.style.opacity = '1';
+    }, 50);
+
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100px)';
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            toast.remove();
+            if (container.children.length === 0) {
+                container.remove();
+            }
+        }, 400);
+    }, 4000);
+}
+
 function toggleSidebar() {
     if (!window.matchMedia('(max-width: 1024px)').matches) return; 
     const sidebar = document.querySelector('.sidebar');
