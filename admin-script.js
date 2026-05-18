@@ -3011,6 +3011,133 @@ function addPurchaseItem() {
     }, 50);
 }
 
+// --- PURCHASE INVOICE PDF OCR PARSING ENGINE ---
+async function triggerPurchaseOCRUpload() {
+    const supplierId = document.getElementById('pur-supplier').value;
+    if (!supplierId) {
+        showToast("⚠️ Please select a Supplier first so we can load their coordinate blueprint!", "warning");
+        return;
+    }
+    document.getElementById('pur-ocr-file').click();
+}
+
+async function handlePurchaseOCR(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const supplierId = document.getElementById('pur-supplier').value;
+    const filenameEl = document.getElementById('pur-ocr-filename');
+    if (filenameEl) filenameEl.innerText = file.name;
+
+    showToast("⏳ Uploading & parsing supplier invoice PDF...", "info");
+
+    const formData = new FormData();
+    formData.append('invoice', file);
+    formData.append('stockistId', supplierId);
+
+    try {
+        const res = await fetch('/api/stockist/upload-invoice-read', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+
+        if (result.success && result.data) {
+            const data = result.data;
+            showToast("⚡ Invoice parsed successfully! Mapping products...", "success");
+
+            // Auto-fill Invoice Header
+            if (data.invoiceNo) {
+                document.getElementById('pur-supplier-inv-no').value = data.invoiceNo;
+            }
+            if (data.date) {
+                document.getElementById('pur-date').value = data.date;
+            }
+
+            // Clear previous items
+            purchaseItems = [];
+
+            // Map and add items
+            (data.items || []).forEach(item => {
+                const query = item.name.toUpperCase().trim();
+                let matchedProd = allProducts.find(p => p.name.toUpperCase().trim() === query);
+                if (!matchedProd) {
+                    matchedProd = allProducts.find(p => p.name.toUpperCase().includes(query) || query.includes(p.name.toUpperCase()));
+                }
+
+                // Expiry conversion to MM-YY
+                let formattedExp = "12-26";
+                if (item.expDate && item.expDate.includes('/')) {
+                    const parts = item.expDate.split('/');
+                    if (parts.length === 2) {
+                        const mm = parts[0].padStart(2, '0');
+                        const yy = parts[1].length === 4 ? parts[1].substring(2) : parts[1];
+                        formattedExp = `${mm}-${yy}`;
+                    }
+                }
+                
+                // Mfg calculation (2 years before expiry)
+                let formattedMfg = "12-23";
+                if (formattedExp.includes('-')) {
+                    const parts = formattedExp.split('-');
+                    const mm = parts[0];
+                    const yy = parseInt(parts[1]);
+                    if (!isNaN(yy)) {
+                        formattedMfg = `${mm}-${(yy - 2).toString().padStart(2, '0')}`;
+                    }
+                }
+
+                const prodId = matchedProd ? matchedProd.id : "";
+                const prodName = matchedProd ? matchedProd.name : item.name;
+                const pack = matchedProd ? (matchedProd.pack || "10s") : "10s";
+                const hsn = matchedProd ? (matchedProd.hsn || item.hsn) : item.hsn;
+                const mrp = item.mrp || (matchedProd ? matchedProd.mrp : 0);
+                const rate = item.rate || 0;
+                const ptr = rate || (matchedProd ? matchedProd.ptr : 0);
+                const pts = matchedProd ? (matchedProd.pts || ptr) : ptr;
+                const qty = item.qty || 0;
+                const gstPct = item.gst || (matchedProd ? matchedProd.gst : 5);
+
+                const taxable = Number((qty * rate).toFixed(2));
+                const gstAmount = Number((taxable * (gstPct / 100)).toFixed(2));
+                const lineTotal = Number((taxable + gstAmount).toFixed(2));
+
+                const newItem = {
+                    productId: prodId,
+                    productName: prodName,
+                    hsn: hsn || "3004",
+                    pack: pack,
+                    batch: (item.batch || "EXTRACTED").toUpperCase(),
+                    mfg: formattedMfg,
+                    exp: formattedExp,
+                    mrp: Number(mrp.toFixed(2)),
+                    ptr: Number(ptr.toFixed(2)),
+                    pts: Number(pts.toFixed(2)),
+                    rate: Number(rate.toFixed(2)),
+                    qty: qty,
+                    gstPercent: gstPct,
+                    taxable,
+                    gstAmount,
+                    lineTotal
+                };
+
+                purchaseItems.push(newItem);
+            });
+
+            renderPurchaseItems();
+            showToast(`🎉 Parsed & mapped ${purchaseItems.length} items from PDF bill!`, "success");
+
+        } else {
+            showToast(`❌ Failed to parse PDF: ${result.message}`, "danger");
+        }
+    } catch (e) {
+        console.error("❌ OCR Upload Error:", e);
+        showToast(`❌ Parsing error: ${e.message}`, "danger");
+    } finally {
+        event.target.value = "";
+    }
+}
+
 // --- ADDITIONAL CHARGES LOGIC ---
 // Variables moved to top
 

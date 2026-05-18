@@ -2941,6 +2941,21 @@
                 <form id="purchaseForm" onsubmit="return false;" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     <input type="hidden" id="pur-id">
                     
+                    <!-- AUTO-FILL FROM PDF BILL (OCR) -->
+                    <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.08); padding: 0.4rem 1rem; border-radius: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); margin-bottom: 0.3rem; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.75rem; font-weight: 800; color: #10b981;">⚡ AUTO-FILL WITH OCR:</span>
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">Select a supplier first, then upload their invoice PDF to auto-populate all products, batches, rates, and values instantly!</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="file" id="pur-ocr-file" accept="application/pdf" style="display: none;" onchange="handlePurchaseOCR(event)">
+                            <button type="button" onclick="triggerPurchaseOCRUpload()" class="btn" style="padding: 5px 15px; font-size: 0.65rem; font-weight: 800; background: #10b981; border: none; color: #fff; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); outline: none;">
+                                <i class="fas fa-file-pdf"></i> UPLOAD SUPPLIER PDF BILL
+                            </button>
+                            <span id="pur-ocr-filename" style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file uploaded</span>
+                        </div>
+                    </div>
+
                     <!-- SUPPLIER & HEADER INFO -->
                     <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1.5fr 0.85fr 1fr 0.8fr 0.75fr 0.75fr; gap: 0.4rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
