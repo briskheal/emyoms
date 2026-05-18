@@ -2575,43 +2575,56 @@ async function postToRegistry() {
 
     // --- SOFT VALIDATION FOR FSSAI (14 DIGITS) ---
     const fssai = profileUpdate.fssaiNo.replace(/[^0-9]/g, '');
-    if (fssai && fssai.length !== 14) {
-        if (!confirm(`⚠️ FSSAI/Food License numbers are typically 14 digits. Your entry (${fssai}) is ${fssai.length} digits.\n\nAre you sure you want to save this as-is?`)) return;
-    }
 
-    if (!confirm("⚠️ FINAL CHECK: Are all details complete and accurate? This will overwrite your official Stockist Master records.")) return;
+    const executePost = () => {
+        showCenteredConfirm(
+            "⚠️ FINAL CHECK: Are all details complete and accurate? This will overwrite your official Stockist Master records.",
+            "Stockist Master Overwrite Confirmation",
+            async () => {
+                const payload = {
+                    invoiceNo: invNo,
+                    date: invDate,
+                    stockistId: currentUser._id || currentUser.id,
+                    items: lastExtractedData.items,
+                    grandTotal: lastExtractedData.items.reduce((sum, i) => {
+                        const line = parseFloat(i.qty) * parseFloat(i.rate);
+                        return sum + line + (line * parseFloat(i.gst || 0) / 100);
+                    }, 0),
+                    profileUpdate: profileUpdate
+                };
 
-    const payload = {
-        invoiceNo: invNo,
-        date: invDate,
-        stockistId: currentUser._id || currentUser.id,
-        items: lastExtractedData.items,
-        grandTotal: lastExtractedData.items.reduce((sum, i) => {
-            const line = parseFloat(i.qty) * parseFloat(i.rate);
-            return sum + line + (line * parseFloat(i.gst || 0) / 100);
-        }, 0),
-        profileUpdate: profileUpdate
+                try {
+                    const res = await fetch(`${API_BASE}/stockist/invoice-external`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await res.json();
+                    
+                    if (result.success) {
+                        showCenteredMessage("Invoice successfully posted to final registry!", "success");
+                        document.getElementById('ext-preview-section').classList.add('hidden');
+                        document.getElementById('ext-inv-file').value = '';
+                        lastExtractedData = null;
+                        syncProfile(); // Refresh local profile
+                    } else {
+                        showCenteredMessage(result.error || "Failed to post invoice.", "error");
+                    }
+                } catch (e) {
+                    showCenteredMessage("Server error during posting.", "error");
+                }
+            }
+        );
     };
 
-    try {
-        const res = await fetch(`${API_BASE}/stockist/invoice-external`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const result = await res.json();
-        
-        if (result.success) {
-            showCenteredMessage("Invoice successfully posted to final registry!", "success");
-            document.getElementById('ext-preview-section').classList.add('hidden');
-            document.getElementById('ext-inv-file').value = '';
-            lastExtractedData = null;
-            syncProfile(); // Refresh local profile
-        } else {
-            showCenteredMessage(result.error || "Failed to post invoice.", "error");
-        }
-    } catch (e) {
-        showCenteredMessage("Server error during posting.", "error");
+    if (fssai && fssai.length !== 14) {
+        showCenteredConfirm(
+            `⚠️ FSSAI/Food License numbers are typically 14 digits. Your entry (${fssai}) is ${fssai.length} digits.\n\nAre you sure you want to save this as-is?`,
+            "FSSAI Format Warning",
+            executePost
+        );
+    } else {
+        executePost();
     }
 }
 
@@ -2721,6 +2734,44 @@ function closeAlert() {
         overlay.classList.remove('show-alert');
         setTimeout(() => overlay.classList.add('hidden'), 300);
     }
+}
+
+// GLOBAL CENTERED CONFIRM SYSTEM
+let confirmCallback = null;
+
+function showCenteredConfirm(msg, title = "Confirmation Required", onConfirm) {
+    const overlay = document.getElementById('globalConfirmOverlay');
+    const titleEl = document.getElementById('confirmTitle');
+    const msgEl = document.getElementById('confirmMsg');
+
+    if (!overlay) {
+        // Fallback if overlay is not found
+        if (confirm(msg)) {
+            onConfirm();
+        }
+        return;
+    }
+
+    titleEl.innerText = title;
+    msgEl.innerText = msg;
+    confirmCallback = onConfirm;
+
+    overlay.classList.remove('hidden');
+    // Force reflow
+    void overlay.offsetWidth;
+    overlay.classList.add('show-confirm');
+}
+
+function closeConfirm(approved) {
+    const overlay = document.getElementById('globalConfirmOverlay');
+    if (overlay) {
+        overlay.classList.remove('show-confirm');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+    if (approved && confirmCallback) {
+        confirmCallback();
+    }
+    confirmCallback = null;
 }
 
 function downloadParsedInvoiceAsExcel() {

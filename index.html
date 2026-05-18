@@ -870,6 +870,8 @@
         .alert-info { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
         .show-alert { opacity: 1 !important; pointer-events: auto !important; }
         .show-alert #globalAlertBox { transform: scale(1) !important; }
+        .show-confirm { opacity: 1 !important; pointer-events: auto !important; }
+        .show-confirm #globalConfirmBox { transform: scale(1) !important; }
     </style>
     <audio id="bgMusic" loop preload="auto">
         <source src="https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" type="audio/mpeg">
@@ -951,6 +953,19 @@
             <h3 id="alertTitle" style="color: #fff; font-size: 1.5rem; font-weight: 900; margin-bottom: 1rem; letter-spacing: -0.5px;">Message</h3>
             <p id="alertMsg" style="color: rgba(255,255,255,0.9); font-size: 0.9rem; line-height: 1.6; margin-bottom: 2rem;"></p>
             <button class="btn-primary" onclick="closeAlert()" style="width: 100%; padding: 14px; border-radius: 15px; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border: none; cursor: pointer; transition: 0.3s;">UNDERSTOOD</button>
+        </div>
+    </div>
+
+    <!-- GLOBAL CENTERED CONFIRM SYSTEM -->
+    <div id="globalConfirmOverlay" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 9999; display: flex; align-items: center; justify-content: center; opacity: 0; transition: 0.3s; pointer-events: none;">
+        <div id="globalConfirmBox" style="background: rgba(15, 23, 42, 0.95); max-width: 450px; width: 90%; transform: scale(0.9); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); padding: 2.5rem; border-radius: 30px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <div id="confirmIcon" style="font-size: 3.5rem; margin-bottom: 1.5rem; filter: drop-shadow(0 0 15px rgba(255,255,255,0.3));">⚠️</div>
+            <h3 id="confirmTitle" style="color: #fff; font-size: 1.5rem; font-weight: 900; margin-bottom: 1rem; letter-spacing: -0.5px;">Confirmation Required</h3>
+            <p id="confirmMsg" style="color: rgba(255,255,255,0.9); font-size: 0.9rem; line-height: 1.6; margin-bottom: 2rem;"></p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn" onclick="closeConfirm(false)" style="flex: 1; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">CANCEL</button>
+                <button class="btn-primary" onclick="closeConfirm(true)" style="flex: 1; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border: none; cursor: pointer; transition: 0.3s; background: var(--grad-primary); box-shadow: 0 4px 15px rgba(99,102,241,0.4);">PROCEED</button>
+            </div>
         </div>
     </div>
 </body>
