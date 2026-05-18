@@ -8105,29 +8105,11 @@ window.ocrTokens = [];
 
 async function initOCRTemplateManager() {
     console.log("🎯 Initializing OCR Template Manager...");
+    const searchEl = document.getElementById('ocr-stockist-search');
     const selectEl = document.getElementById('ocr-stockist-select');
-    if (!selectEl) return;
+    if (searchEl) searchEl.value = '';
+    if (selectEl) selectEl.value = '';
     
-    // Clear and add placeholder
-    selectEl.innerHTML = '<option value="">-- Choose Stockist --</option>';
-
-    try {
-        // Fetch stockists
-        const res = await fetch('/api/admin/stockists');
-        const data = await res.json();
-        
-        if (data.success && data.stockists) {
-            data.stockists.forEach(st => {
-                const opt = document.createElement('option');
-                opt.value = st.id;
-                opt.innerText = `${st.name} (${st.hq || 'NO HQ'})`.toUpperCase();
-                selectEl.appendChild(opt);
-            });
-        }
-    } catch (e) {
-        console.error("❌ Failed to populate OCR Stockist list:", e);
-    }
-
     // Default sliders to standard layout heuristic ranges
     resetOCRFormValues();
     updateOCRGuides();
@@ -8157,6 +8139,92 @@ function resetOCRFormValues() {
         </div>
     `;
     window.ocrTokens = [];
+
+    const searchEl = document.getElementById('ocr-stockist-search');
+    const selectEl = document.getElementById('ocr-stockist-select');
+    if (searchEl) searchEl.value = '';
+    if (selectEl) selectEl.value = '';
+}
+
+function handleOCRStockistSearch(input) {
+    currentSearchFocus = -1;
+    const query = input.value.toLowerCase().trim();
+    const resultsDiv = document.getElementById('ocr-stockist-search-results');
+    if (!resultsDiv) return;
+
+    // Position and show search dropdown
+    resultsDiv.style.position = 'absolute';
+    resultsDiv.style.top = '100%';
+    resultsDiv.style.left = '0';
+    resultsDiv.style.width = '100%';
+    resultsDiv.style.display = 'block';
+    resultsDiv.style.zIndex = '99999';
+
+    let matches = [];
+    if (query.length === 0) {
+        matches = allStockists.slice(0, 15);
+    } else {
+        matches = allStockists.filter(s => 
+            s.name.toLowerCase().includes(query) || 
+            (s.city || '').toLowerCase().includes(query) ||
+            (s.partyType || 'STOCKIST').toLowerCase().includes(query)
+        ).slice(0, 15);
+    }
+
+    if (!matches || matches.length === 0) {
+        if (query.length > 0) {
+            resultsDiv.innerHTML = `<div style="padding:10px; text-align:center; color:var(--text-muted); font-size:0.75rem;">No parties found.</div>`;
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.style.display = 'none';
+        }
+        return;
+    }
+
+    let html = `<div class="search-results-ribbon">
+        <span>STOCKIST / SUPPLIER SELECTION</span>
+        <span>${matches.length} MATCHES</span>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>HQ / City</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    matches.forEach(s => {
+        const typeLabel = s.partyType === 'SUPPLIER' ? 'SUPPLIER (Vendor)' : 'STOCKIST (Customer)';
+        const typeColor = s.partyType === 'SUPPLIER' ? '#10b981' : '#6366f1';
+        html += `<tr onmousedown="event.preventDefault(); selectOCRStockist('${s._id || s.id}', '${s.name}')" style="cursor: pointer;">
+            <td>
+                <div style="font-weight:700; color:#fff;">${s.name}</div>
+                <div style="font-size:0.6rem; color:var(--text-muted);">${s.gst || 'No GST'}</div>
+            </td>
+            <td>
+                <span style="font-size: 0.65rem; font-weight: 800; color: ${typeColor};">${typeLabel}</span>
+            </td>
+            <td>
+                <div style="color: #fff; font-size: 0.75rem;">${s.hq || 'NO HQ'}</div>
+                <div style="font-size: 0.6rem; color: var(--text-muted);">${s.city || '-'}</div>
+            </td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    resultsDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+}
+
+function selectOCRStockist(id, name) {
+    document.getElementById('ocr-stockist-search').value = name;
+    document.getElementById('ocr-stockist-select').value = id;
+    document.getElementById('ocr-stockist-search-results').style.display = 'none';
+    
+    // Automatically trigger template loading
+    loadStockistOCRTemplate();
 }
 
 async function loadStockistOCRTemplate() {
