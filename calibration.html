@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMYRIS OMS | distributor Layout Calibration</title>
+    
+    <!-- Premium Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.15);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            --bg-dark: #070a13;
+            --card-bg: rgba(15, 23, 42, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-muted: #94a3b8;
+            --grad-primary: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --grad-accent: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Sleek Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Glassmorphic Background Grid overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.1) 0%, transparent 45%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Glass Card Utility */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header-bar {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .header-title h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        .btn {
+            padding: 0.65rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--grad-primary);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-accent {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+        .btn-accent:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+        }
+
+        /* Workspace Grid Split Layout */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 80px);
+        }
+
+        /* Left Setup & Sliders Panel */
+        .control-panel {
+            width: 420px;
+            border-right: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: rgba(10, 15, 30, 0.4);
+        }
+
+        /* Instructions block styling */
+        .instructions-block {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 16px;
+            padding: 1.25rem;
+        }
+        .instructions-block h4 {
+            color: #818cf8;
+            font-size: 0.85rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .instructions-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .instructions-list li {
+            font-size: 0.72rem;
+            line-height: 1.4;
+            color: #e2e8f0;
+            display: flex;
+            gap: 8px;
+        }
+        .instructions-list li i {
+            color: #818cf8;
+            margin-top: 3px;
+        }
+
+        .section-header {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            padding: 1rem;
+            border-radius: 14px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: #fff;
+            padding: 0.6rem 0.85rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .form-group input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+        }
+
+        /* Visual Slider Blocks */
+        .slider-block {
+            padding: 0.85rem 1rem;
+            border-radius: 14px;
+            border: 1px solid var(--glass-border);
+            transition: 0.2s;
+        }
+        .slider-block:hover {
+            background: rgba(255, 255, 255, 0.01);
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .slider-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .slider-inputs input {
+            width: 75px;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            font-size: 0.75rem;
+            text-align: center;
+            border-radius: 6px;
+            font-weight: bold;
+            outline: none;
+        }
+
+        /* Right Scanner Matrix Workspace */
+        .matrix-container {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            background: #04060b;
+        }
+
+        /* Interactive Guideline Rectangles */
+        .guide-bar {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border-left: 2px dashed;
+            border-right: 2px dashed;
+            opacity: 0.15;
+            transition: left 0.1s, width 0.1s;
+            pointer-events: none;
+        }
+
+        /* Token canvas background grid lines */
+        .grid-canvas {
+            position: absolute;
+            inset: 0;
+            background-size: 100px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            z-index: 1;
+        }
+
+        .tokens-board {
+            position: relative;
+            z-index: 5;
+            width: 1200px;
+            min-height: 100%;
+        }
+
+        /* Individual Token Style */
+        .cal-token-item {
+            transition: all 0.2s ease;
+        }
+
+        /* Bottom Floating Verification Panel */
+        .verification-panel {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            left: calc(420px + 2rem);
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.25rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            animation: slideInUp 0.4s ease-out;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+
+        /* Standard Excel-like Registry table */
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .excel-table th {
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 0.65rem;
+            background: rgba(0,0,0,0.2);
+        }
+        .excel-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-weight: 500;
+        }
+
+        /* Animation utilities */
+        @keyframes slideInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Alert Overlay */
+        .alert-box {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 10000;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: #fff;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Workspace Layout -->
+    <div class="glass-card" style="width: 100vw; height: 100vh; border-radius: 0; border: none; box-shadow: none;">
+        
+        <!-- Header Bar -->
+        <header class="header-bar">
+            <div class="header-title">
+                <h2><span>🗺️</span> distributor Layout Calibration Workspace</h2>
+                <p>Ensure coordinate mappings align perfectly before supplier invoice uploads.</p>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <button onclick="verifyCalLayoutLocal()" class="btn btn-secondary" style="border: 1px solid var(--primary); color: #818cf8;">
+                    <i class="fas fa-eye"></i> ⚡ LOCAL PREVIEW
+                </button>
+                <button onclick="saveCalibrationTemplate()" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 💾 SAVE BLUEPRINT & PARSE
+                </button>
+                <a href="/index.html" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> BACK TO REGISTRY
+                </a>
+            </div>
+        </header>
+
+        <div class="workspace">
+            
+            <!-- Left Control Sidebar -->
+            <div class="control-panel">
+                
+                <!-- POINT-WISE INSTRUCTIONS -->
+                <div class="instructions-block">
+                    <h4><i class="fas fa-info-circle"></i> Point-Wise Calibration Guide</h4>
+                    <ul class="instructions-list">
+                        <li>
+                            <i class="fas fa-circle-1"></i>
+                            <div><strong>Select Specimen Copy:</strong> Click "Select Specimen" and upload a sample supplier invoice PDF format below.</div>
+                        </li>
+                        <li>
+                            <i class="fas fa-circle-2"></i>
+                            <div><strong>Define Header Anchor:</strong> Input the exact header anchor word (e.g., "HSN", "Product") where item rows begin.</div>
+                        </li>
+                        <li>
+                            <i class="fas fa-circle-3"></i>
+                            <div><strong>Calibrate Coordinates:</strong> Adjust the column start/end boundaries on the left until the guideline overlays frame column boundaries on the visual canvas.</div>
+                        </li>
+                        <li>
+                            <i class="fas fa-circle-4"></i>
+                            <div><strong>Run Live Preview:</strong> Click "⚡ LOCAL PREVIEW" to inspect parsed products, rates, and values. Make fine adjustments if needed.</div>
+                        </li>
+                        <li>
+                            <i class="fas fa-circle-5"></i>
+                            <div><strong>Lock Blueprint:</strong> Click "💾 SAVE BLUEPRINT" to sync mappings to Neon DB database. Mapped supplier invoices will parse automatically hereafter!</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Distributor Identity details -->
+                <div class="section-header">Active Distributor</div>
+                <div class="info-card" style="margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.04); border-color: rgba(99, 102, 241, 0.2);">
+                    <h3 id="cal-distributor-name" style="font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 800; color: #fff;">Loading...</h3>
+                    <span id="cal-distributor-code" style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-top: 2px;">ID: - | Code: -</span>
+                </div>
+
+                <!-- Specimen File Selector -->
+                <div class="section-header">Distributor Specimen Copy</div>
+                <div class="info-card" style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.65rem; font-weight: 800; color: var(--accent); text-transform: uppercase;">Select Specimen PDF</label>
+                    <input type="file" id="cal-specimen-file" accept="application/pdf" style="font-size: 0.72rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 8px; border: 1px dashed var(--glass-border); width: 100%; outline: none;" onchange="analyzeCalibrationPDF(this.files[0])">
+                </div>
+
+                <!-- Anchor Word setting -->
+                <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <label>Header Anchor Keyword</label>
+                    <input type="text" id="cal-anchor" value="HSN" placeholder="e.g. HSN, Product, Item" oninput="updateCalGuides()">
+                </div>
+
+                <div class="section-header">Visual Column Bounds Calibration</div>
+
+                <!-- Product bounds -->
+                <div class="slider-block" style="background: rgba(99, 102, 241, 0.03); border-color: rgba(99, 102, 241, 0.15);">
+                    <div class="slider-header">
+                        <span>📦 Product Name Bounds</span>
+                        <span id="cal-label-val-product" style="color: var(--primary);">5.0 - 35.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-product-start" step="0.5" value="5.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-product-end" step="0.5" value="35.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+                <!-- HSN bounds -->
+                <div class="slider-block" style="background: rgba(245, 158, 11, 0.03); border-color: rgba(245, 158, 11, 0.15);">
+                    <div class="slider-header">
+                        <span>🏷️ HSN Code Bounds</span>
+                        <span id="cal-label-val-hsn" style="color: #f59e0b;">36.0 - 42.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-hsn-start" step="0.5" value="36.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-hsn-end" step="0.5" value="42.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+                <!-- Batch bounds -->
+                <div class="slider-block" style="background: rgba(16, 185, 129, 0.03); border-color: rgba(16, 185, 129, 0.15);">
+                    <div class="slider-header">
+                        <span>⚙️ Batch Number Bounds</span>
+                        <span id="cal-label-val-batch" style="color: var(--accent);">43.0 - 55.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-batch-start" step="0.5" value="43.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-batch-end" step="0.5" value="55.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+                <!-- Expiry bounds -->
+                <div class="slider-block" style="background: rgba(139, 92, 246, 0.03); border-color: rgba(139, 92, 246, 0.15);">
+                    <div class="slider-header">
+                        <span>📅 Expiry Date Bounds</span>
+                        <span id="cal-label-val-exp" style="color: #8b5cf6;">56.0 - 64.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-exp-start" step="0.5" value="56.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-exp-end" step="0.5" value="64.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+                <!-- MRP bounds -->
+                <div class="slider-block" style="background: rgba(236, 72, 153, 0.03); border-color: rgba(236, 72, 153, 0.15);">
+                    <div class="slider-header">
+                        <span>MRP Bounds</span>
+                        <span id="cal-label-val-mrp" style="color: #ec4899;">65.0 - 72.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-mrp-start" step="0.5" value="65.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-mrp-end" step="0.5" value="72.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+                <!-- Rate bounds -->
+                <div class="slider-block" style="background: rgba(14, 165, 233, 0.03); border-color: rgba(14, 165, 233, 0.15);">
+                    <div class="slider-header">
+                        <span>💲 Purchase Rate Bounds</span>
+                        <span id="cal-label-val-rate" style="color: #0ea5e9;">73.0 - 82.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-rate-start" step="0.5" value="73.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-rate-end" step="0.5" value="82.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+                <!-- Qty bounds -->
+                <div class="slider-block" style="background: rgba(239, 68, 68, 0.03); border-color: rgba(239, 68, 68, 0.15);">
+                    <div class="slider-header">
+                        <span>🔢 Quantity Bounds</span>
+                        <span id="cal-label-val-qty" style="color: #ef4444;">83.0 - 95.0</span>
+                    </div>
+                    <div class="slider-inputs">
+                        <input type="number" id="cal-qty-start" step="0.5" value="83.0" oninput="updateCalGuides()">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                        <input type="number" id="cal-qty-end" step="0.5" value="95.0" oninput="updateCalGuides()">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Visual Guidelines Matrix Section -->
+            <div class="matrix-container">
+                <div class="grid-canvas"></div>
+                
+                <!-- Transparent Color Guides -->
+                <div id="cal-guide-product" class="guide-bar" style="border-color:#6366f1; background:rgba(99, 102, 241, 0.04);"></div>
+                <div id="cal-guide-hsn" class="guide-bar" style="border-color:#f59e0b; background:rgba(245, 158, 11, 0.04);"></div>
+                <div id="cal-guide-batch" class="guide-bar" style="border-color:#10b981; background:rgba(16, 185, 129, 0.04);"></div>
+                <div id="cal-guide-exp" class="guide-bar" style="border-color:#8b5cf6; background:rgba(139, 92, 246, 0.04);"></div>
+                <div id="cal-guide-mrp" class="guide-bar" style="border-color:#ec4899; background:rgba(236, 72, 153, 0.04);"></div>
+                <div id="cal-guide-rate" class="guide-bar" style="border-color:#0ea5e9; background:rgba(14, 165, 233, 0.04);"></div>
+                <div id="cal-guide-qty" class="guide-bar" style="border-color:#ef4444; background:rgba(239, 68, 68, 0.04);"></div>
+
+                <!-- Visual Token Render Board -->
+                <div class="tokens-board" id="cal-tokens-board">
+                    <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-style:italic; padding: 10rem 1rem; text-align: center; gap: 15px;">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 4rem; opacity: 0.15; color: var(--primary);"></i>
+                        <div>Please upload your distributor specimen PDF copy to initialize coordinate guidelines!</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Floating Verification Ledger Preview Section -->
+        <div class="verification-panel" id="cal-preview-panel" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">
+                <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-flask"></i> Local Sandbox Simulation Results
+                </h4>
+                <button onclick="document.getElementById('cal-preview-panel').style.display='none'" class="btn" style="background:transparent; color:#fff; padding:2px; font-size:1rem; cursor:pointer; width:auto;">✕</button>
+            </div>
+            
+            <div>
+                <table class="excel-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>HSN</th>
+                            <th>Batch</th>
+                            <th>Exp</th>
+                            <th>MRP</th>
+                            <th>Qty</th>
+                            <th>Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cal-preview-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script Block for Self-Contained visual calibration -->
+    <script>
+        const API_BASE = "/api";
+        let currentUser = null;
+        window.calTokens = [];
+
+        // Load Stockist Identity details
+        function initIdentity() {
+            const savedUser = localStorage.getItem('emyris_user');
+            if (!savedUser) {
+                alert("Session expired. Please login again.");
+                window.location.href = "/";
+                return;
+            }
+            currentUser = JSON.parse(savedUser);
+            const stockistId = currentUser._id || currentUser.id;
+
+            document.getElementById('cal-distributor-name').innerText = currentUser.name || "Default Stockist";
+            document.getElementById('cal-distributor-code').innerText = `ID: ${stockistId} | Code: ${currentUser.loginId || 'N/A'}`;
+
+            loadSavedBlueprint(stockistId);
+        }
+
+        // Fetch saved coordinate blueprints
+        async function loadSavedBlueprint(stockistId) {
+            try {
+                const res = await fetch(`${API_BASE}/admin/ocr-templates/${stockistId}`);
+                const data = await res.json();
+                
+                if (data.success && data.template) {
+                    const t = data.template;
+                    document.getElementById('cal-anchor').value = t.anchorKeyword || 'HSN';
+                    document.getElementById('cal-product-start').value = t.colProductStart;
+                    document.getElementById('cal-product-end').value = t.colProductEnd;
+                    document.getElementById('cal-hsn-start').value = t.colHSNStart !== undefined ? t.colHSNStart : "36.0";
+                    document.getElementById('cal-hsn-end').value = t.colHSNEnd !== undefined ? t.colHSNEnd : "42.0";
+                    document.getElementById('cal-batch-start').value = t.colBatchStart;
+                    document.getElementById('cal-batch-end').value = t.colBatchEnd;
+                    document.getElementById('cal-exp-start').value = t.colExpStart;
+                    document.getElementById('cal-exp-end').value = t.colExpEnd;
+                    document.getElementById('cal-mrp-start').value = t.colMRPStart;
+                    document.getElementById('cal-mrp-end').value = t.colMRPEnd;
+                    document.getElementById('cal-rate-start').value = t.colRateStart;
+                    document.getElementById('cal-rate-end').value = t.colRateEnd;
+                    document.getElementById('cal-qty-start').value = t.colQtyStart;
+                    document.getElementById('cal-qty-end').value = t.colQtyEnd;
+                }
+            } catch (e) {
+                console.error("❌ Failed to fetch blueprint settings:", e);
+            }
+            updateCalGuides();
+        }
+
+        // Display beautiful customized Alert boxes
+        function showAlert(msg, type = "success") {
+            const el = document.createElement('div');
+            el.className = 'alert-box';
+            el.style.background = type === "success" 
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            el.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i> <span>${msg}</span>`;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 4000);
+        }
+
+        // Real-time Guidelines update calculations
+        function updateCalGuides() {
+            const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+            const pS = getVal('cal-product-start'), pE = getVal('cal-product-end');
+            const hS = getVal('cal-hsn-start'), hE = getVal('cal-hsn-end');
+            const bS = getVal('cal-batch-start'), bE = getVal('cal-batch-end');
+            const eS = getVal('cal-exp-start'), eE = getVal('cal-exp-end');
+            const mS = getVal('cal-mrp-start'), mE = getVal('cal-mrp-end');
+            const rS = getVal('cal-rate-start'), rE = getVal('cal-rate-end');
+            const qS = getVal('cal-qty-start'), qE = getVal('cal-qty-end');
+
+            // Textual markers
+            document.getElementById('cal-label-val-product').innerText = `${pS.toFixed(1)} - ${pE.toFixed(1)}`;
+            document.getElementById('cal-label-val-hsn').innerText = `${hS.toFixed(1)} - ${hE.toFixed(1)}`;
+            document.getElementById('cal-label-val-batch').innerText = `${bS.toFixed(1)} - ${bE.toFixed(1)}`;
+            document.getElementById('cal-label-val-exp').innerText = `${eS.toFixed(1)} - ${eE.toFixed(1)}`;
+            document.getElementById('cal-label-val-mrp').innerText = `${mS.toFixed(1)} - ${mE.toFixed(1)}`;
+            document.getElementById('cal-label-val-rate').innerText = `${rS.toFixed(1)} - ${rE.toFixed(1)}`;
+            document.getElementById('cal-label-val-qty').innerText = `${qS.toFixed(1)} - ${qE.toFixed(1)}`;
+
+            // Guidelines sizing & repositioning
+            const setGuide = (id, start, end) => {
+                const el = document.getElementById(`cal-guide-${id}`);
+                if (el) {
+                    el.style.left = `${start * 10}px`;
+                    el.style.width = `${(end - start) * 10}px`;
+                }
+            };
+
+            setGuide('product', pS, pE);
+            setGuide('hsn', hS, hE);
+            setGuide('batch', bS, bE);
+            setGuide('exp', eS, eE);
+            setGuide('mrp', mS, mE);
+            setGuide('rate', rS, rE);
+            setGuide('qty', qS, qE);
+
+            // Colorize active tokens in real-time
+            const tokens = document.querySelectorAll('.cal-token-item');
+            tokens.forEach(tok => {
+                const x = parseFloat(tok.dataset.x);
+                const w = parseFloat(tok.dataset.w);
+                const cx = x + w / 2;
+
+                const inside = (start, end) => (cx >= start && cx <= end);
+
+                tok.style.color = '#fff';
+                tok.style.background = 'rgba(255,255,255,0.02)';
+                tok.style.borderColor = 'rgba(255,255,255,0.05)';
+
+                if (inside(pS, pE)) {
+                    tok.style.color = '#818cf8';
+                    tok.style.background = 'rgba(99, 102, 241, 0.15)';
+                    tok.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+                } else if (inside(hS, hE)) {
+                    tok.style.color = '#fbbf24';
+                    tok.style.background = 'rgba(245, 158, 11, 0.15)';
+                    tok.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                } else if (inside(bS, bE)) {
+                    tok.style.color = '#34d399';
+                    tok.style.background = 'rgba(16, 185, 129, 0.15)';
+                    tok.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                } else if (inside(eS, eE)) {
+                    tok.style.color = '#a78bfa';
+                    tok.style.background = 'rgba(139, 92, 246, 0.15)';
+                    tok.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+                } else if (inside(mS, mE)) {
+                    tok.style.color = '#f472b6';
+                    tok.style.background = 'rgba(236, 72, 153, 0.15)';
+                    tok.style.borderColor = 'rgba(236, 72, 153, 0.4)';
+                } else if (inside(rS, rE)) {
+                    tok.style.color = '#38bdf8';
+                    tok.style.background = 'rgba(14, 165, 233, 0.15)';
+                    tok.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+                } else if (inside(qS, qE)) {
+                    tok.style.color = '#f87171';
+                    tok.style.background = 'rgba(239, 68, 68, 0.15)';
+                    tok.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                }
+            });
+        }
+
+        // PDF coordinate mapping and token generation
+        async function analyzeCalibrationPDF(file) {
+            if (!file) return;
+
+            const board = document.getElementById('cal-tokens-board');
+            board.innerHTML = `
+                <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:var(--primary); padding: 8rem 0; text-align: center; gap: 15px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 3rem;"></i>
+                    <div style="font-weight: 700;">🤖 AI Layout Parser mapping invoice coordinates, please wait...</div>
+                </div>
+            `;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`${API_BASE}/admin/ocr-analyze-pdf`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                
+                if (data.success && data.tokens) {
+                    window.calTokens = data.tokens;
+                    board.innerHTML = '';
+                    
+                    if (data.tokens.length === 0) {
+                        board.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 0;">No visual layout coordinates parsed.</div>';
+                        return;
+                    }
+
+                    data.tokens.forEach(tok => {
+                        const div = document.createElement('div');
+                        div.style.position = 'absolute';
+                        div.style.left = `${tok.x * 10}px`;
+                        div.style.top = `${tok.y * 30 + (tok.page - 1) * 1300}px`;
+                        div.style.width = `${tok.w * 10}px`;
+                        div.style.padding = '2px';
+                        div.style.fontSize = '9px';
+                        div.style.fontWeight = 'bold';
+                        div.style.color = '#fff';
+                        div.style.background = 'rgba(255,255,255,0.02)';
+                        div.style.border = '1px solid rgba(255,255,255,0.05)';
+                        div.style.borderRadius = '3px';
+                        div.style.whiteSpace = 'nowrap';
+                        div.style.overflow = 'hidden';
+                        div.innerText = tok.text;
+                        div.className = 'cal-token-item';
+                        div.dataset.x = tok.x;
+                        div.dataset.w = tok.w;
+                        board.appendChild(div);
+                    });
+
+                    const maxPage = Math.max(...data.tokens.map(t => t.page));
+                    board.style.height = `${maxPage * 1350}px`;
+                    
+                    showAlert("Specimen copy uploaded successfully! guides updated.", "success");
+                    updateCalGuides();
+                } else {
+                    board.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 0; text-align:center;">Layout Error: ${data.message}</div>`;
+                }
+            } catch (e) {
+                console.error("❌ Specimen parsing failed:", e);
+                board.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 0; text-align:center;">Connection Error: ${e.message}</div>`;
+            }
+        }
+
+        // Local verification sandbox calculations
+        function verifyCalLayoutLocal() {
+            if (!window.calTokens || window.calTokens.length === 0) {
+                return showAlert("Please upload/select a distributor specimen PDF copy first.", "warning");
+            }
+
+            const anchorKeyword = document.getElementById('cal-anchor').value.trim() || 'HSN';
+            const pS = parseFloat(document.getElementById('cal-product-start').value) || 0;
+            const pE = parseFloat(document.getElementById('cal-product-end').value) || 0;
+            const hS = parseFloat(document.getElementById('cal-hsn-start').value) || 0;
+            const hE = parseFloat(document.getElementById('cal-hsn-end').value) || 0;
+            const bS = parseFloat(document.getElementById('cal-batch-start').value) || 0;
+            const bE = parseFloat(document.getElementById('cal-batch-end').value) || 0;
+            const eS = parseFloat(document.getElementById('cal-exp-start').value) || 0;
+            const eE = parseFloat(document.getElementById('cal-exp-end').value) || 0;
+            const mS = parseFloat(document.getElementById('cal-mrp-start').value) || 0;
+            const mE = parseFloat(document.getElementById('cal-mrp-end').value) || 0;
+            const rS = parseFloat(document.getElementById('cal-rate-start').value) || 0;
+            const rE = parseFloat(document.getElementById('cal-rate-end').value) || 0;
+            const qS = parseFloat(document.getElementById('cal-qty-start').value) || 0;
+            const qE = parseFloat(document.getElementById('cal-qty-end').value) || 0;
+
+            const anchorToken = window.calTokens.find(t => t.text.toUpperCase().includes(anchorKeyword.toUpperCase()));
+            const anchorY = anchorToken ? anchorToken.y : 0;
+
+            const tokens = [...window.calTokens];
+            tokens.sort((a, b) => {
+                if (a.page !== b.page) return a.page - b.page;
+                return a.y - b.y;
+            });
+
+            let rows = [];
+            let currentY = -1;
+            let currentRow = [];
+            let yThreshold = 0.25;
+
+            tokens.forEach(token => {
+                if (anchorToken && token.page === 1 && token.y <= anchorY) return;
+                
+                const lower = token.text.toLowerCase();
+                if (lower === 'total' || lower === 'grand total' || lower.includes('for ') || lower.includes('authorized')) return;
+
+                if (currentY === -1 || Math.abs(token.y - currentY) > yThreshold) {
+                     if (currentRow.length > 0) {
+                         rows.push({ y: currentY, page: token.page, tokens: currentRow });
+                     }
+                     currentRow = [token];
+                     currentY = token.y;
+                } else {
+                     currentRow.push(token);
+                }
+            });
+            if (currentRow.length > 0) {
+                rows.push({ y: currentY, page: tokens[tokens.length - 1].page, tokens: currentRow });
+            }
+
+            let previewItems = [];
+            rows.forEach(row => {
+                let productText = [];
+                let hsnText = "";
+                let batchText = "";
+                let expText = "";
+                let mrpText = "";
+                let rateText = "";
+                let qtyText = "";
+
+                row.tokens.forEach(tok => {
+                    const centerX = tok.x + tok.w / 2;
+                    const checkIn = (start, end) => (centerX >= start && centerX <= end);
+
+                    if (checkIn(pS, pE)) {
+                        productText.push(tok.text);
+                    } else if (checkIn(hS, hE)) {
+                        hsnText = tok.text;
+                    } else if (checkIn(bS, bE)) {
+                        batchText = tok.text;
+                    } else if (checkIn(eS, eE)) {
+                        expText = tok.text;
+                    } else if (checkIn(mS, mE)) {
+                        mrpText = tok.text;
+                    } else if (checkIn(rS, rE)) {
+                        rateText = tok.text;
+                    } else if (checkIn(qS, qE)) {
+                        qtyText = tok.text;
+                    }
+                });
+
+                const name = productText.join(" ").trim().toUpperCase();
+                const cleanNum = (txt) => {
+                    if (!txt) return 0;
+                    return parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+                };
+
+                const qty = cleanNum(qtyText);
+                const mrp = cleanNum(mrpText);
+                const rate = cleanNum(rateText);
+
+                if (name && name.length > 2 && (qty > 0 || mrp > 0 || batchText)) {
+                    previewItems.push({
+                        name,
+                        hsn: hsnText.trim() || "—",
+                        batch: batchText.trim().toUpperCase() || "—",
+                        expDate: expText.trim() || "—",
+                        mrp: mrp || 0,
+                        qty: qty || 0,
+                        rate: rate || 0
+                    });
+                }
+            });
+
+            // Display extracted items preview
+            const tbody = document.getElementById('cal-preview-body');
+            tbody.innerHTML = '';
+            if (previewItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); font-style:italic;">No products parsed. Adjust coordinates and try again.</td></tr>';
+            } else {
+                previewItems.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="color:#fff; font-weight:700;">${item.name}</td>
+                            <td style="color:#fbbf24;">${item.hsn}</td>
+                            <td style="color:#34d399;">${item.batch}</td>
+                            <td style="color:#a78bfa;">${item.expDate}</td>
+                            <td style="font-family:monospace; color:#f472b6;">₹${item.mrp.toFixed(2)}</td>
+                            <td style="font-family:monospace; color:#f87171;">${item.qty}</td>
+                            <td style="font-family:monospace; color:#38bdf8;">₹${item.rate.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('cal-preview-panel').style.display = 'block';
+            showAlert(`Sandbox extracted ${previewItems.length} items!`, "success");
+        }
+
+        // Commit coordinate template layout to Neon DB
+        async function saveCalibrationTemplate() {
+            if (!currentUser) return;
+            const stockistId = currentUser._id || currentUser.id;
+
+            const payload = {
+                stockistId,
+                anchorKeyword: document.getElementById('cal-anchor').value.trim() || 'HSN',
+                colProductStart: document.getElementById('cal-product-start').value,
+                colProductEnd: document.getElementById('cal-product-end').value,
+                colHSNStart: document.getElementById('cal-hsn-start').value,
+                colHSNEnd: document.getElementById('cal-hsn-end').value,
+                colBatchStart: document.getElementById('cal-batch-start').value,
+                colBatchEnd: document.getElementById('cal-batch-end').value,
+                colExpStart: document.getElementById('cal-exp-start').value,
+                colExpEnd: document.getElementById('cal-exp-end').value,
+                colMRPStart: document.getElementById('cal-mrp-start').value,
+                colMRPEnd: document.getElementById('cal-mrp-end').value,
+                colRateStart: document.getElementById('cal-rate-start').value,
+                colRateEnd: document.getElementById('cal-rate-end').value,
+                colQtyStart: document.getElementById('cal-qty-start').value,
+                colQtyEnd: document.getElementById('cal-qty-end').value
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/admin/ocr-templates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showAlert("🎉 Mappings successfully synchronized to database! Mappings locked.", "success");
+                    setTimeout(() => window.location.href = "/index.html", 1500);
+                } else {
+                    showAlert(`Save Error: ${data.message}`, "warning");
+                }
+            } catch (e) {
+                console.error("❌ Failed to synchronize template:", e);
+                showAlert("Connection failure; could not reach local database.", "warning");
+            }
+        }
+
+        window.onload = initIdentity;
+    </script>
+</body>
+</html>

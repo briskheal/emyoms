@@ -2411,6 +2411,23 @@ async function uploadExtInvoice() {
     const fileInput = document.getElementById('ext-inv-file');
     if (!fileInput.files[0]) return showCenteredMessage("Please select an invoice file (PDF/JPG/PNG).", "warning");
 
+    // --- SPECIMEN GATE: Block uploads if no calibration blueprint exists ---
+    if (currentUser) {
+        const stockistId = currentUser._id || currentUser.id;
+        try {
+            const chkRes = await fetch(`${API_BASE}/admin/ocr-templates/${stockistId}`);
+            const chkData = await chkRes.json();
+            if (!chkData.success || !chkData.template) {
+                return showCenteredMessage(
+                    "⚠️ SETUP REQUIRED\n\nYou must complete the one-time Invoice Layout Setup before uploading invoices. Click 🗺️ MAP LAYOUT in the navigation above to complete setup.",
+                    "warning"
+                );
+            }
+        } catch(e) {
+            console.warn("Could not verify calibration template; proceeding anyway.");
+        }
+    }
+
     // Hide guide arrow once user starts
     const arrow = document.getElementById('guide-arrow');
     if (arrow) arrow.classList.add('hidden');
@@ -2422,6 +2439,33 @@ async function uploadExtInvoice() {
 
     // --- RESET PREVIEW UI FOR NEW UPLOAD ---
     clearInvoiceRegistry(true);
+
+    // --- INITIALIZE STEP-BY-STEP PROGRESS BAR ---
+    const progBlock = document.getElementById('ext-progress-block');
+    const progTitle = document.getElementById('ext-progress-title');
+    const progBar = document.getElementById('ext-progress-bar');
+    const progMsg = document.getElementById('ext-progress-msg');
+
+    if (progBlock) {
+        progBlock.classList.remove('hidden');
+        progTitle.innerText = "Processing Supplier Invoice...";
+        progBar.style.width = "15%";
+        progMsg.innerText = "Step 1/4: Uploading PDF and extracting layout streams...";
+    }
+
+    const progressTimer1 = setTimeout(() => {
+        if (progBar && progMsg) {
+            progBar.style.width = "45%";
+            progMsg.innerText = "Step 2/4: Decoding custom Type3 glyphs and mapping columns...";
+        }
+    }, 1800);
+
+    const progressTimer2 = setTimeout(() => {
+        if (progBar && progMsg) {
+            progBar.style.width = "75%";
+            progMsg.innerText = "Step 3/4: Sorting horizontal token boundaries & reassembling product lines...";
+        }
+    }, 4200);
 
     try {
         const formData = new FormData();
@@ -2435,7 +2479,21 @@ async function uploadExtInvoice() {
         });
         const result = await res.json();
         
-            if (result.success) {
+        // --- COMPLETE PROGRESS BAR ON SUCCESS/FAILURE ---
+        clearTimeout(progressTimer1);
+        clearTimeout(progressTimer2);
+        
+        if (progBar && progMsg) {
+            progBar.style.width = "100%";
+            progMsg.innerText = result.success 
+                ? "Step 4/4: Complete! Loading visual purchase entry ledger preview..."
+                : "Failed to read invoice layout details.";
+            setTimeout(() => {
+                if (progBlock) progBlock.classList.add('hidden');
+            }, 1500);
+        }
+
+        if (result.success) {
                 lastExtractedData = result.data;
                 document.getElementById('ext-inv-no').value = result.data.invoiceNo;
                 document.getElementById('ext-inv-date').value = result.data.date;
@@ -2708,5 +2766,428 @@ function downloadParsedInvoiceAsExcel() {
     } catch (err) {
         console.error("❌ Failed to download Excel:", err);
         showCenteredMessage(`Failed to generate Excel: ${err.message}`, "error");
+    }
+}
+
+// ==========================================
+// 🗺️ VISUAL INVOICE CALIBRATION & MEMORIZATION SYSTEM
+// ==========================================
+window.calTokens = [];
+
+async function openCalibrationModal() {
+    if (!currentUser) {
+        return showCenteredMessage("Session expired. Please login again.", "error");
+    }
+
+    const stockistId = currentUser._id || currentUser.id;
+    document.getElementById('cal-distributor-name').innerText = currentUser.name || "Default Stockist";
+    document.getElementById('cal-distributor-code').innerText = `ID: ${stockistId} | Code: ${currentUser.loginId || 'N/A'}`;
+
+    // Load saved template
+    try {
+        const res = await fetch(`${API_BASE}/admin/ocr-templates/${stockistId}`);
+        const data = await res.json();
+        
+        if (data.success && data.template) {
+            const t = data.template;
+            document.getElementById('cal-anchor').value = t.anchorKeyword || 'HSN';
+            document.getElementById('cal-product-start').value = t.colProductStart;
+            document.getElementById('cal-product-end').value = t.colProductEnd;
+            document.getElementById('cal-hsn-start').value = t.colHSNStart !== undefined ? t.colHSNStart : "36.0";
+            document.getElementById('cal-hsn-end').value = t.colHSNEnd !== undefined ? t.colHSNEnd : "42.0";
+            document.getElementById('cal-batch-start').value = t.colBatchStart;
+            document.getElementById('cal-batch-end').value = t.colBatchEnd;
+            document.getElementById('cal-exp-start').value = t.colExpStart;
+            document.getElementById('cal-exp-end').value = t.colExpEnd;
+            document.getElementById('cal-mrp-start').value = t.colMRPStart;
+            document.getElementById('cal-mrp-end').value = t.colMRPEnd;
+            document.getElementById('cal-rate-start').value = t.colRateStart;
+            document.getElementById('cal-rate-end').value = t.colRateEnd;
+            document.getElementById('cal-qty-start').value = t.colQtyStart;
+            document.getElementById('cal-qty-end').value = t.colQtyEnd;
+        } else {
+            // Default template values
+            document.getElementById('cal-anchor').value = "HSN";
+            document.getElementById('cal-product-start').value = "5.0";
+            document.getElementById('cal-product-end').value = "35.0";
+            document.getElementById('cal-hsn-start').value = "36.0";
+            document.getElementById('cal-hsn-end').value = "42.0";
+            document.getElementById('cal-batch-start').value = "43.0";
+            document.getElementById('cal-batch-end').value = "55.0";
+            document.getElementById('cal-exp-start').value = "56.0";
+            document.getElementById('cal-exp-end').value = "64.0";
+            document.getElementById('cal-mrp-start').value = "65.0";
+            document.getElementById('cal-mrp-end').value = "72.0";
+            document.getElementById('cal-rate-start').value = "73.0";
+            document.getElementById('cal-rate-end').value = "82.0";
+            document.getElementById('cal-qty-start').value = "83.0";
+            document.getElementById('cal-qty-end').value = "95.0";
+        }
+    } catch (e) {
+        console.error("❌ Failed to fetch saved blueprint template:", e);
+    }
+
+    const modal = document.getElementById('calibrationModal');
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+
+    // Trigger visual overlay updates
+    updateCalGuides();
+
+    // Check if file is already selected in main uploader
+    const fileInput = document.getElementById('ext-inv-file');
+    if (fileInput.files && fileInput.files[0]) {
+        analyzeCalibrationPDF(fileInput.files[0]);
+    } else {
+        document.getElementById('cal-tokens-board').innerHTML = `
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-style:italic; padding: 4rem 1rem; text-align: center; gap: 15px;">
+                <i class="fas fa-file-pdf" style="font-size: 3rem; opacity: 0.2; color: var(--accent);"></i>
+                <div>No file uploaded. Please select a PDF invoice in the registry first, then click Map Layout!</div>
+            </div>
+        `;
+    }
+}
+
+function closeCalibrationModal() {
+    const modal = document.getElementById('calibrationModal');
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+    
+    // Clear preview drawer
+    document.getElementById('cal-preview-panel').style.display = 'none';
+}
+
+function updateCalGuides() {
+    const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+    const pS = getVal('cal-product-start'), pE = getVal('cal-product-end');
+    const hS = getVal('cal-hsn-start'), hE = getVal('cal-hsn-end');
+    const bS = getVal('cal-batch-start'), bE = getVal('cal-batch-end');
+    const eS = getVal('cal-exp-start'), eE = getVal('cal-exp-end');
+    const mS = getVal('cal-mrp-start'), mE = getVal('cal-mrp-end');
+    const rS = getVal('cal-rate-start'), rE = getVal('cal-rate-end');
+    const qS = getVal('cal-qty-start'), qE = getVal('cal-qty-end');
+
+    // Update textual badges
+    document.getElementById('cal-label-val-product').innerText = `${pS.toFixed(1)} - ${pE.toFixed(1)}`;
+    document.getElementById('cal-label-val-hsn').innerText = `${hS.toFixed(1)} - ${hE.toFixed(1)}`;
+    document.getElementById('cal-label-val-batch').innerText = `${bS.toFixed(1)} - ${bE.toFixed(1)}`;
+    document.getElementById('cal-label-val-exp').innerText = `${eS.toFixed(1)} - ${eE.toFixed(1)}`;
+    document.getElementById('cal-label-val-mrp').innerText = `${mS.toFixed(1)} - ${mE.toFixed(1)}`;
+    document.getElementById('cal-label-val-rate').innerText = `${rS.toFixed(1)} - ${rE.toFixed(1)}`;
+    document.getElementById('cal-label-val-qty').innerText = `${qS.toFixed(1)} - ${qE.toFixed(1)}`;
+
+    // Shift transparent guide overlay rectangles
+    const setGuide = (id, start, end) => {
+        const el = document.getElementById(`cal-guide-${id}`);
+        if (el) {
+            el.style.left = `${start * 10}px`;
+            el.style.width = `${(end - start) * 10}px`;
+        }
+    };
+
+    setGuide('product', pS, pE);
+    setGuide('hsn', hS, hE);
+    setGuide('batch', bS, bE);
+    setGuide('exp', eS, eE);
+    setGuide('mrp', mS, mE);
+    setGuide('rate', rS, rE);
+    setGuide('qty', qS, qE);
+
+    // Colorize rendered token elements in real-time
+    const tokens = document.querySelectorAll('.cal-token-item');
+    tokens.forEach(tok => {
+        const x = parseFloat(tok.dataset.x);
+        const w = parseFloat(tok.dataset.w);
+        const cx = x + w / 2;
+
+        const inside = (start, end) => (cx >= start && cx <= end);
+
+        // Reset styling
+        tok.style.color = '#fff';
+        tok.style.background = 'rgba(255,255,255,0.02)';
+        tok.style.borderColor = 'rgba(255,255,255,0.05)';
+        tok.style.boxShadow = 'none';
+
+        if (inside(pS, pE)) {
+            tok.style.color = '#818cf8'; // product
+            tok.style.background = 'rgba(99, 102, 241, 0.15)';
+            tok.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+        } else if (inside(hS, hE)) {
+            tok.style.color = '#fbbf24'; // hsn
+            tok.style.background = 'rgba(245, 158, 11, 0.15)';
+            tok.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        } else if (inside(bS, bE)) {
+            tok.style.color = '#34d399'; // batch
+            tok.style.background = 'rgba(16, 185, 129, 0.15)';
+            tok.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        } else if (inside(eS, eE)) {
+            tok.style.color = '#a78bfa'; // exp
+            tok.style.background = 'rgba(139, 92, 246, 0.15)';
+            tok.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+        } else if (inside(mS, mE)) {
+            tok.style.color = '#f472b6'; // mrp
+            tok.style.background = 'rgba(236, 72, 153, 0.15)';
+            tok.style.borderColor = 'rgba(236, 72, 153, 0.4)';
+        } else if (inside(rS, rE)) {
+            tok.style.color = '#38bdf8'; // rate
+            tok.style.background = 'rgba(14, 165, 233, 0.15)';
+            tok.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+        } else if (inside(qS, qE)) {
+            tok.style.color = '#f87171'; // qty
+            tok.style.background = 'rgba(239, 68, 68, 0.15)';
+            tok.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        }
+    });
+}
+
+async function analyzeCalibrationPDF(file) {
+    if (!file) return;
+
+    const board = document.getElementById('cal-tokens-board');
+    board.innerHTML = `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:var(--primary); padding: 5rem 0; text-align: center; gap: 15px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 3rem;"></i>
+            <div>🤖 AI Engine analyzing PDF layout coordinates, please wait...</div>
+        </div>
+    `;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/ocr-analyze-pdf`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.success && data.tokens) {
+            window.calTokens = data.tokens;
+            board.innerHTML = '';
+            
+            if (data.tokens.length === 0) {
+                board.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 0;">No text tokens extracted from this PDF.</div>';
+                return;
+            }
+
+            data.tokens.forEach(tok => {
+                const div = document.createElement('div');
+                div.style.position = 'absolute';
+                div.style.left = `${tok.x * 10}px`;
+                div.style.top = `${tok.y * 30 + (tok.page - 1) * 1300}px`; // Stack pages with vertical gap
+                div.style.width = `${tok.w * 10}px`;
+                div.style.padding = '2px';
+                div.style.fontSize = '9px';
+                div.style.fontWeight = 'bold';
+                div.style.color = '#fff';
+                div.style.background = 'rgba(255,255,255,0.02)';
+                div.style.border = '1px solid rgba(255,255,255,0.05)';
+                div.style.borderRadius = '3px';
+                div.style.whiteSpace = 'nowrap';
+                div.style.overflow = 'hidden';
+                div.innerText = tok.text;
+                div.className = 'cal-token-item';
+                div.dataset.x = tok.x;
+                div.dataset.w = tok.w;
+                board.appendChild(div);
+            });
+
+            // Adjust workspace container size to fit height
+            const maxPage = Math.max(...data.tokens.map(t => t.page));
+            board.style.height = `${maxPage * 1350}px`;
+            
+            showCenteredMessage("PDF coordinate matrix computed! Column guides applied.", "success");
+            updateCalGuides();
+        } else {
+            board.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 0; text-align:center;">Extraction Error: ${data.message || 'Unknown error'}</div>`;
+        }
+    } catch (e) {
+        console.error("❌ PDF extraction failure:", e);
+        board.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 0; text-align:center;">Connection Error: ${e.message}</div>`;
+    }
+}
+
+function verifyCalLayoutLocal() {
+    if (!window.calTokens || window.calTokens.length === 0) {
+        return showCenteredMessage("Please upload/load a sample invoice PDF before running local verification.", "warning");
+    }
+
+    const anchorKeyword = document.getElementById('cal-anchor').value.trim() || 'HSN';
+    const pS = parseFloat(document.getElementById('cal-product-start').value) || 0;
+    const pE = parseFloat(document.getElementById('cal-product-end').value) || 0;
+    const hS = parseFloat(document.getElementById('cal-hsn-start').value) || 0;
+    const hE = parseFloat(document.getElementById('cal-hsn-end').value) || 0;
+    const bS = parseFloat(document.getElementById('cal-batch-start').value) || 0;
+    const bE = parseFloat(document.getElementById('cal-batch-end').value) || 0;
+    const eS = parseFloat(document.getElementById('cal-exp-start').value) || 0;
+    const eE = parseFloat(document.getElementById('cal-exp-end').value) || 0;
+    const mS = parseFloat(document.getElementById('cal-mrp-start').value) || 0;
+    const mE = parseFloat(document.getElementById('cal-mrp-end').value) || 0;
+    const rS = parseFloat(document.getElementById('cal-rate-start').value) || 0;
+    const rE = parseFloat(document.getElementById('cal-rate-end').value) || 0;
+    const qS = parseFloat(document.getElementById('cal-qty-start').value) || 0;
+    const qE = parseFloat(document.getElementById('cal-qty-end').value) || 0;
+
+    // Locate visual anchor keyword
+    const anchorToken = window.calTokens.find(t => t.text.toUpperCase().includes(anchorKeyword.toUpperCase()));
+    const anchorY = anchorToken ? anchorToken.y : 0;
+
+    // Sort and group by line Y (threshold 0.25)
+    const tokens = [...window.calTokens];
+    tokens.sort((a, b) => {
+        if (a.page !== b.page) return a.page - b.page;
+        return a.y - b.y;
+    });
+
+    let rows = [];
+    let currentY = -1;
+    let currentRow = [];
+    let yThreshold = 0.25;
+
+    tokens.forEach(token => {
+        if (anchorToken && token.page === 1 && token.y <= anchorY) return;
+        
+        const lower = token.text.toLowerCase();
+        if (lower === 'total' || lower === 'grand total' || lower.includes('for ') || lower.includes('authorized')) return;
+
+        if (currentY === -1 || Math.abs(token.y - currentY) > yThreshold) {
+             if (currentRow.length > 0) {
+                 rows.push({ y: currentY, page: token.page, tokens: currentRow });
+             }
+             currentRow = [token];
+             currentY = token.y;
+        } else {
+             currentRow.push(token);
+        }
+    });
+    if (currentRow.length > 0) {
+        rows.push({ y: currentY, page: tokens[tokens.length - 1].page, tokens: currentRow });
+    }
+
+    let extractedItems = [];
+    rows.forEach(row => {
+        let productText = [];
+        let hsnText = "";
+        let batchText = "";
+        let expText = "";
+        let mrpText = "";
+        let rateText = "";
+        let qtyText = "";
+
+        row.tokens.forEach(tok => {
+            const centerX = tok.x + tok.w / 2;
+
+            const checkIn = (start, end) => (centerX >= start && centerX <= end);
+
+            if (checkIn(pS, pE)) {
+                productText.push(tok.text);
+            } else if (checkIn(hS, hE)) {
+                hsnText = tok.text;
+            } else if (checkIn(bS, bE)) {
+                batchText = tok.text;
+            } else if (checkIn(eS, eE)) {
+                expText = tok.text;
+            } else if (checkIn(mS, mE)) {
+                mrpText = tok.text;
+            } else if (checkIn(rS, rE)) {
+                rateText = tok.text;
+            } else if (checkIn(qS, qE)) {
+                qtyText = tok.text;
+            }
+        });
+
+        const name = productText.join(" ").trim().toUpperCase();
+        const cleanNum = (txt) => {
+            if (!txt) return 0;
+            return parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+        };
+
+        const qty = cleanNum(qtyText);
+        const mrp = cleanNum(mrpText);
+        const rate = cleanNum(rateText);
+
+        if (name && name.length > 2 && (qty > 0 || mrp > 0 || batchText)) {
+            extractedItems.push({
+                name,
+                hsn: hsnText.trim() || "3004",
+                batch: batchText.trim().toUpperCase() || "EXTRACTED",
+                expDate: expText.trim() || "12/2026",
+                mrp: mrp || 0,
+                qty: qty || 0,
+                rate: rate || 0
+            });
+        }
+    });
+
+    // Render test table in verify drawer
+    const tbody = document.getElementById('cal-preview-body');
+    if (extractedItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color:#ef4444; padding:3rem 0;">No items extracted. Try shifting ranges to match visual text coordinates.</td></tr>`;
+    } else {
+        tbody.innerHTML = extractedItems.map(item => `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="font-weight:700; color:#fff; padding: 8px 10px;">${item.name}</td>
+                <td style="color:#34d399; font-weight:800; padding: 8px 10px;">${item.batch}</td>
+                <td style="text-align:right; font-family:monospace; padding: 8px 10px;">₹${item.mrp.toFixed(2)}</td>
+                <td style="text-align:right; font-family:monospace; color:#38bdf8; padding: 8px 10px;">₹${item.rate.toFixed(2)}</td>
+                <td style="text-align:center; font-weight:800; color:#fbbf24; padding: 8px 10px;">${item.qty}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Slide open drawer
+    document.getElementById('cal-preview-panel').style.display = 'flex';
+    showCenteredMessage(`Verification simulation complete! Successfully parsed ${extractedItems.length} lines.`, "success");
+}
+
+async function saveCalibrationTemplate() {
+    if (!currentUser) return showCenteredMessage("Session expired. Please login again.", "error");
+
+    const stockistId = currentUser._id || currentUser.id;
+    const payload = {
+        stockistId,
+        anchorKeyword: document.getElementById('cal-anchor').value.trim() || 'HSN',
+        colProductStart: parseFloat(document.getElementById('cal-product-start').value),
+        colProductEnd: parseFloat(document.getElementById('cal-product-end').value),
+        colHSNStart: parseFloat(document.getElementById('cal-hsn-start').value),
+        colHSNEnd: parseFloat(document.getElementById('cal-hsn-end').value),
+        colBatchStart: parseFloat(document.getElementById('cal-batch-start').value),
+        colBatchEnd: parseFloat(document.getElementById('cal-batch-end').value),
+        colExpStart: parseFloat(document.getElementById('cal-exp-start').value),
+        colExpEnd: parseFloat(document.getElementById('cal-exp-end').value),
+        colMRPStart: parseFloat(document.getElementById('cal-mrp-start').value),
+        colMRPEnd: parseFloat(document.getElementById('cal-mrp-end').value),
+        colRateStart: parseFloat(document.getElementById('cal-rate-start').value),
+        colRateEnd: parseFloat(document.getElementById('cal-rate-end').value),
+        colQtyStart: parseFloat(document.getElementById('cal-qty-start').value),
+        colQtyEnd: parseFloat(document.getElementById('cal-qty-end').value)
+    };
+
+    try {
+        const res = await fetch(`${API_BASE}/admin/ocr-templates`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            showCenteredMessage("🎯 Invoice layout coordinate template memorized successfully!", "success");
+            closeCalibrationModal();
+            
+            // Automatically trigger the main upload and parsing sequence on the active PDF
+            const fileInput = document.getElementById('ext-inv-file');
+            if (fileInput.files && fileInput.files[0]) {
+                setTimeout(() => {
+                    uploadExtInvoice();
+                }, 600);
+            }
+        } else {
+            showCenteredMessage(`Failed to save template: ${data.message}`, "error");
+        }
+    } catch (e) {
+        console.error("❌ Failed to save template blueprint:", e);
+        showCenteredMessage(`Save Error: ${e.message}`, "error");
     }
 }
