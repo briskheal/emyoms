@@ -93,6 +93,13 @@ window.onload = () => {
         currentUser = JSON.parse(savedUser);
         switchView('order');
         initOrderSystem();
+
+        // Dynamic deep-link tab support from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            setTimeout(() => switchOrderTab(tabParam), 100);
+        }
     } else {
         switchView('login');
     }

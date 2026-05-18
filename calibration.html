@@ -406,6 +406,37 @@
             from { transform: translateX(100px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+
+        /* Pulsing Status Dots */
+        .pulse-dot-green {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 1.5s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        
+        .pulse-dot-orange {
+            width: 8px;
+            height: 8px;
+            background-color: #f59e0b;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            animation: pulse-orange 1.5s infinite;
+        }
+        @keyframes pulse-orange {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
     </style>
 </head>
 <body>
@@ -427,7 +458,7 @@
                 <button onclick="saveCalibrationTemplate()" class="btn btn-primary">
                     <i class="fas fa-save"></i> 💾 SAVE BLUEPRINT & PARSE
                 </button>
-                <a href="/" class="btn btn-secondary">
+                <a href="/index.html?tab=registry" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> BACK TO REGISTRY
                 </a>
             </div>
@@ -470,6 +501,21 @@
                 <div class="info-card" style="margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.04); border-color: rgba(99, 102, 241, 0.2);">
                     <h3 id="cal-distributor-name" style="font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 800; color: #fff;">Loading...</h3>
                     <span id="cal-distributor-code" style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-top: 2px;">ID: - | Code: -</span>
+                </div>
+
+                <!-- Blueprint Intelligence Status -->
+                <div class="section-header">Blueprint Status</div>
+                <div id="blueprint-status-card" class="info-card" style="margin-bottom: 0.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-left: 5px solid rgba(255, 255, 255, 0.2); transition: 0.3s; padding: 1rem 1.25rem;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span id="blueprint-indicator" class="pulse-dot-orange"></span>
+                        <h4 id="blueprint-status-title" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 800; color: #fff;">Checking...</h4>
+                    </div>
+                    <p id="blueprint-status-desc" style="font-size: 0.72rem; line-height: 1.4; color: #e2e8f0; margin: 0;">Loading templates from database...</p>
+                    
+                    <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted);">
+                        <span>Total Invoices Parsed:</span>
+                        <span id="blueprint-invoice-count" style="font-weight: 700; color: #fff;">0</span>
+                    </div>
                 </div>
 
                 <!-- Specimen File Selector -->
@@ -663,6 +709,11 @@
                 const res = await fetch(`${API_BASE}/admin/ocr-templates/${stockistId}`);
                 const data = await res.json();
                 
+                const statusCard = document.getElementById('blueprint-status-card');
+                const indicator = document.getElementById('blueprint-indicator');
+                const statusTitle = document.getElementById('blueprint-status-title');
+                const statusDesc = document.getElementById('blueprint-status-desc');
+
                 if (data.success && data.template) {
                     const t = data.template;
                     document.getElementById('cal-anchor').value = t.anchorKeyword || 'HSN';
@@ -680,11 +731,48 @@
                     document.getElementById('cal-rate-end').value = t.colRateEnd;
                     document.getElementById('cal-qty-start').value = t.colQtyStart;
                     document.getElementById('cal-qty-end').value = t.colQtyEnd;
+
+                    // Update UI status to Active/Success
+                    if (statusCard) {
+                        statusCard.style.background = 'rgba(16, 185, 129, 0.05)';
+                        statusCard.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                        statusCard.style.borderLeftColor = '#10b981';
+                    }
+                    if (indicator) {
+                        indicator.className = 'pulse-dot-green';
+                    }
+                    if (statusTitle) statusTitle.innerText = "Active Blueprint Loaded";
+                    if (statusDesc) statusDesc.innerHTML = "✨ <strong>Saved Blueprint exists!</strong> If your distributor invoice format has not changed, these coordinates are fully active and will parse your invoices automatically.";
+                } else {
+                    // Update UI status to Not configured
+                    if (statusCard) {
+                        statusCard.style.background = 'rgba(245, 158, 11, 0.05)';
+                        statusCard.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+                        statusCard.style.borderLeftColor = '#f59e0b';
+                    }
+                    if (indicator) {
+                        indicator.className = 'pulse-dot-orange';
+                    }
+                    if (statusTitle) statusTitle.innerText = "No Saved Blueprint";
+                    if (statusDesc) statusDesc.innerText = "⚠️ No saved coordinate template mapping found for this account. Invoices will parse using generic heuristics. Save a blueprint to customize coordinate rules.";
                 }
             } catch (e) {
                 console.error("❌ Failed to fetch blueprint settings:", e);
             }
             updateCalGuides();
+            fetchParsedInvoiceCount(stockistId);
+        }
+
+        async function fetchParsedInvoiceCount(stockistId) {
+            try {
+                const res = await fetch(`${API_BASE}/stockist/invoices?stockistId=${stockistId}`);
+                const data = await res.json();
+                if (data.success && data.invoices) {
+                    document.getElementById('blueprint-invoice-count').innerText = data.invoices.length;
+                }
+            } catch (e) {
+                console.error("❌ Failed to fetch registry invoice count:", e);
+            }
         }
 
         // Display beautiful customized Alert boxes
@@ -1017,7 +1105,7 @@
                 const data = await res.json();
                 if (data.success) {
                     showAlert("🎉 Mappings successfully synchronized to database! Mappings locked.", "success");
-                    setTimeout(() => window.location.href = "/", 1500);
+                    setTimeout(() => window.location.href = "/index.html?tab=registry", 1500);
                 } else {
                     showAlert(`Save Error: ${data.message}`, "warning");
                 }
