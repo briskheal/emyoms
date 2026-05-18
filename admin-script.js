@@ -8223,6 +8223,40 @@ function resetOCRFormValues() {
     if (selectEl) selectEl.value = '';
 }
 
+function clearOCRFormToZero() {
+    document.getElementById('ocr-product-start').value = "0.0";
+    document.getElementById('ocr-product-end').value = "0.0";
+    document.getElementById('ocr-hsn-start').value = "0.0";
+    document.getElementById('ocr-hsn-end').value = "0.0";
+    document.getElementById('ocr-batch-start').value = "0.0";
+    document.getElementById('ocr-batch-end').value = "0.0";
+    document.getElementById('ocr-exp-start').value = "0.0";
+    document.getElementById('ocr-exp-end').value = "0.0";
+    document.getElementById('ocr-mrp-start').value = "0.0";
+    document.getElementById('ocr-mrp-end').value = "0.0";
+    document.getElementById('ocr-rate-start').value = "0.0";
+    document.getElementById('ocr-rate-end').value = "0.0";
+    document.getElementById('ocr-qty-start').value = "0.0";
+    document.getElementById('ocr-qty-end').value = "0.0";
+    document.getElementById('ocr-anchor').value = "HSN";
+    document.getElementById('ocr-filename').innerText = "No file uploaded";
+    document.getElementById('ocr-pdf-file').value = "";
+    document.getElementById('ocr-tokens-board').innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 5rem 0;">
+            Upload a sample PDF invoice above to view interactive coordinate tokens...
+        </div>
+    `;
+    window.ocrTokens = [];
+
+    const searchEl = document.getElementById('ocr-stockist-search');
+    const selectEl = document.getElementById('ocr-stockist-select');
+    if (searchEl) searchEl.value = '';
+    if (selectEl) selectEl.value = '';
+
+    // Reposition column bounds visualizer guides to 0
+    updateOCRGuides();
+}
+
 function handleOCRStockistSearch(input) {
     currentSearchFocus = -1;
     const query = input.value.toLowerCase().trim();
@@ -8536,6 +8570,7 @@ async function saveOCRTemplate() {
         
         if (data.success) {
             showToast("🎯 PDF Layout Template Blueprint saved to database successfully!", "success");
+            clearOCRFormToZero();
         } else {
             showToast(`❌ Failed to save: ${data.message}`, "danger");
         }
