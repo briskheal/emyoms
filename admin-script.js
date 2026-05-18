@@ -5438,6 +5438,143 @@ function getReportDataByType(type, data, fromDate, toDate) {
             });
             break;
 
+        case 'item-profit-loss':
+            fileName = "Item_Wise_Profit_Loss_Report";
+            (products || []).forEach(p => {
+                let qtySold = 0;
+                let revenue = 0;
+                
+                filteredInvoices.forEach(inv => {
+                    inv.items.forEach(item => {
+                        const prodId = (item.product || item.productId || '').toString();
+                        if (prodId === (p._id || p.id || '').toString()) {
+                            qtySold += Number(item.qty || 0);
+                            revenue += Number(item.totalValue || 0);
+                        }
+                    });
+                });
+                
+                const costRate = Number(p.pts || p.purchaseRate || 0);
+                const totalCost = costRate * qtySold;
+                const profit = revenue - totalCost;
+                const marginPct = revenue > 0 ? ((profit / revenue) * 100).toFixed(2) : '0.00';
+                
+                if (qtySold > 0 || revenue > 0) {
+                    reportData.push({
+                        "Product Name": p.name,
+                        "Packing": p.packing || '-',
+                        "Total Qty Sold": qtySold,
+                        "Sales Revenue (INR)": revenue.toFixed(2),
+                        "Total Cost (INR)": totalCost.toFixed(2),
+                        "Gross Profit (INR)": profit.toFixed(2),
+                        "Margin (%)": marginPct + '%'
+                    });
+                }
+            });
+            break;
+
+        case 'gstr-3b':
+            fileName = "GSTR_3B_Monthly_Summary";
+            const myState3B = (companyProfile.state || "GUJARAT").toUpperCase();
+            
+            let totalSalesTaxable3B = 0;
+            let totalSalesIgst3B = 0;
+            let totalSalesCgst3B = 0;
+            let totalSalesSgst3B = 0;
+            
+            filteredInvoices.forEach(inv => {
+                totalSalesTaxable3B += inv.subTotal;
+                const party = (stockists || []).find(s => s._id.toString() === (inv.stockistId || inv.stockist?._id || '').toString());
+                const partyState = (party ? (party.state || "GUJARAT") : "GUJARAT").toUpperCase();
+                const isInterstate = partyState !== myState3B;
+                
+                if (isInterstate) {
+                    totalSalesIgst3B += inv.gstAmount;
+                } else {
+                    totalSalesCgst3B += inv.gstAmount / 2;
+                    totalSalesSgst3B += inv.gstAmount / 2;
+                }
+            });
+
+            let totalPurchTaxable3B = 0;
+            let totalPurchIgst3B = 0;
+            let totalPurchCgst3B = 0;
+            let totalPurchSgst3B = 0;
+            
+            filteredPurchases.forEach(p => {
+                totalPurchTaxable3B += p.subTotal || 0;
+                const isInterstate = false;
+                if (isInterstate) {
+                    totalPurchIgst3B += p.gstAmount || 0;
+                } else {
+                    totalPurchCgst3B += (p.gstAmount || 0) / 2;
+                    totalPurchSgst3B += (p.gstAmount || 0) / 2;
+                }
+            });
+
+            reportData = [
+                { "GSTR-3B Table / Section": "3.1.a Outward Taxable Supplies (Sales)", "Taxable Value (INR)": totalSalesTaxable3B.toFixed(2), "Integrated Tax (IGST)": totalSalesIgst3B.toFixed(2), "Central Tax (CGST)": totalSalesCgst3B.toFixed(2), "State/UT Tax (SGST)": totalSalesSgst3B.toFixed(2) },
+                { "GSTR-3B Table / Section": "4.A.5 Eligible ITC (Purchases Inward)", "Taxable Value (INR)": totalPurchTaxable3B.toFixed(2), "Integrated Tax (IGST)": totalPurchIgst3B.toFixed(2), "Central Tax (CGST)": totalPurchCgst3B.toFixed(2), "State/UT Tax (SGST)": totalPurchSgst3B.toFixed(2) },
+                { "GSTR-3B Table / Section": "5. Exempt, Nil and Non-GST Inward Supplies", "Taxable Value (INR)": "0.00", "Integrated Tax (IGST)": "0.00", "Central Tax (CGST)": "0.00", "State/UT Tax (SGST)": "0.00" },
+                { "GSTR-3B Table / Section": "6.1 Net Tax Payable (Outward Tax - ITC)", "Taxable Value (INR)": "—", "Integrated Tax (IGST)": Math.max(0, totalSalesIgst3B - totalPurchIgst3B).toFixed(2), "Central Tax (CGST)": Math.max(0, totalSalesCgst3B - totalPurchCgst3B).toFixed(2), "State/UT Tax (SGST)": Math.max(0, totalSalesSgst3B - totalPurchSgst3B).toFixed(2) }
+            ];
+            break;
+
+        case 'gstr-9':
+            fileName = "GSTR_9_Annual_Tax_Consolidated_Return";
+            const myState9 = (companyProfile.state || "GUJARAT").toUpperCase();
+            
+            let totalSalesTaxable9 = 0;
+            let totalSalesIgst9 = 0;
+            let totalSalesCgst9 = 0;
+            let totalSalesSgst9 = 0;
+            let totalSalesGross9 = 0;
+            
+            filteredInvoices.forEach(inv => {
+                totalSalesGross9 += inv.grandTotal;
+                totalSalesTaxable9 += inv.subTotal;
+                const party = (stockists || []).find(s => s._id.toString() === (inv.stockistId || inv.stockist?._id || '').toString());
+                const partyState = (party ? (party.state || "GUJARAT") : "GUJARAT").toUpperCase();
+                const isInterstate = partyState !== myState9;
+                
+                if (isInterstate) {
+                    totalSalesIgst9 += inv.gstAmount;
+                } else {
+                    totalSalesCgst9 += inv.gstAmount / 2;
+                    totalSalesSgst9 += inv.gstAmount / 2;
+                }
+            });
+
+            let totalPurchTaxable9 = 0;
+            let totalPurchIgst9 = 0;
+            let totalPurchCgst9 = 0;
+            let totalPurchSgst9 = 0;
+            let totalPurchGross9 = 0;
+            
+            filteredPurchases.forEach(p => {
+                totalPurchGross9 += p.grandTotal || 0;
+                totalPurchTaxable9 += p.subTotal || 0;
+                const isInterstate = false;
+                if (isInterstate) {
+                    totalPurchIgst9 += p.gstAmount || 0;
+                } else {
+                    totalPurchCgst9 += (p.gstAmount || 0) / 2;
+                    totalPurchSgst9 += (p.gstAmount || 0) / 2;
+                }
+            });
+
+            const salesCN9 = filteredNotes.filter(n => n.noteType === 'CN').reduce((s, x) => s + x.amount, 0);
+            const purchDN9 = filteredNotes.filter(n => n.noteType === 'DN').reduce((s, x) => s + x.amount, 0);
+
+            reportData = [
+                { "GSTR-9 Table Source": "Table 4: Details of Outward Supplies (Sales)", "Gross Value (INR)": totalSalesGross9.toFixed(2), "Taxable Value (INR)": totalSalesTaxable9.toFixed(2), "IGST (INR)": totalSalesIgst9.toFixed(2), "CGST (INR)": totalSalesCgst9.toFixed(2), "SGST (INR)": totalSalesSgst9.toFixed(2) },
+                { "GSTR-9 Table Source": "Table 6: Details of ITC Availed (Purchases)", "Gross Value (INR)": totalPurchGross9.toFixed(2), "Taxable Value (INR)": totalPurchTaxable9.toFixed(2), "IGST (INR)": totalPurchIgst9.toFixed(2), "CGST (INR)": totalPurchCgst9.toFixed(2), "SGST (INR)": totalPurchSgst9.toFixed(2) },
+                { "GSTR-9 Table Source": "Table 8: Credit Notes Issued (Sales CN)", "Gross Value (INR)": salesCN9.toFixed(2), "Taxable Value (INR)": salesCN9.toFixed(2), "IGST (INR)": "0.00", "CGST (INR)": "0.00", "SGST (INR)": "0.00" },
+                { "GSTR-9 Table Source": "Table 8: Debit Notes Issued (Purch DN)", "Gross Value (INR)": purchDN9.toFixed(2), "Taxable Value (INR)": purchDN9.toFixed(2), "IGST (INR)": "0.00", "CGST (INR)": "0.00", "SGST (INR)": "0.00" },
+                { "GSTR-9 Table Source": "Table 9: Consolidated Tax Liability", "Gross Value (INR)": "—", "Taxable Value (INR)": "—", "IGST (INR)": totalSalesIgst9.toFixed(2), "CGST (INR)": totalSalesCgst9.toFixed(2), "SGST (INR)": totalSalesSgst9.toFixed(2) }
+            ];
+            break;
+
         case 'doc-expiry':
             fileName = "Compliance_Expiry_Tracker";
             (stockists || []).forEach(s => {
@@ -8174,6 +8311,67 @@ function autoAllocatePayment() {
         }
     });
     updateLinkedTotal();
+}
+
+async function downloadPLReport() {
+    try {
+        const from = document.getElementById('pl-from')?.value || '';
+        const to = document.getElementById('pl-to')?.value || '';
+        const res = await fetch(`/api/admin/financial-statements?from=${from}&to=${to}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        const rows = [];
+        rows.push({ "Profit & Loss Section": "--- REVENUE / INCOME ---" });
+        data.pl.income.forEach(x => {
+            rows.push({ "Profit & Loss Section": x.name, "Amount (INR)": x.amount });
+        });
+        rows.push({ "Profit & Loss Section": "TOTAL INCOME", "Amount (INR)": data.pl.totalIncome });
+        
+        rows.push({ "Profit & Loss Section": "" });
+        rows.push({ "Profit & Loss Section": "--- OPERATIONAL EXPENSES ---" });
+        data.pl.expenses.forEach(x => {
+            rows.push({ "Profit & Loss Section": x.name, "Amount (INR)": x.amount });
+        });
+        rows.push({ "Profit & Loss Section": "TOTAL EXPENSES", "Amount (INR)": data.pl.totalExpenses });
+        
+        rows.push({ "Profit & Loss Section": "" });
+        rows.push({ "Profit & Loss Section": "NET PROFIT / LOSS", "Amount (INR)": data.pl.netProfit });
+
+        downloadExcel(rows, `Profit_and_Loss_Statement_${from}_to_${to}`);
+    } catch(e) {
+        console.error(e);
+        alert("Failed to export P&L report.");
+    }
+}
+
+async function downloadBSReport() {
+    try {
+        const from = document.getElementById('bs-from')?.value || '';
+        const to = document.getElementById('bs-to')?.value || '';
+        const res = await fetch(`/api/admin/financial-statements?from=${from}&to=${to}`);
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+
+        const rows = [];
+        rows.push({ "Balance Sheet Section": "--- LIABILITIES & CAPITAL ---" });
+        data.bs.liabilities.forEach(x => {
+            rows.push({ "Balance Sheet Section": x.name, "Amount (INR)": x.amount });
+        });
+        rows.push({ "Balance Sheet Section": "TOTAL LIABILITIES", "Amount (INR)": data.bs.totalLiabilities });
+        
+        rows.push({ "Balance Sheet Section": "" });
+        rows.push({ "Balance Sheet Section": "--- ASSETS ---" });
+        data.bs.assets.forEach(x => {
+            rows.push({ "Balance Sheet Section": x.name, "Amount (INR)": x.amount });
+        });
+        rows.push({ "Balance Sheet Section": "TOTAL ASSETS", "Amount (INR)": data.bs.totalAssets });
+
+        downloadExcel(rows, `Balance_Sheet_${from}_to_${to}`);
+    } catch(e) {
+        console.error(e);
+        alert("Failed to export Balance Sheet report.");
+    }
 }
 
 
