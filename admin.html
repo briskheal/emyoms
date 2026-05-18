@@ -3369,7 +3369,7 @@
             </div>
 
             <!-- Table Container -->
-            <div class="table-container" style="flex: 1; overflow: auto; padding: 1rem 2rem;">
+            <div id="standard-report-table-container" class="table-container" style="flex: 1; overflow: auto; padding: 1rem 2rem;">
                 <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8rem;">
                     <thead style="position: sticky; top: 0; z-index: 10; background: #0f172a;">
                         <tr id="report-table-head">
@@ -3385,6 +3385,54 @@
                 </div>
                 <div id="report-empty-state" style="text-align: center; padding: 3rem; color: var(--text-muted); font-style: italic; display: none;">
                     No data found for the selected date range.
+                </div>
+            </div>
+
+            <!-- Aging Report Workspace -->
+            <div id="aging-report-workspace" class="hidden" style="flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 1.5rem 2rem; gap: 1.5rem; background: rgba(0,0,0,0.2);">
+                <!-- Header Summary Panel -->
+                <div style="display: flex; gap: 1.5rem; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                    <!-- Overall metrics -->
+                    <div style="display: flex; gap: 1.5rem;">
+                        <div class="glass-card" style="padding: 1rem 1.5rem; min-width: 220px; border-left: 4px solid #10b981; display: flex; flex-direction: column; justify-content: center; background: rgba(255,255,255,0.02);">
+                            <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">Total Balance</span>
+                            <span id="aging-total-balance" style="font-size: 1.6rem; font-weight: 900; color: #fff; margin-top: 5px;">₹0.00</span>
+                        </div>
+                        <div class="glass-card" style="padding: 1rem 1.5rem; min-width: 220px; border-left: 4px solid #ef4444; display: flex; flex-direction: column; justify-content: center; background: rgba(255,255,255,0.02);">
+                            <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;">Total Receivable</span>
+                            <span id="aging-total-receivable" style="font-size: 1.6rem; font-weight: 900; color: #ef4444; margin-top: 5px;">₹0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- System-wide Pie Chart Segment (Centered) -->
+                    <div style="display: flex; align-items: center; gap: 2rem; background: rgba(255,255,255,0.01); border: 1px solid var(--glass-border); border-radius: 16px; padding: 0.75rem 2rem;">
+                        <div id="aging-system-chart-container" style="width: 100px; height: 100px; position: relative; display: flex; align-items: center; justify-content: center;">
+                            <!-- SVG generated dynamically -->
+                        </div>
+                        <div id="aging-system-legend" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.7rem;">
+                            <!-- Legend generated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Two-Column Interactive Workspace -->
+                <div style="flex: 1; display: flex; gap: 1.5rem; overflow: hidden; min-height: 0;">
+                    <!-- Left Column: Directory -->
+                    <div class="glass-card" style="width: 320px; display: flex; flex-direction: column; padding: 1rem; overflow: hidden; background: rgba(255,255,255,0.01);">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="font-size: 0.65rem; font-weight: 800; color: var(--primary); letter-spacing: 0.05em; text-transform: uppercase;">Stockist Directory</label>
+                            <input type="text" id="aging-directory-search" placeholder="Search by name or city..." oninput="filterAgingDirectory()" style="width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; font-size: 0.75rem;">
+                        </div>
+                        <div id="aging-directory-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+                            <!-- Dynamic Stockist Hyperlinks -->
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Detail Dossier -->
+                    <div id="aging-dossier-panel" class="glass-card" style="flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow: hidden; background: rgba(255,255,255,0.01); justify-content: center; align-items: center; color: var(--text-muted);">
+                        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">📂</div>
+                        <div style="font-size: 0.85rem; font-style: italic;">Select a stockist from the directory to compile their collections dossier.</div>
+                    </div>
                 </div>
             </div>
         </div>

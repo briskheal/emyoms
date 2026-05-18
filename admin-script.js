@@ -6046,6 +6046,22 @@ async function renderReportView() {
         const res = await fetch(`${API_BASE}/admin/reports/full-audit`);
         const data = await res.json();
         
+        const stdContainer = document.getElementById('standard-report-table-container') || document.querySelector('.table-container');
+        const agingWorkspace = document.getElementById('aging-report-workspace');
+        
+        if (type === 'ageing-report') {
+            loading.style.display = 'none';
+            if (stdContainer) stdContainer.classList.add('hidden');
+            if (agingWorkspace) {
+                agingWorkspace.classList.remove('hidden');
+                initAgingReportWorkspace(data, fromDateStr, toDateStr);
+            }
+            return;
+        } else {
+            if (stdContainer) stdContainer.classList.remove('hidden');
+            if (agingWorkspace) agingWorkspace.classList.add('hidden');
+        }
+
         const { reportData, fileName } = getReportDataByType(type, data, fromDateStr, toDateStr);
         
         currentReportData = reportData;
@@ -6091,6 +6107,542 @@ async function renderReportView() {
     }
 }
 
+let currentAgingData = null;
+let currentAgingFromDate = '';
+let currentAgingToDate = '';
+
+function initAgingReportWorkspace(data, fromDate, toDate) {
+    currentAgingData = data;
+    currentAgingFromDate = fromDate;
+    currentAgingToDate = toDate;
+    
+    const invoices = data.invoices || [];
+    
+    // 1. Calculate overall metrics & buckets
+    let totalOutstanding = 0;
+    let totalReceivable = 0;
+    
+    const buckets = {
+        '1-30': 0,
+        '31-45': 0,
+        '46-60': 0,
+        '60+': 0
+    };
+    
+    const reportFrom = fromDate ? new Date(fromDate) : new Date(0);
+    const reportTo = toDate ? new Date(toDate) : new Date();
+    reportTo.setHours(23, 59, 59, 999);
+    
+    invoices.forEach(inv => {
+        const invDate = new Date(inv.createdAt || inv.date);
+        if (invDate < reportFrom || invDate > reportTo) return;
+        if (inv.status === 'paid' || inv.paymentStatus === 'PAID') return;
+        
+        const bal = Number(inv.outstandingAmount ?? inv.grandTotal ?? 0);
+        if (bal <= 0) return;
+        
+        totalOutstanding += bal;
+        
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(invDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const today = new Date();
+        const diffTime = today.getTime() - dueDate.getTime();
+        const daysLate = Math.max(0, Math.floor(diffTime / (24 * 60 * 60 * 1000)));
+        
+        if (daysLate > 0) {
+            totalReceivable += bal;
+            if (daysLate <= 30) buckets['1-30'] += bal;
+            else if (daysLate <= 45) buckets['31-45'] += bal;
+            else if (daysLate <= 60) buckets['46-60'] += bal;
+            else buckets['60+'] += bal;
+        }
+    });
+    
+    document.getElementById('aging-total-balance').innerText = '₹' + totalOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    document.getElementById('aging-total-receivable').innerText = '₹' + totalReceivable.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    
+    renderSvgDonut('aging-system-chart-container', 'aging-system-legend', buckets);
+    renderAgingDirectory();
+    
+    document.getElementById('aging-dossier-panel').innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">📂</div>
+        <div style="font-size: 0.85rem; font-style: italic; color: var(--text-muted);">Select a stockist from the directory to compile their collections dossier.</div>
+    `;
+}
+
+function renderAgingDirectory() {
+    const listEl = document.getElementById('aging-directory-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    
+    const stockists = currentAgingData.stockists || [];
+    const invoices = currentAgingData.invoices || [];
+    
+    const reportFrom = currentAgingFromDate ? new Date(currentAgingFromDate) : new Date(0);
+    const reportTo = currentAgingToDate ? new Date(currentAgingToDate) : new Date();
+    reportTo.setHours(23, 59, 59, 999);
+    
+    const activeList = [];
+    stockists.forEach(s => {
+        let bal = 0;
+        invoices.forEach(inv => {
+            const invDate = new Date(inv.createdAt || inv.date);
+            if (invDate < reportFrom || invDate > reportTo) return;
+            if (inv.status === 'paid' || inv.paymentStatus === 'PAID') return;
+            
+            const invBal = Number(inv.outstandingAmount ?? inv.grandTotal ?? 0);
+            if (invBal <= 0) return;
+            
+            const stockistId = (inv.stockistId || inv.stockist?._id || '').toString();
+            if (stockistId === (s._id || s.id || '').toString()) {
+                bal += invBal;
+            }
+        });
+        
+        if (bal > 0) {
+            activeList.push({
+                id: s._id || s.id,
+                name: s.companyName || s.name,
+                city: s.city || '-',
+                balance: bal
+            });
+        }
+    });
+    
+    activeList.sort((a,b) => b.balance - a.balance);
+    
+    if (activeList.length === 0) {
+        listEl.innerHTML = '<div style="text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 2rem;">No active receivables found.</div>';
+        return;
+    }
+    
+    activeList.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'aging-directory-item';
+        itemEl.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 8px; cursor: pointer; transition: 0.2s; margin-bottom: 6px;';
+        itemEl.setAttribute('onmouseover', 'this.style.background="rgba(255,255,255,0.05)"');
+        itemEl.setAttribute('onmouseout', 'this.style.background="rgba(255,255,255,0.02)"');
+        itemEl.onclick = () => selectAgingStockist(item.id);
+        
+        itemEl.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 4px; max-width: 65%;">
+                <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</span>
+                <span style="font-size: 0.6rem; color: var(--text-muted);">${item.city}</span>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 0.75rem; font-weight: 900; color: #fff;">₹${item.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </div>
+        `;
+        listEl.appendChild(itemEl);
+    });
+}
+
+function filterAgingDirectory() {
+    const query = document.getElementById('aging-directory-search').value.toLowerCase();
+    const items = document.querySelectorAll('.aging-directory-item');
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(query)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function renderSvgDonut(containerId, legendId, buckets) {
+    const container = document.getElementById(containerId);
+    const legend = document.getElementById(legendId);
+    if (!container || !legend) return;
+    
+    const colors = {
+        '1-30': '#eab308',
+        '31-45': '#10b981',
+        '46-60': '#ef4444',
+        '60+': '#475569'
+    };
+    
+    const total = Object.values(buckets).reduce((sum, v) => sum + v, 0);
+    
+    if (total === 0) {
+        container.innerHTML = `
+            <svg width="80" height="80" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="16" />
+                <circle cx="50" cy="50" r="24" fill="#0f172a" />
+            </svg>
+        `;
+        legend.innerHTML = `
+            <div style="grid-column: span 2; text-align: center; color: var(--text-muted); font-size: 0.7rem; font-style: italic;">No overdue receivables.</div>
+        `;
+        return;
+    }
+    
+    let accumulatedPercent = 0;
+    const paths = [];
+    
+    const slices = Object.entries(buckets).map(([key, val]) => ({
+        key,
+        value: val,
+        color: colors[key],
+        percent: val / total
+    })).filter(s => s.value > 0);
+    
+    function getCoordinatesForPercent(percent) {
+        const x = Math.cos(2 * Math.PI * (percent - 0.25));
+        const y = Math.sin(2 * Math.PI * (percent - 0.25));
+        return [x, y];
+    }
+    
+    if (slices.length === 1) {
+        paths.push(`<circle cx="50" cy="50" r="40" fill="none" stroke="${slices[0].color}" stroke-width="16" />`);
+    } else {
+        slices.forEach(slice => {
+            const [startX, startY] = getCoordinatesForPercent(accumulatedPercent);
+            accumulatedPercent += slice.percent;
+            const [endX, endY] = getCoordinatesForPercent(accumulatedPercent);
+            
+            const x1 = 50 + startX * 40;
+            const y1 = 50 + startY * 40;
+            const x2 = 50 + endX * 40;
+            const y2 = 50 + endY * 40;
+            
+            const largeArcFlag = slice.percent > 0.5 ? 1 : 0;
+            const pathData = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+            paths.push(`<path d="${pathData}" fill="${slice.color}" style="transition: 0.3s; cursor: pointer;" />`);
+        });
+    }
+    
+    container.innerHTML = `
+        <svg width="80" height="80" viewBox="0 0 100 100">
+            ${paths.join('')}
+            <circle cx="50" cy="50" r="24" fill="#0f172a" />
+        </svg>
+    `;
+    
+    legend.innerHTML = Object.entries(buckets).map(([key, val]) => {
+        const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+        return `
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: ${colors[key]};"></span>
+                <span style="color: var(--text-muted); text-transform: uppercase; font-size: 0.65rem; font-weight: 700;">${key} Days:</span>
+                <span style="color: #fff; font-weight: 800;">₹${val.toLocaleString('en-IN', { maximumFractionDigits: 0 })} (${pct}%)</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function selectAgingStockist(partyId) {
+    const dossier = document.getElementById('aging-dossier-panel');
+    if (!dossier) return;
+    
+    const stockist = (currentAgingData.stockists || []).find(s => (s._id || s.id || '').toString() === partyId.toString());
+    if (!stockist) return;
+    
+    const invoices = currentAgingData.invoices || [];
+    
+    const reportFrom = currentAgingFromDate ? new Date(currentAgingFromDate) : new Date(0);
+    const reportTo = currentAgingToDate ? new Date(currentAgingToDate) : new Date();
+    reportTo.setHours(23, 59, 59, 999);
+    
+    let totalOutstanding = 0;
+    let totalReceivable = 0;
+    
+    const buckets = {
+        '1-30': 0,
+        '31-45': 0,
+        '46-60': 0,
+        '60+': 0
+    };
+    
+    const ledger = [];
+    
+    invoices.forEach(inv => {
+        const invDate = new Date(inv.createdAt || inv.date);
+        if (invDate < reportFrom || invDate > reportTo) return;
+        
+        const stockistId = (inv.stockistId || inv.stockist?._id || '').toString();
+        if (stockistId !== partyId.toString()) return;
+        
+        if (inv.status === 'paid' || inv.paymentStatus === 'PAID') return;
+        
+        const bal = Number(inv.outstandingAmount ?? inv.grandTotal ?? 0);
+        if (bal <= 0) return;
+        
+        totalOutstanding += bal;
+        
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(invDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const today = new Date();
+        const diffTime = today.getTime() - dueDate.getTime();
+        const daysLate = Math.max(0, Math.floor(diffTime / (24 * 60 * 60 * 1000)));
+        
+        let bucket = 'Current';
+        if (daysLate > 0) {
+            totalReceivable += bal;
+            if (daysLate <= 30) { bucket = '1-30'; buckets['1-30'] += bal; }
+            else if (daysLate <= 45) { bucket = '31-45'; buckets['31-45'] += bal; }
+            else if (daysLate <= 60) { bucket = '46-60'; buckets['46-60'] += bal; }
+            else { bucket = '60+'; buckets['60+'] += bal; }
+        }
+        
+        ledger.push({
+            id: inv._id || inv.id,
+            invoiceNo: inv.invoiceNo,
+            date: invDate,
+            dueDate: dueDate,
+            daysLate: daysLate,
+            total: inv.grandTotal,
+            balance: bal,
+            bucket: bucket
+        });
+    });
+    
+    ledger.sort((a,b) => b.date - a.date);
+    
+    dossier.style.cssText = 'flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow: hidden; background: rgba(255,255,255,0.01); justify-content: flex-start; align-items: stretch; color: #fff;';
+    
+    dossier.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 1rem; flex-shrink: 0;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary); font-weight: 900; display: flex; align-items: center; gap: 8px;">
+                    🏢 ${stockist.companyName || stockist.name}
+                </h3>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin: 4px 0 0 0; text-transform: uppercase; font-weight: 700;">
+                    GSTIN: ${stockist.gstNo || stockist.gstin || 'URD'} | DL No: ${stockist.dlNo || 'N/A'}
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <button onclick="downloadPartyAgingExcel('${partyId}')" class="btn btn-ghost" style="padding: 6px 12px; font-size: 0.7rem; border-color: #10b981; color: #10b981; font-weight: 800;">📊 EXCEL DOSSIER</button>
+                <button onclick="downloadPartyAgingPDF('${partyId}')" class="btn btn-ghost" style="padding: 6px 12px; font-size: 0.7rem; border-color: #ef4444; color: #ef4444; font-weight: 800;">📥 PDF DOSSIER</button>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-shrink: 0; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 10px; min-width: 180px;">
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 14px;">
+                    <span style="font-size: 0.55rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Balance</span>
+                    <h4 style="margin: 4px 0 0 0; font-size: 1.2rem; font-weight: 900; color: #fff;">₹${totalOutstanding.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h4>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 14px;">
+                    <span style="font-size: 0.55rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Receivable</span>
+                    <h4 style="margin: 4px 0 0 0; font-size: 1.2rem; font-weight: 900; color: #ef4444;">₹${totalReceivable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h4>
+                </div>
+            </div>
+            
+            <div style="flex: 1; min-width: 280px; display: flex; align-items: center; gap: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 16px; padding: 10px 20px;">
+                <div id="aging-party-chart-container" style="width: 80px; height: 80px; position: relative;"></div>
+                <div id="aging-party-legend" style="display: grid; grid-template-columns: 1fr; gap: 4px; font-size: 0.65rem; width: 100%;"></div>
+            </div>
+        </div>
+        
+        <h4 style="margin: 0 0 8px 0; font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; flex-shrink: 0;">Ledger Outstanding Schedule</h4>
+        <div style="flex: 1; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 12px; background: rgba(0,0,0,0.2);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+                <thead style="position: sticky; top: 0; background: #0f172a; z-index: 5; border-bottom: 2px solid var(--glass-border);">
+                    <tr>
+                        <th style="padding: 10px; text-align: left; color: var(--text-muted);">Invoice No</th>
+                        <th style="padding: 10px; text-align: left; color: var(--text-muted);">Inv Date</th>
+                        <th style="padding: 10px; text-align: left; color: var(--text-muted);">Due Date</th>
+                        <th style="padding: 10px; text-align: center; color: var(--text-muted);">Days Late</th>
+                        <th style="padding: 10px; text-align: right; color: var(--text-muted);">Total (₹)</th>
+                        <th style="padding: 10px; text-align: right; color: var(--text-muted);">Balance (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${ledger.map(row => {
+                        let borderStyle = '';
+                        if (row.bucket === '1-30') borderStyle = 'border-left: 4px solid #eab308; background: rgba(234,179,8,0.02);';
+                        else if (row.bucket === '31-45') borderStyle = 'border-left: 4px solid #10b981; background: rgba(16,185,129,0.02);';
+                        else if (row.bucket === '46-60') borderStyle = 'border-left: 4px solid #ef4444; background: rgba(239,68,68,0.02);';
+                        else if (row.bucket === '60+') borderStyle = 'border-left: 4px solid #475569; background: rgba(71,85,105,0.02);';
+                        else borderStyle = 'border-left: 4px solid rgba(255,255,255,0.1);';
+                        
+                        return `
+                            <tr style="border-bottom: 1px solid var(--glass-border); ${borderStyle}">
+                                <td style="padding: 10px; font-weight: 800; font-family: monospace;">${row.invoiceNo}</td>
+                                <td style="padding: 10px; color: var(--text-muted);">${row.date.toLocaleDateString('en-GB')}</td>
+                                <td style="padding: 10px; color: var(--text-muted);">${row.dueDate.toLocaleDateString('en-GB')}</td>
+                                <td style="padding: 10px; text-align: center; font-weight: 900; color: ${row.daysLate > 0 ? '#ef4444' : '#10b981'};">${row.daysLate} Days</td>
+                                <td style="padding: 10px; text-align: right;">₹${row.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                <td style="padding: 10px; text-align: right; font-weight: 900; color: #fff;">₹${row.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                    ${ledger.length === 0 ? '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No outstanding ledger entries.</td></tr>' : ''}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    renderSvgDonut('aging-party-chart-container', 'aging-party-legend', buckets);
+}
+
+function downloadPartyAgingExcel(partyId) {
+    const stockist = (currentAgingData.stockists || []).find(s => (s._id || s.id || '').toString() === partyId.toString());
+    if (!stockist) return;
+    
+    const invoices = currentAgingData.invoices || [];
+    
+    const reportFrom = currentAgingFromDate ? new Date(currentAgingFromDate) : new Date(0);
+    const reportTo = currentAgingToDate ? new Date(currentAgingToDate) : new Date();
+    reportTo.setHours(23, 59, 59, 999);
+    
+    let totalOutstanding = 0;
+    let totalReceivable = 0;
+    
+    const buckets = { '1-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
+    const rows = [];
+    
+    invoices.forEach(inv => {
+        const invDate = new Date(inv.createdAt || inv.date);
+        if (invDate < reportFrom || invDate > reportTo) return;
+        
+        const stockistId = (inv.stockistId || inv.stockist?._id || '').toString();
+        if (stockistId !== partyId.toString()) return;
+        
+        if (inv.status === 'paid' || inv.paymentStatus === 'PAID') return;
+        
+        const bal = Number(inv.outstandingAmount ?? inv.grandTotal ?? 0);
+        if (bal <= 0) return;
+        
+        totalOutstanding += bal;
+        
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(invDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const today = new Date();
+        const diffTime = today.getTime() - dueDate.getTime();
+        const daysLate = Math.max(0, Math.floor(diffTime / (24 * 60 * 60 * 1000)));
+        
+        let bucket = 'Current';
+        if (daysLate > 0) {
+            totalReceivable += bal;
+            if (daysLate <= 30) { bucket = '1-30'; buckets['1-30'] += bal; }
+            else if (daysLate <= 45) { bucket = '31-45'; buckets['31-45'] += bal; }
+            else if (daysLate <= 60) { bucket = '46-60'; buckets['46-60'] += bal; }
+            else { bucket = '60+'; buckets['60+'] += bal; }
+        }
+        
+        rows.push({
+            "Invoice No": inv.invoiceNo,
+            "Invoice Date": invDate.toLocaleDateString('en-GB'),
+            "Due Date": dueDate.toLocaleDateString('en-GB'),
+            "Days Late": daysLate,
+            "Total Value": inv.grandTotal,
+            "Balance Due": bal,
+            "Bucket": bucket
+        });
+    });
+    
+    rows.unshift({ "Invoice No": "" });
+    rows.unshift({ "Invoice No": `60+ Days Bucket`, "Invoice Date": `Rs. ${buckets['60+'].toFixed(2)}` });
+    rows.unshift({ "Invoice No": `46-60 Days Bucket`, "Invoice Date": `Rs. ${buckets['46-60'].toFixed(2)}` });
+    rows.unshift({ "Invoice No": `31-45 Days Bucket`, "Invoice Date": `Rs. ${buckets['31-45'].toFixed(2)}` });
+    rows.unshift({ "Invoice No": `1-30 Days Bucket`, "Invoice Date": `Rs. ${buckets['1-30'].toFixed(2)}` });
+    rows.unshift({ "Invoice No": `Total Receivable Overdue`, "Invoice Date": `Rs. ${totalReceivable.toFixed(2)}` });
+    rows.unshift({ "Invoice No": `Total Balance Outstanding`, "Invoice Date": `Rs. ${totalOutstanding.toFixed(2)}` });
+    rows.unshift({ "Invoice No": "--- DOSSIER SUMMARY ---" });
+    rows.unshift({ "Invoice No": `Party Name: ${stockist.companyName || stockist.name} | GSTIN: ${stockist.gstNo || 'URD'}` });
+    
+    downloadExcel(rows, `Aging_Ledger_${stockist.name.replace(/\s+/g, '_')}`);
+}
+
+function downloadPartyAgingPDF(partyId) {
+    const stockist = (currentAgingData.stockists || []).find(s => (s._id || s.id || '').toString() === partyId.toString());
+    if (!stockist) return;
+    
+    const invoices = currentAgingData.invoices || [];
+    
+    const reportFrom = currentAgingFromDate ? new Date(currentAgingFromDate) : new Date(0);
+    const reportTo = currentAgingToDate ? new Date(currentAgingToDate) : new Date();
+    reportTo.setHours(23, 59, 59, 999);
+    
+    let totalOutstanding = 0;
+    let totalReceivable = 0;
+    const buckets = { '1-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
+    const items = [];
+    
+    invoices.forEach(inv => {
+        const invDate = new Date(inv.createdAt || inv.date);
+        if (invDate < reportFrom || invDate > reportTo) return;
+        
+        const stockistId = (inv.stockistId || inv.stockist?._id || '').toString();
+        if (stockistId !== partyId.toString()) return;
+        
+        if (inv.status === 'paid' || inv.paymentStatus === 'PAID') return;
+        
+        const bal = Number(inv.outstandingAmount ?? inv.grandTotal ?? 0);
+        if (bal <= 0) return;
+        
+        totalOutstanding += bal;
+        
+        const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(invDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const today = new Date();
+        const diffTime = today.getTime() - dueDate.getTime();
+        const daysLate = Math.max(0, Math.floor(diffTime / (24 * 60 * 60 * 1000)));
+        
+        let bucket = 'Current';
+        if (daysLate > 0) {
+            totalReceivable += bal;
+            if (daysLate <= 30) { bucket = '1-30'; buckets['1-30'] += bal; }
+            else if (daysLate <= 45) { bucket = '31-45'; buckets['31-45'] += bal; }
+            else if (daysLate <= 60) { bucket = '46-60'; buckets['46-60'] += bal; }
+            else { bucket = '60+'; buckets['60+'] += bal; }
+        }
+        
+        items.push([
+            inv.invoiceNo,
+            invDate.toLocaleDateString('en-GB'),
+            dueDate.toLocaleDateString('en-GB'),
+            `${daysLate} Days`,
+            `Rs. ${inv.grandTotal.toFixed(2)}`,
+            `Rs. ${bal.toFixed(2)}`
+        ]);
+    });
+    
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("EMYOMS - COLLECTION & AGING DOSSIER", 15, 20);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(`Party: ${stockist.companyName || stockist.name}`, 15, 28);
+        doc.text(`GSTIN: ${stockist.gstNo || 'URD'} | DL No: ${stockist.dlNo || 'N/A'}`, 15, 34);
+        doc.text(`Period Bounds: ${currentAgingFromDate || 'start'} to ${currentAgingToDate || 'end'}`, 15, 40);
+        
+        doc.line(15, 44, 195, 44);
+        
+        doc.setFont("helvetica", "bold");
+        doc.text("Dossier Summary", 15, 52);
+        
+        doc.setFont("helvetica", "normal");
+        doc.text(`Total Balance Outstanding: Rs. ${totalOutstanding.toFixed(2)}`, 15, 58);
+        doc.text(`Total Receivable Overdue: Rs. ${totalReceivable.toFixed(2)}`, 15, 64);
+        
+        doc.text(`1-30 Days Overdue: Rs. ${buckets['1-30'].toFixed(2)}`, 15, 72);
+        doc.text(`31-45 Days Overdue: Rs. ${buckets['31-45'].toFixed(2)}`, 15, 78);
+        doc.text(`46-60 Days Overdue: Rs. ${buckets['46-60'].toFixed(2)}`, 15, 84);
+        doc.text(`Over 60 Days Overdue: Rs. ${buckets['60+'].toFixed(2)}`, 15, 90);
+        
+        doc.line(15, 94, 195, 94);
+        
+        doc.setFont("helvetica", "bold");
+        doc.text("Ledger Schedule", 15, 102);
+        
+        doc.autoTable({
+            startY: 108,
+            head: [['Invoice No', 'Inv Date', 'Due Date', 'Days Late', 'Total Value', 'Balance Due']],
+            body: items,
+            theme: 'striped',
+            headStyles: { fillColor: [15, 23, 42] }
+        });
+        
+        doc.save(`Aging_Ledger_${stockist.name.replace(/\s+/g, '_')}.pdf`);
+    } catch(e) {
+        alert("Failed to export PDF.");
+    }
+}
 
 function exportReportExcel() {
     if(!currentReportData || currentReportData.length === 0) return alert("No data to export.");
