@@ -471,7 +471,6 @@
             <div class="nav-item" onclick="switchTab('purchase', this); closeSidebar()"><span>🛒</span> Purchase Entry</div>
             <div class="nav-item" onclick="switchTab('reports', this); closeSidebar()"><span>📊</span> Reports & Compliance</div>
             <div class="nav-item" onclick="switchTab('system', this); closeSidebar()"><span>🛠️ </span> System Health</div>
-            <div class="nav-item" onclick="switchTab('ocr-templates', this); closeSidebar()"><span>🎯</span> OCR Layout Blueprints</div>
             <div class="nav-item" onclick="switchTab('settings', this); closeSidebar()"><span>⚙️ </span> Company Settings</div>
         </aside>
 
@@ -2145,180 +2144,7 @@
                 </div>
             </div>
 
-            <!-- OCR TEMPLATES TAB -->
-            <div id="tab-ocr-templates" class="hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <div>
-                        <div style="font-size: 0.55rem; font-weight: 900; color: var(--accent); letter-spacing: 2px; text-transform: uppercase;">OCR Layout Blueprints</div>
-                        <h2 class="section-title" style="margin: 0;">🎯 Visual PDF Coordinate Mapper</h2>
-                    </div>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); text-align: right; max-width: 400px; margin: 0;">
-                        Upload a sample supplier/stockist invoice PDF, adjust the column coordinate bounds visually, and save the blueprint layout to achieve 100% accurate, error-free parsing!
-                    </p>
-                </div>
 
-                <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.5rem; display: flex; gap: 2rem; align-items: center; background: rgba(30, 41, 59, 0.4); position: relative; z-index: 200;">
-                    <div style="flex: 1; position: relative;" class="search-container">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: var(--primary); display: block; margin-bottom: 5px;">SELECT TARGET STOCKIST / SUPPLIER</label>
-                        <input type="text" id="ocr-stockist-search" autocomplete="off" placeholder="Type Stockist or Supplier Name..." onfocus="handleOCRStockistSearch(this)" oninput="handleOCRStockistSearch(this)" onkeydown="handleSearchKey(event, 'ocr-stockist-search-results')" style="padding: 10px; background: rgba(0,0,0,0.4); border: 1.5px solid var(--primary); border-radius: 8px; color: #fff; width: 100%; font-size: 0.85rem; font-weight: 800; outline: none; transition: 0.2s;">
-                        <input type="hidden" id="ocr-stockist-select">
-                        <div id="ocr-stockist-search-results" class="search-results" style="display: none; position: absolute; top: 100%; left: 0; right: 0; width: 100%; max-height: 250px; overflow-y: auto; z-index: 99999; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-top: 5px;"></div>
-                    </div>
-                    <div style="flex: 1.2;">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); display: block; margin-bottom: 5px;">UPLOAD SAMPLE INVOICE (PDF)</label>
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <input type="file" id="ocr-pdf-file" accept="application/pdf" style="display: none;" onchange="handleOCRTemplateUpload(event)">
-                            <button type="button" onclick="document.getElementById('ocr-pdf-file').click()" class="btn btn-ghost" style="flex: 1; border: 1px dashed var(--accent); color: var(--accent); font-weight: 800;">
-                                <i class="fas fa-file-pdf"></i> Upload Sample PDF...
-                            </button>
-                            <span id="ocr-filename" style="font-size: 0.75rem; color: var(--text-muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file uploaded</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button type="button" onclick="saveOCRTemplate()" class="btn btn-primary" style="padding: 12px 30px; font-weight: 900; background: var(--grad-primary); border: none; box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);">
-                            💾 SAVE LAYOUT BLUEPRINT
-                        </button>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 350px 1fr; gap: 2rem; min-height: 500px; height: calc(100vh - 350px);">
-                    <!-- Control Sliders Panel -->
-                    <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; overflow-y: auto; gap: 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border);">
-                        <h3 style="font-size: 0.85rem; color: var(--accent); border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; margin: 0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
-                            📏 Sliders (X Coordinate Ranges)
-                        </h3>
-
-                        <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <label style="font-size: 0.7rem; color: var(--primary); font-weight: 800;">HEADER ANCHOR KEYWORD</label>
-                            <input type="text" id="ocr-anchor" value="HSN" style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: #fff; font-size: 0.8rem; font-weight: bold;">
-                        </div>
-
-                        <!-- Column range fields -->
-                        <div id="ocr-sliders-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <!-- Products Slider -->
-                            <div class="ocr-col-control" style="background: rgba(99, 102, 241, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>📦 Product Column X</span>
-                                    <span id="label-val-product" style="color:var(--primary);">5.0 - 35.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-product-start" step="0.5" value="5.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-product-end" step="0.5" value="35.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-                            
-                            <!-- HSN Slider -->
-                            <div class="ocr-col-control" style="background: rgba(245, 158, 11, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>🏷️ HSN Column X</span>
-                                    <span id="label-val-hsn" style="color:#f59e0b;">36.0 - 42.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-hsn-start" step="0.5" value="36.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-hsn-end" step="0.5" value="42.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-
-                            <!-- Batch Slider -->
-                            <div class="ocr-col-control" style="background: rgba(16, 185, 129, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>⚙️ Batch Column X</span>
-                                    <span id="label-val-batch" style="color:var(--accent);">43.0 - 55.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-batch-start" step="0.5" value="43.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-batch-end" step="0.5" value="55.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-
-                            <!-- Expiry Slider -->
-                            <div class="ocr-col-control" style="background: rgba(139, 92, 246, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>📅 Expiry Column X</span>
-                                    <span id="label-val-exp" style="color:#8b5cf6;">56.0 - 64.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-exp-start" step="0.5" value="56.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-exp-end" step="0.5" value="64.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-
-                            <!-- MRP Slider -->
-                            <div class="ocr-col-control" style="background: rgba(236, 72, 153, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(236, 72, 153, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>💰 MRP Column X</span>
-                                    <span id="label-val-mrp" style="color:#ec4899;">65.0 - 72.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-mrp-start" step="0.5" value="65.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-mrp-end" step="0.5" value="72.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-
-                            <!-- Rate Slider -->
-                            <div class="ocr-col-control" style="background: rgba(14, 165, 233, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(14, 165, 233, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>🏷️ Purchase Rate X</span>
-                                    <span id="label-val-rate" style="color:#0ea5e9;">73.0 - 82.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-rate-start" step="0.5" value="73.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-rate-end" step="0.5" value="82.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-
-                            <!-- Quantity Slider -->
-                            <div class="ocr-col-control" style="background: rgba(239, 68, 68, 0.05); padding: 8px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.15);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; margin-bottom:5px; color:#fff;">
-                                    <span>🔢 Quantity Column X</span>
-                                    <span id="label-val-qty" style="color:#ef4444;">83.0 - 95.0</span>
-                                </div>
-                                <div style="display:flex; gap: 8px; align-items:center;">
-                                    <input type="number" id="ocr-qty-start" step="0.5" value="83.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                    <span style="color: var(--text-muted); font-size: 0.6rem;">to</span>
-                                    <input type="number" id="ocr-qty-end" step="0.5" value="95.0" oninput="updateOCRGuides()" style="width: 70px; font-size: 0.7rem; padding: 4px; background:#000; color:#fff; border:1px solid rgba(255,255,255,0.1);">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Interactive Layout Canvas Sandbox -->
-                    <div class="glass-card" style="padding: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--glass-border);">
-                        <!-- Canvas Header / Visual Info -->
-                        <div style="background: rgba(0,0,0,0.4); padding: 8px 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.7rem; font-weight: 800; color: var(--accent);">🔬 REAL-TIME EXTRACTION SIMULATION</span>
-                            <div style="font-size: 0.65rem; color: var(--text-muted);">
-                                Red = Qty | Blue = Product | Green = Batch | Purple = Exp | Orange = HSN
-                            </div>
-                        </div>
-
-                        <!-- Main Canvas Box -->
-                        <div style="flex: 1; overflow: auto; position: relative; background: #070a13; min-height: 500px;" id="ocr-canvas-container">
-                            <!-- Overlay Shaded Guidelines -->
-                            <div id="guide-product" style="position: absolute; top: 0; bottom: 0; background: rgba(99, 102, 241, 0.08); border-left: 1px dashed rgba(99, 102, 241, 0.4); border-right: 1px dashed rgba(99, 102, 241, 0.4); pointer-events: none; z-index: 10;"></div>
-                            <div id="guide-hsn" style="position: absolute; top: 0; bottom: 0; background: rgba(245, 158, 11, 0.08); border-left: 1px dashed rgba(245, 158, 11, 0.4); border-right: 1px dashed rgba(245, 158, 11, 0.4); pointer-events: none; z-index: 10;"></div>
-                            <div id="guide-batch" style="position: absolute; top: 0; bottom: 0; background: rgba(16, 185, 129, 0.08); border-left: 1px dashed rgba(16, 185, 129, 0.4); border-right: 1px dashed rgba(16, 185, 129, 0.4); pointer-events: none; z-index: 10;"></div>
-                            <div id="guide-exp" style="position: absolute; top: 0; bottom: 0; background: rgba(139, 92, 246, 0.08); border-left: 1px dashed rgba(139, 92, 246, 0.4); border-right: 1px dashed rgba(139, 92, 246, 0.4); pointer-events: none; z-index: 10;"></div>
-                            <div id="guide-mrp" style="position: absolute; top: 0; bottom: 0; background: rgba(236, 72, 153, 0.08); border-left: 1px dashed rgba(236, 72, 153, 0.4); border-right: 1px dashed rgba(236, 72, 153, 0.4); pointer-events: none; z-index: 10;"></div>
-                            <div id="guide-rate" style="position: absolute; top: 0; bottom: 0; background: rgba(14, 165, 233, 0.08); border-left: 1px dashed rgba(14, 165, 233, 0.4); border-right: 1px dashed rgba(14, 165, 233, 0.4); pointer-events: none; z-index: 10;"></div>
-                            <div id="guide-qty" style="position: absolute; top: 0; bottom: 0; background: rgba(239, 68, 68, 0.08); border-left: 1px dashed rgba(239, 68, 68, 0.4); border-right: 1px dashed rgba(239, 68, 68, 0.4); pointer-events: none; z-index: 10;"></div>
-
-                            <!-- PDF Text Blocks Rendered Here -->
-                            <div id="ocr-tokens-board" style="position: absolute; left: 0; top: 0; width: 1000px; height: 1800px; pointer-events: none;">
-                                <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 5rem 0;">
-                                    Upload a sample PDF invoice above to view interactive coordinate tokens...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- GLOBAL FOOTER INSIDE CONTENT -->
             <footer style="background: rgba(15, 23, 42, 0.2); border-top: 1px solid var(--glass-border); padding: 1.25rem 2rem; margin-top: 2rem; color: #64748b; font-size: 0.7rem; border-radius: 20px 20px 0 0;">
@@ -2941,21 +2767,6 @@
                 <form id="purchaseForm" onsubmit="return false;" style="height: 100%; display: flex; flex-direction: column; overflow: hidden; gap: 0.3rem;">
                     <input type="hidden" id="pur-id">
                     
-                    <!-- AUTO-FILL FROM PDF BILL (OCR) -->
-                    <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.08); padding: 0.4rem 1rem; border-radius: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); margin-bottom: 0.3rem; gap: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 0.75rem; font-weight: 800; color: #10b981;">⚡ AUTO-FILL WITH OCR:</span>
-                            <span style="font-size: 0.65rem; color: var(--text-muted);">Select a supplier first, then upload their invoice PDF to auto-populate all products, batches, rates, and values instantly!</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="file" id="pur-ocr-file" accept="application/pdf" style="display: none;" onchange="handlePurchaseOCR(event)">
-                            <button type="button" onclick="triggerPurchaseOCRUpload()" class="btn" style="padding: 5px 15px; font-size: 0.65rem; font-weight: 800; background: #10b981; border: none; color: #fff; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); outline: none;">
-                                <i class="fas fa-file-pdf"></i> UPLOAD SUPPLIER PDF BILL
-                            </button>
-                            <span id="pur-ocr-filename" style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file uploaded</span>
-                        </div>
-                    </div>
-
                     <!-- SUPPLIER & HEADER INFO -->
                     <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1.5fr 0.85fr 1fr 0.8fr 0.75fr 0.75fr; gap: 0.4rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
@@ -2991,19 +2802,10 @@
                         </div>
                     </div>
                     
-                    <!-- SPLIT WORKSPACE CONTAINER (Manual full-width by default, side-by-side when PDF uploaded) -->
+                    <!-- WORKSPACE CONTAINER (Manual full-width) -->
                     <div id="pur-split-workspace" style="flex: 1 1 0; min-height: 0; display: flex; gap: 1rem; width: 100%;">
                         
-                        <!-- LEFT SIDE: PDF VIEW PANEL (hidden by default) -->
-                        <div id="pur-pdf-view-panel" class="hidden" style="width: 38%; display: flex; flex-direction: column; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--glass-border); overflow: hidden;">
-                            <div style="background: rgba(255,255,255,0.03); padding: 8px 12px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto;">
-                                <span style="font-size: 0.7rem; font-weight: 800; color: #10b981;"><i class="fas fa-file-pdf"></i> SUPPLIER BILL PDF VIEW</span>
-                                <button type="button" onclick="closePurchasePDFPanel()" style="background: none; border: none; color: #ef4444; font-size: 0.7rem; cursor: pointer; font-weight: bold; padding: 0; outline: none;">✕ Hide PDF</button>
-                            </div>
-                            <iframe id="pur-pdf-iframe" style="flex: 1; border: none; background: #fff;" src=""></iframe>
-                        </div>
-
-                        <!-- RIGHT SIDE: THE ENTIRE ITEMS GRID AND INPUTS TABLE -->
+                        <!-- THE ENTIRE ITEMS GRID AND INPUTS TABLE -->
                         <div id="pur-grid-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 0.3rem;">
 
                     <!-- CONSOLIDATED GRID ENTRY TABLE -->
