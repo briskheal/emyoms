@@ -2535,7 +2535,7 @@ async function uploadExtInvoice() {
                 if (result.warning) {
                     setTimeout(() => showCenteredMessage(result.warning, "warning"), 800);
                 } else {
-                    showCenteredMessage("Invoice Extracted Successfully!", "success");
+                    showCenteredMessage(result.message || "Invoice Extracted Successfully!", "success");
                 }
                 
             } else {
