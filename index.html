@@ -481,7 +481,6 @@
             <button class="tab-btn" id="btn-tab-pdcn" onclick="switchOrderTab('pdcn')">📝 PDCN Worksheet</button>
             <button class="tab-btn" id="btn-tab-pdcn-history" onclick="switchOrderTab('pdcn-history')">📊 PDCN Claims</button>
             <button class="tab-btn" id="btn-tab-registry" onclick="switchOrderTab('registry')">📂 Invoice Registry</button>
-            <button onclick="openCalibrationModal()" id="btn-map-layout" style="display:inline-flex; align-items:center; gap:6px; padding: 8px 14px; border-radius: 10px; border: 1px dashed rgba(16,185,129,0.5); color: #10b981; background: rgba(16,185,129,0.06); font-size:0.72rem; font-weight:800; white-space:nowrap; transition: 0.2s; letter-spacing:0.3px; cursor: pointer;" onmouseover="this.style.background='rgba(16,185,129,0.15)'; this.style.borderColor='#10b981';" onmouseout="this.style.background='rgba(16,185,129,0.06)'; this.style.borderColor='rgba(16,185,129,0.5)';" title="One-time distributor invoice layout calibration setup"><i class="fas fa-sliders-h"></i> 🗺️ MAP LAYOUT</button>
         </div>
 
 
@@ -645,7 +644,6 @@
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button onclick="clearInvoiceRegistry()" class="btn-secondary" style="font-size: 0.7rem; padding: 6px 12px; opacity: 0.7;"><i class="fas fa-sync-alt"></i> RESET FORM</button>
-                            <button onclick="purgeParsedInvoices()" class="btn" style="font-size: 0.7rem; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 800; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 5px;"><i class="fas fa-trash-alt"></i> DELETE PARSED INVOICES</button>
                         </div>
                     </div>
                 </div>
@@ -862,7 +860,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=1.0.13" defer></script>
+    <script src="script.js?v=1.0.14" defer></script>
 
     <style>
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
