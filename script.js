@@ -2846,6 +2846,11 @@ async function openCalibrationModal() {
         const res = await fetch(`${API_BASE}/admin/ocr-templates/${stockistId}`);
         const data = await res.json();
         
+        const statusCard = document.getElementById('blueprint-status-card');
+        const indicator = document.getElementById('blueprint-indicator');
+        const statusTitle = document.getElementById('blueprint-status-title');
+        const statusDesc = document.getElementById('blueprint-status-desc');
+
         if (data.success && data.template) {
             const t = data.template;
             document.getElementById('cal-anchor').value = t.anchorKeyword || 'HSN';
@@ -2863,6 +2868,18 @@ async function openCalibrationModal() {
             document.getElementById('cal-rate-end').value = t.colRateEnd;
             document.getElementById('cal-qty-start').value = t.colQtyStart;
             document.getElementById('cal-qty-end').value = t.colQtyEnd;
+
+            // Update UI status to Active/Success
+            if (statusCard) {
+                statusCard.style.background = 'rgba(16, 185, 129, 0.05)';
+                statusCard.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+                statusCard.style.borderLeft = '5px solid #10b981';
+            }
+            if (indicator) {
+                indicator.className = 'pulse-dot-green';
+            }
+            if (statusTitle) statusTitle.innerText = "Active Blueprint Loaded";
+            if (statusDesc) statusDesc.innerHTML = "✨ <strong>Saved Blueprint exists!</strong> If your distributor invoice format has not changed, these coordinates are fully active and will parse your invoices automatically.";
         } else {
             // Default template values
             document.getElementById('cal-anchor').value = "HSN";
@@ -2880,10 +2897,25 @@ async function openCalibrationModal() {
             document.getElementById('cal-rate-end').value = "82.0";
             document.getElementById('cal-qty-start').value = "83.0";
             document.getElementById('cal-qty-end').value = "95.0";
+
+            // Update UI status to Not configured
+            if (statusCard) {
+                statusCard.style.background = 'rgba(245, 158, 11, 0.05)';
+                statusCard.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+                statusCard.style.borderLeft = '5px solid #f59e0b';
+            }
+            if (indicator) {
+                indicator.className = 'pulse-dot-orange';
+            }
+            if (statusTitle) statusTitle.innerText = "No Saved Blueprint";
+            if (statusDesc) statusDesc.innerText = "⚠️ No saved coordinate template mapping found for this account. Invoices will parse using generic heuristics. Save a blueprint to customize coordinate rules.";
         }
     } catch (e) {
         console.error("❌ Failed to fetch saved blueprint template:", e);
     }
+
+    // Load total invoices parsed count
+    updateBlueprintStatusCard();
 
     const modal = document.getElementById('calibrationModal');
     modal.style.display = 'flex';
@@ -2903,6 +2935,23 @@ async function openCalibrationModal() {
                 <div>No file uploaded. Please select a PDF invoice in the registry first, then click Map Layout!</div>
             </div>
         `;
+    }
+}
+
+async function updateBlueprintStatusCard() {
+    if (!currentUser) return;
+    const stockistId = currentUser._id || currentUser.id;
+    try {
+        const res = await fetch(`${API_BASE}/stockist/invoices?stockistId=${stockistId}`);
+        const data = await res.json();
+        if (data.success && data.invoices) {
+            document.getElementById('blueprint-invoice-count').innerText = data.invoices.length;
+        } else {
+            document.getElementById('blueprint-invoice-count').innerText = "0";
+        }
+    } catch (e) {
+        console.error("❌ Failed to fetch registry invoice count:", e);
+        document.getElementById('blueprint-invoice-count').innerText = "0";
     }
 }
 
@@ -3248,4 +3297,32 @@ async function saveCalibrationTemplate() {
         console.error("❌ Failed to save template blueprint:", e);
         showCenteredMessage(`Save Error: ${e.message}`, "error");
     }
+}
+
+async function purgeParsedInvoices() {
+    if (!currentUser) return showCenteredMessage("Session expired. Please login again.", "error");
+    const stockistId = currentUser._id || currentUser.id;
+
+    showCenteredConfirm(
+        "⚠️ WARNING: This will permanently delete all parsed supplier invoices from the database and reclaim disk space. Are you sure you want to proceed?",
+        "Purge All Parsed Invoices",
+        async () => {
+            try {
+                const res = await fetch(`${API_BASE}/stockist/invoices/purge?stockistId=${stockistId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showCenteredMessage("All parsed invoices have been successfully purged from the database.", "success");
+                    updateBlueprintStatusCard();
+                    clearInvoiceRegistry(true);
+                } else {
+                    showCenteredMessage(data.message || data.error || "Failed to purge invoices.", "error");
+                }
+            } catch (e) {
+                console.error("❌ Failed to purge parsed invoices:", e);
+                showCenteredMessage(`Error: ${e.message}`, "error");
+            }
+        }
+    );
 }

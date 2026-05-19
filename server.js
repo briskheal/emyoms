@@ -2265,6 +2265,61 @@ app.post('/api/admin/ocr-analyze-pdf', docUpload.single('file'), async (req, res
 
 // --- EXTERNAL INVOICE ---
 
+function parseSquashedLine(line) {
+    const hsnMatch = line.match(/^(\d{4}|\d{8})(?=[A-Za-z])/);
+    if (!hsnMatch) return null;
+
+    const hsn = hsnMatch[1];
+    let remaining = line.substring(hsn.length);
+
+    const expMatch = remaining.match(/\b(\d{1,2}\/\d{2,4})\b/) || remaining.match(/(\d{1,2}\/\d{2,4})/);
+    if (!expMatch) return null;
+
+    const expDate = expMatch[1];
+    const expIdx = remaining.indexOf(expDate);
+
+    const leftSide = remaining.substring(0, expIdx).trim();
+    const rightSide = remaining.substring(expIdx + expDate.length).trim();
+
+    const parts = rightSide.split(/\s+/).filter(p => p);
+    if (parts.length < 3) return null;
+
+    const cleanNum = (txt) => parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+    
+    const mrp = cleanNum(parts[0]);
+    const qty = parseInt(parts[1]) || 0;
+    const rate = cleanNum(parts[2]);
+    const gst = parts.length >= 5 ? parseInt(parts[4]) || 5 : 5;
+
+    const batchMatch = leftSide.match(/([A-Z0-9\-]{4,15})$/i);
+    let batch = "EXTRACTED";
+    let name = leftSide;
+    if (batchMatch) {
+        batch = batchMatch[1];
+        name = leftSide.substring(0, leftSide.length - batch.length).trim();
+
+        const injMatch = batch.match(/^(INJ(?:ECTION)?)(.+)$/i);
+        if (injMatch) {
+            name = (name + " " + injMatch[1]).trim();
+            batch = injMatch[2];
+        }
+    }
+
+    name = name.replace(/^EMYRI\d?\s*(VIAL|TAB|CAP|PCS|BOX|NOS)?/i, '').trim();
+
+    return {
+        name: name.toUpperCase(),
+        hsn,
+        batch: batch.toUpperCase(),
+        expDate,
+        mrp,
+        qty,
+        rate,
+        gst
+    };
+}
+
+
 app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
     try {
         if (!req.file) {
@@ -2378,7 +2433,8 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 let mrp = 0;
                 let rate = 0;
 
-                let hsnLineIdx = allTokens.findIndex(t => /\d{8}/.test(t));
+                // FIX 4: Use strict word-boundary match to avoid matching phone/GSTIN substrings
+                let hsnLineIdx = allTokens.findIndex(t => /(?:^|\s)(\d{6,8})(?:\s|$)/.test(t) || /^\d{6,8}$/.test(t.trim()));
                 if (hsnLineIdx !== -1) {
                     const hsnLine = allTokens[hsnLineIdx];
                     const hsnMatch = hsnLine.match(/(\d{8})/);
@@ -2557,7 +2613,6 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
         const template = await db.InvoiceTemplate.findOne({ where: { stockistId: stockistId || 0 } });
 
         if (template) {
-            console.log(`🎯 [OCR] Applying saved coordinate template blueprint for stockistId: ${stockistId}`);
             try {
                 const PDFParser = require('pdf2json');
                 const pdfParser = new PDFParser();
@@ -2590,94 +2645,118 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 pdfParser.loadPDF(req.file.path);
                 const tokens = await parsePromise;
 
-                // Locate visual header anchor
-                const anchorToken = tokens.find(t => t.text.toUpperCase().includes(template.anchorKeyword.toUpperCase()));
-                const anchorY = anchorToken ? anchorToken.y : 0;
+                const uniqueYs = new Set(tokens.map(t => t.y));
+                if (uniqueYs.size < 5) {
+                    console.log("ℹ️ [OCR] Flat coordinates detected (unique Ys < 5). Skipping template coordinate-based parsing.");
+                } else {
+                    console.log(`🎯 [OCR] Applying saved coordinate template blueprint for stockistId: ${stockistId}`);
+                    // Locate visual header anchor
+                    const anchorToken = tokens.find(t => t.text.toUpperCase().includes(template.anchorKeyword.toUpperCase()));
+                    // FIX 2: Only apply anchor filter if anchor was actually found; add +0.3 tolerance
+                    // so that first data row whose Y is very close to anchor header is NOT dropped.
+                    const anchorY = anchorToken ? anchorToken.y : -1;
 
-                // Group tokens by Y coordinate lines (with tolerance)
-                let rows = [];
-                let currentY = -1;
-                let currentRow = [];
-                let yThreshold = 0.25;
+                    // Group tokens by Y coordinate lines (with tolerance)
+                    let rows = [];
+                    let currentY = -1;
+                    let currentRow = [];
+                    let yThreshold = 0.25;
 
-                tokens.sort((a, b) => {
-                    if (a.page !== b.page) return a.page - b.page;
-                    return a.y - b.y;
-                });
-
-                tokens.forEach(token => {
-                    if (anchorToken && token.page === 1 && token.y <= anchorY) return;
-                    
-                    const lower = token.text.toLowerCase();
-                    if (lower === 'total' || lower === 'grand total' || lower.includes('for ') || lower.includes('authorized')) return;
-
-                    if (currentY === -1 || Math.abs(token.y - currentY) > yThreshold) {
-                         if (currentRow.length > 0) {
-                             rows.push({ y: currentY, page: token.page, tokens: currentRow });
-                         }
-                         currentRow = [token];
-                         currentY = token.y;
-                    } else {
-                         currentRow.push(token);
-                    }
-                });
-                if (currentRow.length > 0) {
-                    rows.push({ y: currentY, page: tokens[tokens.length - 1].page, tokens: currentRow });
-                }
-
-                rows.forEach(row => {
-                    let productText = [];
-                    let hsnText = "";
-                    let batchText = "";
-                    let expText = "";
-                    let mrpText = "";
-                    let rateText = "";
-                    let qtyText = "";
-
-                    row.tokens.forEach(tok => {
-                        const centerX = tok.x + tok.w / 2;
-                        const inCol = (start, end) => (centerX >= start && centerX <= end);
-
-                        if (inCol(template.colProductStart, template.colProductEnd)) {
-                            productText.push(tok.text);
-                        } else if (inCol(template.colHSNStart, template.colHSNEnd)) {
-                            hsnText = tok.text;
-                        } else if (inCol(template.colBatchStart, template.colBatchEnd)) {
-                            batchText = tok.text;
-                        } else if (inCol(template.colExpStart, template.colExpEnd)) {
-                            expText = tok.text;
-                        } else if (inCol(template.colMRPStart, template.colMRPEnd)) {
-                            mrpText = tok.text;
-                        } else if (inCol(template.colRateStart, template.colRateEnd)) {
-                            rateText = tok.text;
-                        } else if (inCol(template.colQtyStart, template.colQtyEnd)) {
-                            qtyText = tok.text;
-                        }
+                    tokens.sort((a, b) => {
+                        if (a.page !== b.page) return a.page - b.page;
+                        return a.y - b.y;
                     });
 
-                    const name = productText.join(" ").trim().toUpperCase();
-                    const cleanNum = (txt) => {
-                        if (!txt) return 0;
-                        return parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
-                    };
+                    tokens.forEach(token => {
+                        // FIX 2: Skip tokens on page 1 that are STRICTLY above the anchor (y < anchorY),
+                        // but keep tokens AT the same Y or within 0.3 below — those are data rows.
+                        if (anchorToken && anchorY >= 0 && token.page === 1 && token.y < anchorY) return;
+                        
+                        const lower = token.text.toLowerCase();
+                        if (lower === 'total' || lower === 'grand total' || lower.includes('for ') || lower.includes('authorized')) return;
 
-                    const qty = cleanNum(qtyText);
-                    const mrp = cleanNum(mrpText);
-                    const rate = cleanNum(rateText);
-
-                    if (name && name.length > 2 && (qty > 0 || mrp > 0 || batchText)) {
-                        extractedItems.push({
-                            name,
-                            hsn: hsnText.trim() || "",
-                            batch: batchText.trim().toUpperCase() || "EXTRACTED",
-                            expDate: expText.trim() || "12/2026",
-                            mrp: mrp || 0,
-                            qty: qty || 0,
-                            rate: rate || 0,
-                            gst: 12
-                        });
+                        if (currentY === -1 || Math.abs(token.y - currentY) > yThreshold) {
+                             if (currentRow.length > 0) {
+                                 rows.push({ y: currentY, page: token.page, tokens: currentRow });
+                             }
+                             currentRow = [token];
+                             currentY = token.y;
+                        } else {
+                             currentRow.push(token);
+                        }
+                    });
+                    if (currentRow.length > 0) {
+                        rows.push({ y: currentY, page: tokens[tokens.length - 1].page, tokens: currentRow });
                     }
-                });
+
+                    rows.forEach(row => {
+                        let productText = [];
+                        let hsnText = "";
+                        let batchText = "";
+                        let expText = "";
+                        let mrpText = "";
+                        let rateText = "";
+                        let qtyText = "";
+
+                        row.tokens.forEach(tok => {
+                            const centerX = tok.x + tok.w / 2;
+                            const inCol = (start, end) => (centerX >= start && centerX <= end);
+
+                            if (inCol(template.colProductStart, template.colProductEnd)) {
+                                productText.push(tok.text);
+                            } else if (inCol(template.colHSNStart, template.colHSNEnd)) {
+                                hsnText = tok.text;
+                            } else if (inCol(template.colBatchStart, template.colBatchEnd)) {
+                                batchText = tok.text;
+                            } else if (inCol(template.colExpStart, template.colExpEnd)) {
+                                expText = tok.text;
+                            } else if (inCol(template.colMRPStart, template.colMRPEnd)) {
+                                mrpText = tok.text;
+                            } else if (inCol(template.colRateStart, template.colRateEnd)) {
+                                rateText = tok.text;
+                            } else if (inCol(template.colQtyStart, template.colQtyEnd)) {
+                                qtyText = tok.text;
+                            }
+                        });
+
+                        // FIX 1: If HSN column coordinate missed (calibration drift), scan ALL tokens
+                        // in this row for a standalone 4, 6 or 8 digit number as a fallback.
+                        if (!hsnText) {
+                            for (const tok of row.tokens) {
+                                const standalone = tok.text.trim().match(/^(\d{4}|\d{6}|\d{8})$/);
+                                if (standalone) {
+                                    const year = parseInt(standalone[1]);
+                                    if (year >= 2020 && year <= 2035) continue;
+                                    hsnText = standalone[1];
+                                    break;
+                                }
+                            }
+                        }
+
+                        const name = productText.join(" ").trim().toUpperCase();
+                        const cleanNum = (txt) => {
+                            if (!txt) return 0;
+                            return parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
+                        };
+
+                        const qty = cleanNum(qtyText);
+                        const mrp = cleanNum(mrpText);
+                        const rate = cleanNum(rateText);
+
+                        if (name && name.length > 2 && (qty > 0 || mrp > 0 || batchText)) {
+                            extractedItems.push({
+                                name,
+                                hsn: hsnText.trim() || "",
+                                batch: batchText.trim().toUpperCase() || "EXTRACTED",
+                                expDate: expText.trim() || "12/2026",
+                                mrp: mrp || 0,
+                                qty: qty || 0,
+                                rate: rate || 0,
+                                gst: 12
+                            });
+                        }
+                    });
+                }
             } catch (err) {
                 console.error("❌ Template extraction crashed; falling back to sequential parser:", err);
             }
@@ -2718,15 +2797,36 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
                 // Start Item Capture: ONLY trigger on strict expected sequential serial numbers
                 const isSerialNumber = /^\d+$/.test(line) && parseInt(line) === expectedSerial;
+                
+                // Or if current line contains serial number followed directly by squashed content
+                const lineSquashedMatch = line.match(/^(\d+)\s+((\d{4}|\d{8})[A-Za-z].*)$/);
+                if (capturing && lineSquashedMatch && parseInt(lineSquashedMatch[1]) === expectedSerial) {
+                    const squashedObj = parseSquashedLine(lineSquashedMatch[2]);
+                    if (squashedObj) {
+                        extractedItems.push(squashedObj);
+                        expectedSerial++;
+                        continue;
+                    }
+                }
 
                 if (capturing && isSerialNumber) {
+                    // Check if next line is a squashed line format
+                    const nextLine = itemLines[i + 1] || "";
+                    const squashedObj = parseSquashedLine(nextLine);
+                    if (squashedObj) {
+                        extractedItems.push(squashedObj);
+                        expectedSerial++;
+                        i++; // Skip the squashed line since we parsed it fully
+                        continue;
+                    }
+
                     // Reconstruct product name: combine consecutive alphabetic lines (which don't start with Mfg Name)
                     let nameParts = [];
                     let nextIdx = i + 1;
                     while (nextIdx < itemLines.length) {
                         const nextLine = itemLines[nextIdx];
                         if (nextLine.toUpperCase().includes("MFG NAME") || 
-                            /^\d{6,8}$/.test(nextLine) || 
+                            /^(\d{4}|\d{6}|\d{8})$/.test(nextLine) || 
                             /\d{2}\/\d{2,4}/.test(nextLine) || 
                             /^\d+$/.test(nextLine)) {
                             break;
@@ -2754,9 +2854,32 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                         if (itemLines[j]) neighborhoodLines.push(itemLines[j]);
                     }
                     
-                    // Find HSN (6 to 8 digits)
-                    const hsnLine = neighborhoodLines.find(l => /^\d{6,8}$/.test(l));
-                    if (hsnLine) hsn = hsnLine;
+                    // Upgraded HSN matching to support 4-digit codes (like 3004, 3009) and filter out years/quantities
+                    const hsnStandalone = neighborhoodLines.find(l => {
+                        const val = l.trim();
+                        if (/^(\d{4}|\d{6}|\d{8})$/.test(val)) {
+                            const year = parseInt(val);
+                            if (year >= 2020 && year <= 2035) return false;
+                            return true;
+                        }
+                        return false;
+                    });
+                    if (hsnStandalone) {
+                        hsn = hsnStandalone.trim();
+                    } else {
+                        // Scan inside each line for a 4, 6 or 8 digit word boundary match
+                        for (const l of neighborhoodLines) {
+                            if (/^[\d,]+\.\d{2}$/.test(l.trim())) continue;
+                            const embeddedMatch = l.match(/\b(\d{4}|\d{6}|\d{8})\b/);
+                            if (embeddedMatch) {
+                                const candidate = embeddedMatch[1];
+                                const year = parseInt(candidate);
+                                if (year >= 2020 && year <= 2035) continue;
+                                hsn = candidate;
+                                break;
+                            }
+                        }
+                    }
 
                     // Find squashed line (strictly contains exp date pattern xx/xxxx or xx/xx)
                     let squashedLine = neighborhoodLines.find(l => /\d{2}\/\d{2,4}/.test(l));
@@ -2808,6 +2931,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     // Expiry Date fallback
                     if (!expDate) {
                         const expLine = neighborhoodLines.find(l => /(\d{2}\/\d{4})/.test(l) || /(\d{2}\/\d{2})/.test(l));
+
                         if (expLine) {
                             const eMatch = expLine.match(/(\d{2}\/\d{4})/) || expLine.match(/(\d{2}\/\d{2})/);
                             expDate = eMatch[1];
@@ -2978,6 +3102,44 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
     }
 });
 
+app.delete('/api/stockist/invoices/purge', async (req, res) => {
+    try {
+        const { stockistId } = req.query;
+        if (!stockistId) {
+            return res.status(400).json({ success: false, message: 'stockistId is required' });
+        }
+
+        // Delete all InvoiceItems associated with this stockist's invoices
+        const invoices = await db.Invoice.findAll({ where: { stockistId } });
+        const invoiceIds = invoices.map(i => i.id);
+
+        if (invoiceIds.length > 0) {
+            await db.InvoiceItem.destroy({ where: { invoiceId: invoiceIds } });
+            await db.Invoice.destroy({ where: { stockistId } });
+        }
+
+        // Also clean up uploaded PDF files if they exist in the uploads/ folder
+        const uploadsDir = path.join(__dirname, 'uploads');
+        if (fs.existsSync(uploadsDir)) {
+            const files = fs.readdirSync(uploadsDir);
+            files.forEach(file => {
+                if (file.toLowerCase().endsWith('.pdf')) {
+                    try {
+                        fs.unlinkSync(path.join(uploadsDir, file));
+                    } catch (err) {
+                        console.error(`Failed to delete file ${file}:`, err);
+                    }
+                }
+            });
+        }
+
+        res.json({ success: true, message: 'All parsed invoices deleted and disk space reclaimed.' });
+    } catch (e) {
+        console.error("Purge Invoices Error:", e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 app.post('/api/stockist/invoice-external', async (req, res) => {
     const t = await db.sequelize.transaction();
     try {
@@ -3034,7 +3196,8 @@ app.post('/api/stockist/invoice-external', async (req, res) => {
                 mrp: product ? product.mrp : 0,
                 pts: product ? product.pts : parseFloat(item.rate),
                 ptr: product ? product.ptr : 0,
-                expDate: item.expDate || ''
+                expDate: item.expDate || '',
+                hsn: item.hsn || ''
             }, { transaction: t });
         }
 

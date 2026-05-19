@@ -481,7 +481,7 @@
             <button class="tab-btn" id="btn-tab-pdcn" onclick="switchOrderTab('pdcn')">📝 PDCN Worksheet</button>
             <button class="tab-btn" id="btn-tab-pdcn-history" onclick="switchOrderTab('pdcn-history')">📊 PDCN Claims</button>
             <button class="tab-btn" id="btn-tab-registry" onclick="switchOrderTab('registry')">📂 Invoice Registry</button>
-            <a href="/calibration.html" id="btn-map-layout" style="display:inline-flex; align-items:center; gap:6px; padding: 8px 14px; border-radius: 10px; border: 1px dashed rgba(16,185,129,0.5); color: #10b981; background: rgba(16,185,129,0.06); font-size:0.72rem; font-weight:800; text-decoration:none; white-space:nowrap; transition: 0.2s; letter-spacing:0.3px;" onmouseover="this.style.background='rgba(16,185,129,0.15)'; this.style.borderColor='#10b981';" onmouseout="this.style.background='rgba(16,185,129,0.06)'; this.style.borderColor='rgba(16,185,129,0.5)';" title="One-time distributor invoice layout calibration setup"><i class="fas fa-sliders-h"></i> 🗺️ MAP LAYOUT</a>
+            <button onclick="openCalibrationModal()" id="btn-map-layout" style="display:inline-flex; align-items:center; gap:6px; padding: 8px 14px; border-radius: 10px; border: 1px dashed rgba(16,185,129,0.5); color: #10b981; background: rgba(16,185,129,0.06); font-size:0.72rem; font-weight:800; white-space:nowrap; transition: 0.2s; letter-spacing:0.3px; cursor: pointer;" onmouseover="this.style.background='rgba(16,185,129,0.15)'; this.style.borderColor='#10b981';" onmouseout="this.style.background='rgba(16,185,129,0.06)'; this.style.borderColor='rgba(16,185,129,0.5)';" title="One-time distributor invoice layout calibration setup"><i class="fas fa-sliders-h"></i> 🗺️ MAP LAYOUT</button>
         </div>
 
 
@@ -643,7 +643,10 @@
                         <div id="guide-arrow" class="flashing-guide" style="background: var(--primary); color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);">
                             <i class="fas fa-arrow-down"></i> UPLOAD YOUR INVOICE HERE TO START
                         </div>
-                        <button onclick="clearInvoiceRegistry()" class="btn-secondary" style="font-size: 0.7rem; padding: 6px 12px; opacity: 0.7;"><i class="fas fa-sync-alt"></i> RESET FORM</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="clearInvoiceRegistry()" class="btn-secondary" style="font-size: 0.7rem; padding: 6px 12px; opacity: 0.7;"><i class="fas fa-sync-alt"></i> RESET FORM</button>
+                            <button onclick="purgeParsedInvoices()" class="btn" style="font-size: 0.7rem; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 800; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 5px;"><i class="fas fa-trash-alt"></i> DELETE PARSED INVOICES</button>
+                        </div>
                     </div>
                 </div>
 
@@ -872,6 +875,207 @@
         .show-alert #globalAlertBox { transform: scale(1) !important; }
         .show-confirm { opacity: 1 !important; pointer-events: auto !important; }
         .show-confirm #globalConfirmBox { transform: scale(1) !important; }
+
+        /* Workspace Grid Split Layout */
+        #calibrationModal .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 80px);
+        }
+
+        /* Left Setup & Sliders Panel */
+        #calibrationModal .control-panel {
+            width: 420px;
+            border-right: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: rgba(10, 15, 30, 0.4);
+        }
+
+        /* Instructions block styling */
+        #calibrationModal .instructions-block {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 16px;
+            padding: 1.25rem;
+        }
+        #calibrationModal .instructions-block h4 {
+            color: #818cf8;
+            font-size: 0.85rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #calibrationModal .instructions-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        #calibrationModal .instructions-list li {
+            font-size: 0.72rem;
+            line-height: 1.4;
+            color: #e2e8f0;
+            display: flex;
+            gap: 8px;
+        }
+        #calibrationModal .instructions-list li i {
+            color: #818cf8;
+            margin-top: 3px;
+        }
+
+        #calibrationModal .section-header {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        #calibrationModal .info-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            padding: 1rem;
+            border-radius: 14px;
+        }
+
+        /* Visual Slider Blocks */
+        #calibrationModal .slider-block {
+            padding: 0.85rem 1rem;
+            border-radius: 14px;
+            border: 1px solid var(--glass-border);
+            transition: 0.2s;
+            margin-bottom: 0.5rem;
+        }
+        #calibrationModal .slider-block:hover {
+            background: rgba(255, 255, 255, 0.01);
+        }
+        #calibrationModal .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        #calibrationModal .slider-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        #calibrationModal .slider-inputs input {
+            width: 75px;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            font-size: 0.75rem;
+            text-align: center;
+            border-radius: 6px;
+            font-weight: bold;
+            outline: none;
+        }
+
+        /* Right Scanner Matrix Workspace */
+        #calibrationModal .matrix-container {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            background: #04060b;
+        }
+
+        /* Interactive Guideline Rectangles */
+        #calibrationModal .guide-bar {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border-left: 2px dashed;
+            border-right: 2px dashed;
+            opacity: 0.15;
+            transition: left 0.1s, width 0.1s;
+            pointer-events: none;
+        }
+
+        /* Token canvas background grid lines */
+        #calibrationModal .grid-canvas {
+            position: absolute;
+            inset: 0;
+            background-size: 100px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            z-index: 1;
+        }
+
+        #calibrationModal .tokens-board {
+            position: relative;
+            z-index: 5;
+            width: 1200px;
+            min-height: 100%;
+        }
+
+        /* Individual Token Style */
+        #calibrationModal .cal-token-item {
+            transition: all 0.2s ease;
+        }
+
+        /* Bottom Floating Verification Panel */
+        #calibrationModal .verification-panel {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            left: calc(420px + 2rem);
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 1.25rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            animation: slideInUp 0.4s ease-out;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+        
+        /* Pulsing status badges inside modal */
+        #calibrationModal .pulse-dot-green {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-green 1.5s infinite;
+        }
+        #calibrationModal .pulse-dot-orange {
+            width: 8px;
+            height: 8px;
+            background-color: #f59e0b;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            animation: pulse-orange 1.5s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        @keyframes pulse-orange {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
     </style>
     <audio id="bgMusic" loop preload="auto">
         <source src="https://archive.org/download/PeacefulMusic/01%20Peaceful%20Mind.mp3" type="audio/mpeg">
@@ -966,6 +1170,245 @@
                 <button class="btn" onclick="closeConfirm(false)" style="flex: 1; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">CANCEL</button>
                 <button class="btn-primary" onclick="closeConfirm(true)" style="flex: 1; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border: none; cursor: pointer; transition: 0.3s; background: var(--grad-primary); box-shadow: 0 4px 15px rgba(99,102,241,0.4);">PROCEED</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 🗺️ VISUAL LAYOUT CALIBRATION MODAL -->
+    <div id="calibrationModal" class="hidden" style="display:none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px); align-items: center; justify-content: center; z-index: 4000; overflow: hidden; height: 100vh; width: 100vw;">
+        <div class="glass-card" style="width: 100vw; height: 100vh; border-radius: 0; border: none; box-shadow: none; display: flex; flex-direction: column;">
+            
+            <!-- Header Bar -->
+            <header class="header-bar" style="padding: 1.25rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.8);">
+                <div class="header-title">
+                    <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; color: #fff;"><span>🗺️</span> distributor Layout Calibration Workspace</h2>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Ensure coordinate mappings align perfectly before supplier invoice uploads.</p>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <button onclick="verifyCalLayoutLocal()" class="btn btn-secondary" style="border: 1px solid var(--primary); color: #818cf8; background: rgba(255,255,255,0.05); border-radius: 12px; font-size: 0.78rem; font-weight: 700; padding: 0.65rem 1.25rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-eye"></i> ⚡ LOCAL PREVIEW
+                    </button>
+                    <button onclick="saveCalibrationTemplate()" class="btn btn-primary" style="background: var(--grad-primary); color: #fff; border-radius: 12px; font-size: 0.78rem; font-weight: 700; padding: 0.65rem 1.25rem; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-save"></i> 💾 SAVE BLUEPRINT & PARSE
+                    </button>
+                    <button onclick="closeCalibrationModal()" class="btn btn-secondary" style="background: rgba(255,255,255,0.05); color: #fff; border-radius: 12px; font-size: 0.78rem; font-weight: 700; padding: 0.65rem 1.25rem; border: 1px solid var(--glass-border); cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-arrow-left"></i> BACK TO REGISTRY
+                    </button>
+                </div>
+            </header>
+
+            <div class="workspace">
+                
+                <!-- Left Control Sidebar -->
+                <div class="control-panel">
+                    
+                    <!-- POINT-WISE INSTRUCTIONS -->
+                    <div class="instructions-block">
+                        <h4><i class="fas fa-info-circle"></i> Point-Wise Calibration Guide</h4>
+                        <ul class="instructions-list">
+                            <li>
+                                <i class="fas fa-circle-1"></i>
+                                <div><strong>Select Specimen Copy:</strong> Click "Select Specimen" and upload a sample supplier invoice PDF format below.</div>
+                            </li>
+                            <li>
+                                <i class="fas fa-circle-2"></i>
+                                <div><strong>Define Header Anchor:</strong> Input the exact header anchor word (e.g., "HSN", "Product") where item rows begin.</div>
+                            </li>
+                            <li>
+                                <i class="fas fa-circle-3"></i>
+                                <div><strong>Calibrate Coordinates:</strong> Adjust the column start/end boundaries on the left until the guideline overlays frame column boundaries on the visual canvas.</div>
+                            </li>
+                            <li>
+                                <i class="fas fa-circle-4"></i>
+                                <div><strong>Run Live Preview:</strong> Click "⚡ LOCAL PREVIEW" to inspect parsed products, rates, and values. Make fine adjustments if needed.</div>
+                            </li>
+                            <li>
+                                <i class="fas fa-circle-5"></i>
+                                <div><strong>Lock Blueprint:</strong> Click "💾 SAVE BLUEPRINT" to sync mappings to database. Mapped supplier invoices will parse automatically hereafter!</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Distributor Identity details -->
+                    <div class="section-header">Active Distributor</div>
+                    <div class="info-card" style="margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.04); border-color: rgba(99, 102, 241, 0.2); border-style: solid; border-width: 1px; border-radius: 14px; padding: 1rem;">
+                        <h3 id="cal-distributor-name" style="font-family: 'Outfit', sans-serif; font-size: 0.95rem; font-weight: 800; color: #fff;">Loading...</h3>
+                        <span id="cal-distributor-code" style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-top: 2px;">ID: - | Code: -</span>
+                    </div>
+
+                    <!-- Blueprint Intelligence Status -->
+                    <div class="section-header">Blueprint Status</div>
+                    <div id="blueprint-status-card" class="info-card" style="margin-bottom: 0.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-left: 5px solid rgba(255, 255, 255, 0.2); transition: 0.3s; padding: 1rem 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span id="blueprint-indicator" class="pulse-dot-orange"></span>
+                            <h4 id="blueprint-status-title" style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 800; color: #fff;">Checking...</h4>
+                        </div>
+                        <p id="blueprint-status-desc" style="font-size: 0.72rem; line-height: 1.4; color: #e2e8f0; margin: 0;">Loading templates from database...</p>
+                        
+                        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted);">
+                            <span>Total Invoices Parsed:</span>
+                            <span id="blueprint-invoice-count" style="font-weight: 700; color: #fff;">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Specimen File Selector -->
+                    <div class="section-header">Distributor Specimen Copy</div>
+                    <div class="info-card" style="display: flex; flex-direction: column; gap: 8px; border-radius: 14px; padding: 1rem; border: 1px solid var(--glass-border);">
+                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--accent); text-transform: uppercase;">Select Specimen PDF</label>
+                        <input type="file" id="cal-specimen-file" accept="application/pdf" style="font-size: 0.72rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 8px; border: 1px dashed var(--glass-border); width: 100%; outline: none;" onchange="analyzeCalibrationPDF(this.files[0])">
+                    </div>
+
+                    <!-- Anchor Word setting -->
+                    <div class="form-group" style="margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">Header Anchor Keyword</label>
+                        <input type="text" id="cal-anchor" value="HSN" placeholder="e.g. HSN, Product, Item" style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--glass-border); border-radius: 10px; color: #fff; padding: 0.6rem 0.85rem; font-size: 0.8rem; font-weight: 700; outline: none; transition: all 0.2s ease;" oninput="updateCalGuides()">
+                    </div>
+
+                    <div class="section-header">Visual Column Bounds Calibration</div>
+
+                    <!-- Product bounds -->
+                    <div class="slider-block" style="background: rgba(99, 102, 241, 0.03); border-color: rgba(99, 102, 241, 0.15);">
+                        <div class="slider-header">
+                            <span>📦 Product Name Bounds</span>
+                            <span id="cal-label-val-product" style="color: var(--primary);">5.0 - 35.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-product-start" step="0.5" value="5.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-product-end" step="0.5" value="35.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                    <!-- HSN bounds -->
+                    <div class="slider-block" style="background: rgba(245, 158, 11, 0.03); border-color: rgba(245, 158, 11, 0.15);">
+                        <div class="slider-header">
+                            <span>🏷️ HSN Code Bounds</span>
+                            <span id="cal-label-val-hsn" style="color: #f59e0b;">36.0 - 42.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-hsn-start" step="0.5" value="36.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-hsn-end" step="0.5" value="42.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                    <!-- Batch bounds -->
+                    <div class="slider-block" style="background: rgba(16, 185, 129, 0.03); border-color: rgba(16, 185, 129, 0.15);">
+                        <div class="slider-header">
+                            <span>⚙️ Batch Number Bounds</span>
+                            <span id="cal-label-val-batch" style="color: var(--accent);">43.0 - 55.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-batch-start" step="0.5" value="43.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-batch-end" step="0.5" value="55.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                    <!-- Expiry bounds -->
+                    <div class="slider-block" style="background: rgba(139, 92, 246, 0.03); border-color: rgba(139, 92, 246, 0.15);">
+                        <div class="slider-header">
+                            <span>📅 Expiry Date Bounds</span>
+                            <span id="cal-label-val-exp" style="color: #8b5cf6;">56.0 - 64.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-exp-start" step="0.5" value="56.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-exp-end" step="0.5" value="64.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                    <!-- MRP bounds -->
+                    <div class="slider-block" style="background: rgba(236, 72, 153, 0.03); border-color: rgba(236, 72, 153, 0.15);">
+                        <div class="slider-header">
+                            <span>MRP Bounds</span>
+                            <span id="cal-label-val-mrp" style="color: #ec4899;">65.0 - 72.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-mrp-start" step="0.5" value="65.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-mrp-end" step="0.5" value="72.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                    <!-- Rate bounds -->
+                    <div class="slider-block" style="background: rgba(14, 165, 233, 0.03); border-color: rgba(14, 165, 233, 0.15);">
+                        <div class="slider-header">
+                            <span>💲 Purchase Rate Bounds</span>
+                            <span id="cal-label-val-rate" style="color: #0ea5e9;">73.0 - 82.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-rate-start" step="0.5" value="73.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-rate-end" step="0.5" value="82.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                    <!-- Qty bounds -->
+                    <div class="slider-block" style="background: rgba(239, 68, 68, 0.03); border-color: rgba(239, 68, 68, 0.15);">
+                        <div class="slider-header">
+                            <span>🔢 Quantity Bounds</span>
+                            <span id="cal-label-val-qty" style="color: #ef4444;">83.0 - 95.0</span>
+                        </div>
+                        <div class="slider-inputs">
+                            <input type="number" id="cal-qty-start" step="0.5" value="83.0" oninput="updateCalGuides()">
+                            <span style="font-size: 0.65rem; color: var(--text-muted);">to</span>
+                            <input type="number" id="cal-qty-end" step="0.5" value="95.0" oninput="updateCalGuides()">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Visual Guidelines Matrix Section -->
+                <div class="matrix-container">
+                    <div class="grid-canvas"></div>
+                    
+                    <!-- Transparent Color Guides -->
+                    <div id="cal-guide-product" class="guide-bar" style="border-color:#6366f1; background:rgba(99, 102, 241, 0.04);"></div>
+                    <div id="cal-guide-hsn" class="guide-bar" style="border-color:#f59e0b; background:rgba(245, 158, 11, 0.04);"></div>
+                    <div id="cal-guide-batch" class="guide-bar" style="border-color:#10b981; background:rgba(16, 185, 129, 0.04);"></div>
+                    <div id="cal-guide-exp" class="guide-bar" style="border-color:#8b5cf6; background:rgba(139, 92, 246, 0.04);"></div>
+                    <div id="cal-guide-mrp" class="guide-bar" style="border-color:#ec4899; background:rgba(236, 72, 153, 0.04);"></div>
+                    <div id="cal-guide-rate" class="guide-bar" style="border-color:#0ea5e9; background:rgba(14, 165, 233, 0.04);"></div>
+                    <div id="cal-guide-qty" class="guide-bar" style="border-color:#ef4444; background:rgba(239, 68, 68, 0.04);"></div>
+
+                    <!-- Visual Token Render Board -->
+                    <div class="tokens-board" id="cal-tokens-board">
+                        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-style:italic; padding: 10rem 1rem; text-align: center; gap: 15px;">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 4rem; opacity: 0.15; color: var(--primary);"></i>
+                            <div>Please upload your distributor specimen PDF copy to initialize coordinate guidelines!</div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Floating Verification Ledger Preview Section -->
+            <div class="verification-panel" id="cal-preview-panel" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">
+                    <h4 style="font-size: 0.85rem; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-flask"></i> Local Sandbox Simulation Results
+                    </h4>
+                    <button onclick="document.getElementById('cal-preview-panel').style.display='none'" class="btn" style="background:transparent; color:#fff; padding:2px; font-size:1rem; cursor:pointer; width:auto; border:none;">✕</button>
+                </div>
+                
+                <div>
+                    <table class="excel-table" style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 10px 14px; text-align: left; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--glass-border); font-size: 0.65rem; background: rgba(0,0,0,0.2);">Product Name</th>
+                                <th style="padding: 10px 14px; text-align: left; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--glass-border); font-size: 0.65rem; background: rgba(0,0,0,0.2);">Batch</th>
+                                <th style="padding: 10px 14px; text-align: right; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--glass-border); font-size: 0.65rem; background: rgba(0,0,0,0.2);">MRP</th>
+                                <th style="padding: 10px 14px; text-align: right; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--glass-border); font-size: 0.65rem; background: rgba(0,0,0,0.2);">Rate</th>
+                                <th style="padding: 10px 14px; text-align: center; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--glass-border); font-size: 0.65rem; background: rgba(0,0,0,0.2);">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cal-preview-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 </body>
