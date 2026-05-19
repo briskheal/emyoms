@@ -2660,18 +2660,25 @@ function calculateExtTotals() {
     });
 
     const gtInput = document.getElementById('ext-grand-total');
-    let grandTotal = parseFloat(gtInput.value);
+    // Remove commas before parsing
+    let grandTotal = parseFloat((gtInput.value || '').toString().replace(/,/g, ''));
     
     if (isNaN(grandTotal)) {
         grandTotal = Math.round(subTotal);
     }
     
-    const roundOff = (grandTotal - subTotal).toFixed(2);
+    const roundOff = (grandTotal - subTotal);
     
     const subTotalEl = document.getElementById('ext-subtotal');
     const roundOffEl = document.getElementById('ext-roundoff');
-    if (subTotalEl) subTotalEl.innerText = subTotal.toFixed(2);
-    if (roundOffEl) roundOffEl.innerText = roundOff;
+    
+    if (subTotalEl) subTotalEl.innerText = subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (roundOffEl) roundOffEl.innerText = roundOff.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    
+    // Only update the input value programmatically if it's not focused (to avoid breaking user typing)
+    if (document.activeElement !== gtInput) {
+        gtInput.value = grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
     
     lastExtractedData.grandTotal = grandTotal;
 }
@@ -2680,6 +2687,7 @@ function renderExtTable() {
     const tbody = document.getElementById('ext-preview-body');
     tbody.innerHTML = lastExtractedData.items.map((item, i) => `
         <tr>
+            <td><div style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.75rem;">${i + 1}</div></td>
             <td><input type="text" value="${item.name || ''}" oninput="updateExtItem(${i}, 'name', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;"></td>
             <td><input type="text" value="${item.hsn || ''}" oninput="updateExtItem(${i}, 'hsn', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:90px;"></td>
             <td><input type="text" value="${item.batch || ''}" oninput="updateExtItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
@@ -2696,7 +2704,7 @@ function renderExtTable() {
 
     tbody.innerHTML += `
         <tr style="background: rgba(0,0,0,0.4);">
-            <td colspan="4" style="text-align:right; font-weight:bold; color:var(--text-muted); padding: 10px;">Summary:</td>
+            <td colspan="5" style="text-align:right; font-weight:bold; color:var(--text-muted); padding: 10px;">Summary:</td>
             <td colspan="2" style="text-align:right; font-size:0.75rem; color:var(--text-muted); padding: 10px;">
                 Subtotal: <br> Round Off:
             </td>
@@ -2706,9 +2714,9 @@ function renderExtTable() {
             </td>
         </tr>
         <tr style="background: rgba(0,0,0,0.6);">
-            <td colspan="6" style="text-align:right; font-weight:900; color:#fff; font-size: 1rem; padding: 10px;">GRAND TOTAL:</td>
+            <td colspan="7" style="text-align:right; font-weight:900; color:#fff; font-size: 1rem; padding: 10px;">GRAND TOTAL:</td>
             <td colspan="3" style="text-align:right; padding: 10px;">
-                <input type="number" step="0.01" id="ext-grand-total" ${initialGT} oninput="calculateExtTotals()" style="font-size:1.1rem; font-weight:900; padding:6px; background:rgba(0,0,0,0.5); border:1px solid rgba(52,211,153,0.5); border-radius:4px; color:#34d399; width:120px; text-align:right;">
+                <input type="text" id="ext-grand-total" ${initialGT} oninput="calculateExtTotals()" onblur="calculateExtTotals()" style="font-size:1.1rem; font-weight:900; padding:6px; background:rgba(0,0,0,0.5); border:1px solid rgba(52,211,153,0.5); border-radius:4px; color:#34d399; width:130px; text-align:right;">
             </td>
         </tr>
     `;
