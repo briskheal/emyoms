@@ -2770,7 +2770,7 @@
                     <input type="hidden" id="pur-id">
                     
                     <!-- SUPPLIER & HEADER INFO -->
-                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1.5fr 0.85fr 1fr 0.8fr 0.75fr 0.75fr; gap: 0.4rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 0 0 auto; display: grid; grid-template-columns: 1.5fr 0.85fr 1fr 0.8fr 0.75fr 0.75fr auto; gap: 0.4rem; background: rgba(255,255,255,0.02); padding: 0.35rem 1rem; border-radius: 10px; align-items: end; border: 1px solid rgba(255,255,255,0.05);">
                         <div class="form-group search-container">
                             <label style="font-size: 0.6rem; opacity: 0.7;">Select Supplier</label>
                             <input type="text" id="pur-party-search" autocomplete="off" placeholder="Type Supplier Name..." onfocus="handlePartySearch(this, 'PURCHASE')" oninput="handlePartySearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-party-search-results')" style="font-size: 0.75rem; height: 30px;">
@@ -2802,6 +2802,12 @@
                                 <option value="MAIN">Main WH</option>
                             </select>
                         </div>
+                        <!-- AI INVOICE UPLOAD -->
+                        <div class="form-group" style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end;">
+                            <label style="font-size: 0.55rem; opacity: 0.7; white-space:nowrap;">🤖 AI Upload</label>
+                            <button type="button" id="pur-ai-upload-btn" onclick="document.getElementById('pur-invoice-file-input').click()" title="Upload supplier invoice and auto-fill with Gemini AI" style="height:30px; padding: 0 10px; font-size:0.65rem; font-weight:800; background: linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; box-shadow: 0 0 12px rgba(99,102,241,0.5); transition: all 0.2s;" onmouseover="this.style.boxShadow='0 0 20px rgba(99,102,241,0.8)'" onmouseout="this.style.boxShadow='0 0 12px rgba(99,102,241,0.5)'">✨ Upload Invoice</button>
+                            <input type="file" id="pur-invoice-file-input" accept=".pdf,image/*" style="display:none;" onchange="uploadPurchaseInvoice(this)">
+                        </div>
                     </div>
                     
                     <!-- WORKSPACE CONTAINER (Manual full-width) -->
@@ -2831,32 +2837,7 @@
                                         <th style="width: 4%; min-width: 45px; padding: 4px 5px;">GST%</th>
                                         <th style="width: 9%; min-width: 90px; text-align: right; padding: 4px 10px 4px 5px;">Line Total</th>
                                     </tr>
-                                    <!-- INTEGRATED INPUT ROW -->
-                                    <tr style="background: rgba(99, 102, 241, 0.12); position: sticky; top: 26px; z-index: 99;">
-                                        <td style="text-align: center;">
-                                            <button type="button" onclick="addPurchaseItem()" title="Add Item (Enter)" style="background: var(--accent); border: none; color: #fff; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 0.9rem; font-weight: 900; line-height: 1;">+</button>
-                                        </td>
-                                        <td style="overflow: visible; padding: 2px 4px;">
-                                            <div class="search-container" style="position: relative;">
-                                                <input type="text" id="pur-prod-search" autocomplete="off" placeholder="Search..." onfocus="handleProductSearch(this, 'PURCHASE')" oninput="handleProductSearch(this, 'PURCHASE')" onkeydown="handleSearchKey(event, 'pur-search-results')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;">
-                                                <input type="hidden" id="pur-prod-select">
-                                            </div>
-                                        </td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="pur-hsn" placeholder="HSN" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="pur-pack" placeholder="Pack" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="pur-batch" placeholder="Batch" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="position: relative; padding: 2px 4px;"><input type="text" id="pur-mfg" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.7rem; padding: 2px 20px 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"><span onclick="openMonthYearPicker('pur-mfg')" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.7rem; opacity: 0.7; z-index: 5;">📅</span></td>
-                                        <td style="position: relative; padding: 2px 4px;"><input type="text" id="pur-exp" placeholder="MM-YY" maxlength="5" oninput="formatMMYY(this)" style="font-size: 0.7rem; padding: 2px 20px 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"><span onclick="openMonthYearPicker('pur-exp')" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 0.7rem; opacity: 0.7; z-index: 5;">📅</span></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="pur-mrp" step="0.01" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="pur-ptr" step="0.01" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="pur-pts" step="0.01" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="pur-rate" step="0.01" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="pur-qty" oninput="calculatePurchaseLineTotal()" onkeydown="if(event.key==='Enter'){event.preventDefault();addPurchaseItem();}" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="pur-gst-pct" oninput="calculatePurchaseLineTotal()" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="text-align: right; padding-right: 10px;">
-                                            <div id="pur-line-total" style="font-weight: 800; color: var(--primary); font-size: 0.75rem;">₹0.00</div>
-                                        </td>
-                                    </tr>
+                                    <!-- INTEGRATED INPUT ROW REMOVED for Excel-style grid -->
                                 </thead>
                                 <tbody id="purchase-items-body"></tbody>
                             </table>
@@ -3018,32 +2999,7 @@
                                         <th style="width: 6%; min-width: 55px; padding: 4px 5px;">GST%</th>
                                         <th style="width: 10%; min-width: 100px; text-align: right; padding: 4px 10px 4px 5px;">Line Total</th>
                                     </tr>
-                                    <!-- INTEGRATED INPUT ROW -->
-                                    <tr style="background: rgba(16, 185, 129, 0.12); position: sticky; top: 26px; z-index: 99;">
-                                        <td style="text-align: center;">
-                                            <button type="button" onclick="addSaleItem()" title="Add Item (Enter)" style="background: var(--accent); border: none; color: #000; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 0.9rem; font-weight: 900; line-height: 1;">+</button>
-                                        </td>
-                                        <td style="overflow: visible; padding: 2px 4px;">
-                                            <div class="search-container" style="position: relative;">
-                                                <input type="text" id="sale-prod-search" autocomplete="off" placeholder="Search..." onfocus="handleProductSearch(this, 'SALE')" oninput="handleProductSearch(this, 'SALE')" onkeydown="handleSearchKey(event, 'sale-search-results'); handleSalesRowKey(event, 'sale-prod-search')" style="font-size: 0.7rem; padding: 2px 6px; background: rgba(0,0,0,0.4); height: 26px; width: 100%;">
-                                                <input type="hidden" id="sale-prod-select">
-                                            </div>
-                                        </td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="sale-hsn" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="sale-pack" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
-                                        <td style="padding: 2px 4px;"><select id="sale-batch-select" onchange="updateSaleBatchMeta(this.value)" onkeydown="handleSalesRowKey(event, 'sale-batch-select')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 2px; height: 24px; width: 100%;"></select></td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="sale-mfg-dt" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="sale-exp-dt" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
-                                        <td style="padding: 2px 4px;"><input type="text" id="sale-mrp" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="sale-ptr" step="0.01" onkeydown="handleSalesRowKey(event, 'sale-ptr')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="sale-rate" step="0.01" oninput="calculateSaleLineTotal()" onkeydown="handleSalesRowKey(event, 'sale-rate')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="sale-qty" oninput="calculateSaleLineTotal()" onkeydown="handleSalesRowKey(event, 'sale-qty')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="sale-free" value="0" onkeydown="handleSalesRowKey(event, 'sale-free')" style="font-size: 0.7rem; padding: 2px 4px; background: rgba(0,0,0,0.4); height: 24px; width: 100%; border-radius: 2px;"></td>
-                                        <td style="padding: 2px 4px;"><input type="number" id="sale-gst-pct" readonly style="font-size: 0.7rem; opacity: 0.6; padding: 2px 4px; border:none; background:transparent; height: 24px; width: 100%;"></td>
-                                        <td style="text-align: right; padding-right: 10px;">
-                                            <div id="sale-line-total" style="font-weight: 800; color: var(--accent); font-size: 0.75rem;">₹0.00</div>
-                                        </td>
-                                    </tr>
+                                    <!-- INTEGRATED INPUT ROW REMOVED for Excel-style grid -->
                                 </thead>
                                 <tbody id="sale-items-body"></tbody>
                             </table>

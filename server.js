@@ -3606,6 +3606,83 @@ async function autoPostPaymentJV(payment, stockist, t) {
     ], { transaction: t });
 }
 
+// --- ADMIN PURCHASE INVOICE UPLOAD (AI) ---
+app.post('/api/admin/upload-purchase-invoice', docUpload.single('invoice'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "No invoice file uploaded." });
+        }
+
+        const supplierId = req.body.supplierId;
+
+        if (process.env.GEMINI_API_KEY) {
+            console.log("🤖 Attempting to parse purchase invoice via Gemini API Vision...");
+            const { GoogleGenerativeAI } = require('@google/generative-ai');
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-2.5-flash", 
+                generationConfig: { responseMimeType: "application/json" } 
+            });
+            
+            const fs = require('fs');
+            const dataBuffer = fs.readFileSync(req.file.path);
+            const mimeType = req.file.mimetype || 'application/pdf';
+            const filePart = {
+                inlineData: {
+                    data: dataBuffer.toString("base64"),
+                    mimeType
+                }
+            };
+            
+            const prompt = `You are a highly accurate invoice data extraction AI. Extract the invoice details from this supplier document and return a pure JSON object.
+Format:
+{
+  "invoiceNo": "string",
+  "date": "YYYY-MM-DD",
+  "supplierName": "string",
+  "items": [
+    {
+      "name": "string (uppercase, clean product name, no batch or expiry inside name)",
+      "hsn": "string (This is a 6 to 8 digit numerical code usually found near the product name. Extract only the exact HSN code)",
+      "batch": "string (uppercase)",
+      "expDate": "MM/YYYY or MM/YY",
+      "mrp": number,
+      "ptr": number,
+      "pts": number,
+      "rate": number,
+      "qty": number,
+      "gst": number
+    }
+  ]
+}
+If any field is missing, leave it as an empty string or 0. Ensure numeric fields (mrp, ptr, pts, rate, qty, gst) are numbers. PTR and PTS are often price fields.`;
+
+            const result = await model.generateContent([prompt, filePart]);
+            const text = result.response.text();
+            
+            let extractedData = JSON.parse(text);
+            
+            // Clean up files
+            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            
+            return res.json({
+                success: true,
+                data: extractedData,
+                message: "✨ Purchase Invoice successfully extracted using Gemini AI Vision."
+            });
+        }
+
+        const fs = require('fs');
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(500).json({ success: false, message: "Gemini API key not configured for Admin." });
+    } catch (err) {
+        console.error("❌ Purchase Upload Error:", err.message);
+        const fs = require('fs');
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 app.post('/api/admin/payments', async (req, res) => {
     const t = await db.sequelize.transaction();
     try {
