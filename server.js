@@ -2362,7 +2362,7 @@ Format:
   "items": [
     {
       "name": "string (uppercase, clean product name, no batch or expiry inside name)",
-      "hsn": "string",
+      "hsn": "string (This is a 6 to 8 digit numerical code usually found near the product name. Extract only the exact HSN code)",
       "batch": "string (uppercase)",
       "expDate": "MM/YYYY or MM/YY",
       "mrp": number,
