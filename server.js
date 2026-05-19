@@ -2668,7 +2668,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     if (name && name.length > 2 && (qty > 0 || mrp > 0 || batchText)) {
                         extractedItems.push({
                             name,
-                            hsn: hsnText.trim() || "3004",
+                            hsn: hsnText.trim() || "",
                             batch: batchText.trim().toUpperCase() || "EXTRACTED",
                             expDate: expText.trim() || "12/2026",
                             mrp: mrp || 0,
@@ -2933,7 +2933,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     if (name && (qty > 0 || mrp > 0 || batch)) {
                         extractedData.items.push({
                             name: name.toUpperCase(),
-                            hsn: hsn || "3004",
+                            hsn: hsn || "",
                             batch: (batch || "EXTRACTED").toUpperCase(),
                             expDate: expDate || "12/2026",
                             mrp: mrp || 0,
@@ -2948,6 +2948,20 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     i++; 
                 }
             }
+        }
+
+        // --- ROUND OFF & GRAND TOTAL EXTRACTION ---
+        const roundOffIdx = text.toLowerCase().indexOf("round off");
+        if (roundOffIdx !== -1) {
+            const afterRoundOff = text.substring(roundOffIdx);
+            const floatRegex = /([\d,]+\.\d{2})/g;
+            let match;
+            const floats = [];
+            while ((match = floatRegex.exec(afterRoundOff)) !== null) {
+                floats.push(parseFloat(match[1].replace(/,/g, '')));
+            }
+            if (floats.length >= 1) extractedData.roundOff = floats[0];
+            if (floats.length >= 2) extractedData.grandTotal = floats[1];
         }
 
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);

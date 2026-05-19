@@ -2593,7 +2593,7 @@ async function postToRegistry() {
                     date: invDate,
                     stockistId: currentUser._id || currentUser.id,
                     items: lastExtractedData.items,
-                    grandTotal: lastExtractedData.items.reduce((sum, i) => {
+                    grandTotal: lastExtractedData.grandTotal || lastExtractedData.items.reduce((sum, i) => {
                         const line = parseFloat(i.qty) * parseFloat(i.rate);
                         return sum + line + (line * parseFloat(i.gst || 0) / 100);
                     }, 0),
@@ -2645,7 +2645,7 @@ function addManualRow() {
     if (!lastExtractedData) lastExtractedData = { items: [] };
     lastExtractedData.items.push({
         name: "NEW PRODUCT",
-        hsn: "3004",
+        hsn: "",
         batch: "NEW",
         expDate: "12/2026",
         mrp: 0,
