@@ -3072,12 +3072,24 @@ function ensureSaleEmptyRow() {
 // Focus a cell in the purchase grid: focusPurCell(rowIndex, colKey)
 function focusPurCell(rowIdx, col) {
     const el = document.getElementById(`pur-cell-${rowIdx}-${col}`);
-    if (el) { el.focus(); if (el.select) el.select(); }
+    if (el) {
+        el.focus();
+        if (el.select) el.select();
+        // Scroll the row into view, staying clear of the sticky header
+        const row = el.closest('tr');
+        if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
 }
 
 function focusSaleCell(rowIdx, col) {
-    const el = document.getElementById(`sale-cell-${rowIdx}-${col}`);
-    if (el) { el.focus(); if (el.select) el.select(); }
+    const el = document.getElementById(`sale-cell-${rowIdx}-${col}`) ||
+               document.getElementById(`sale-cell-${rowIdx}-${col}-select`);
+    if (el) {
+        el.focus();
+        if (el.select) el.select();
+        const row = el.closest('tr');
+        if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
 }
 
 // ---- PURCHASE GRID: per-cell update ----
