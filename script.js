@@ -2418,22 +2418,8 @@ async function uploadExtInvoice() {
     const fileInput = document.getElementById('ext-inv-file');
     if (!fileInput.files[0]) return showCenteredMessage("Please select an invoice file (PDF/JPG/PNG).", "warning");
 
-    // --- SPECIMEN GATE: Block uploads if no calibration blueprint exists ---
-    if (currentUser) {
-        const stockistId = currentUser._id || currentUser.id;
-        try {
-            const chkRes = await fetch(`${API_BASE}/admin/ocr-templates/${stockistId}`);
-            const chkData = await chkRes.json();
-            if (!chkData.success || !chkData.template) {
-                return showCenteredMessage(
-                    "⚠️ SETUP REQUIRED\n\nYou must complete the one-time Invoice Layout Setup before uploading invoices. Click 🗺️ MAP LAYOUT in the navigation above to complete setup.",
-                    "warning"
-                );
-            }
-        } catch(e) {
-            console.warn("Could not verify calibration template; proceeding anyway.");
-        }
-    }
+    // --- SPECIMEN GATE REMOVED ---
+    // We now rely on Gemini AI Vision or Heuristic fallbacks if a calibration blueprint is missing.
 
     // Hide guide arrow once user starts
     const arrow = document.getElementById('guide-arrow');
