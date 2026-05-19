@@ -3070,6 +3070,17 @@ async function analyzeCalibrationPDF(file) {
         const data = await res.json();
         
         if (data.success && data.tokens) {
+            // Check for flattened/squashed OCR PDFs where all tokens share the exact same coordinates
+            const uniqueY = new Set(data.tokens.map(t => t.y)).size;
+            if (data.tokens.length > 10 && uniqueY <= 3) {
+                board.innerHTML = `<div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:#ef4444; padding:5rem 2rem; text-align:center;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <strong style="font-size: 1.2rem;">Scanned Image / Flattened PDF Detected</strong>
+                    <p style="margin-top: 10px; max-width: 600px; color: var(--text-muted);">This PDF was generated from a scanner or image (OCR) and does not contain standard column coordinates. Every word is squashed into a single hidden layer. <br><br><strong>Visual Layout Calibration requires digitally generated PDFs.</strong> You cannot map columns for this specific file.</p>
+                </div>`;
+                return;
+            }
+
             window.calTokens = data.tokens;
             board.innerHTML = '';
             
@@ -3150,10 +3161,11 @@ function verifyCalLayoutLocal() {
     let rows = [];
     let currentY = -1;
     let currentRow = [];
-    let yThreshold = 0.25;
+    let yThreshold = 0.8; // Increased from 0.25 to better group tokens on the same line
 
     tokens.forEach(token => {
-        if (anchorToken && token.page === 1 && token.y <= anchorY) return;
+        // Add a small buffer to anchorY check to avoid skipping tokens slightly above but on the same line as anchor
+        if (anchorToken && token.page === 1 && token.y < (anchorY - 0.5)) return;
         
         const lower = token.text.toLowerCase();
         if (lower === 'total' || lower === 'grand total' || lower.includes('for ') || lower.includes('authorized')) return;

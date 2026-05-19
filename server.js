@@ -2328,6 +2328,90 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 
         const { stockistName, stockistId } = req.body;
         const stockist = await db.Stockist.findByPk(stockistId || 0);
+
+        // --- GEMINI API VISION PARSER ---
+        if (process.env.GEMINI_API_KEY) {
+            try {
+                console.log("🤖 Attempting to parse invoice via Gemini API Vision...");
+                const { GoogleGenerativeAI } = require('@google/generative-ai');
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                const model = genAI.getGenerativeModel({ 
+                    model: "gemini-1.5-flash", 
+                    generationConfig: { responseMimeType: "application/json" } 
+                });
+                
+                const dataBuffer = fs.readFileSync(req.file.path);
+                const mimeType = req.file.mimetype || 'application/pdf';
+                const filePart = {
+                    inlineData: {
+                        data: dataBuffer.toString("base64"),
+                        mimeType
+                    }
+                };
+                
+                const prompt = `You are a highly accurate invoice data extraction AI. Extract the invoice details from this document and return a pure JSON object.
+Format:
+{
+  "invoiceNo": "string",
+  "date": "YYYY-MM-DD",
+  "customerName": "string",
+  "placeOfSupply": "string",
+  "pincode": "string",
+  "fssaiNo": "string",
+  "email": "string",
+  "items": [
+    {
+      "name": "string (uppercase, clean product name, no batch or expiry inside name)",
+      "hsn": "string",
+      "batch": "string (uppercase)",
+      "expDate": "MM/YYYY or MM/YY",
+      "mrp": number,
+      "qty": number,
+      "rate": number,
+      "gst": number
+    }
+  ]
+}
+If any field is missing, leave it as an empty string or 0. Ensure numeric fields (mrp, qty, rate, gst) are numbers.`;
+
+                const result = await model.generateContent([prompt, filePart]);
+                const text = result.response.text();
+                
+                let extractedData = JSON.parse(text);
+                
+                // Validate stockist identity
+                let identityVerified = false;
+                if (stockistName) {
+                    const cleanStockistName = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    const cleanExtractedName = (extractedData.customerName || "").toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (cleanExtractedName && cleanExtractedName.includes(cleanStockistName)) identityVerified = true;
+                } else {
+                    identityVerified = true;
+                }
+                
+                if (stockistName && !identityVerified) {
+                    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `ERROR: UPLOAD YOUR OWN INVOICE. This invoice belongs to: ${extractedData.customerName || "UNKNOWN"}` 
+                    });
+                }
+                
+                // Clean up files and respond immediately!
+                if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+                
+                return res.json({
+                    success: true,
+                    data: extractedData,
+                    profile: stockist ? stockist.toJSON() : null,
+                    message: "✨ Invoice successfully extracted using Gemini AI Vision."
+                });
+            } catch (err) {
+                console.error("❌ Gemini API Error:", err.message);
+                console.log("Falling back to standard parsing engine...");
+            }
+        }
+
         const pdf = require('pdf-parse');
         
         // Since we use disk storage, req.file.buffer is null. Read from disk instead.
