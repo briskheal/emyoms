@@ -2493,16 +2493,16 @@ async function uploadExtInvoice() {
                 document.getElementById('ext-inv-pos').value = result.data.placeOfSupply || '';
                 
                 if (result.profile) {
-                    document.getElementById('prof-name').value = result.profile.name;
-                    document.getElementById('prof-phone').value = result.data.phone || result.profile.phone || '';
-                    document.getElementById('prof-email').value = result.data.email || result.profile.email || '';
-                    document.getElementById('prof-address').value = result.data.address || result.profile.address || '';
-                    document.getElementById('prof-pin').value = result.data.pincode || result.profile.pincode || '';
-                    document.getElementById('prof-fssai').value = result.data.fssaiNo || result.profile.fssaiNo || '';
+                    document.getElementById('prof-name').value = result.profile.name || '';
+                    document.getElementById('prof-phone').value = result.profile.phone || '';
+                    document.getElementById('prof-email').value = result.profile.email || '';
+                    document.getElementById('prof-address').value = result.profile.address || '';
+                    document.getElementById('prof-pin').value = result.profile.pincode || '';
+                    document.getElementById('prof-fssai').value = result.profile.fssaiNo || '';
                     document.getElementById('prof-city').value = result.profile.city || '';
-                    document.getElementById('prof-state').value = result.data.state || result.profile.state || '';
-                    document.getElementById('prof-dl').value = result.data.dlNo || result.profile.dlNo || '';
-                    document.getElementById('prof-gst').value = result.data.gstNo || result.profile.gstNo || '';
+                    document.getElementById('prof-state').value = result.profile.state || '';
+                    document.getElementById('prof-dl').value = result.profile.dlNo || '';
+                    document.getElementById('prof-gst').value = result.profile.gstNo || '';
                     document.getElementById('prof-bank').value = result.profile.bankName || '';
                     document.getElementById('prof-ifsc').value = result.profile.bankIfsc || '';
                 }
