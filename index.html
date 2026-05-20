@@ -12,6 +12,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
 
+        /* Uniformity for all sections */
+        #section-place-order, #section-order-history, #section-pdcn, #section-pdcn-history, #section-registry, #section-return {
+            min-height: 70vh;
+            width: 100%;
+        }
+
+
         ::-webkit-scrollbar { width: 14px; height: 14px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; border: 3px solid #0f172a; }
@@ -422,6 +429,13 @@
 
         <div style="width: 100%; height: 220px; border-radius: 28px; overflow: hidden; margin-bottom: 2rem; position: relative; border: 1px solid var(--glass-border); background: #070a13;">
             <style>
+
+        /* Uniformity for all sections */
+        #section-place-order, #section-order-history, #section-pdcn, #section-pdcn-history, #section-registry, #section-return {
+            min-height: 70vh;
+            width: 100%;
+        }
+
 
         ::-webkit-scrollbar { width: 14px; height: 14px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
@@ -927,6 +941,13 @@
     <script src="script.js?v=1.0.14" defer></script>
 
     <style>
+
+        /* Uniformity for all sections */
+        #section-place-order, #section-order-history, #section-pdcn, #section-pdcn-history, #section-registry, #section-return {
+            min-height: 70vh;
+            width: 100%;
+        }
+
 
         ::-webkit-scrollbar { width: 14px; height: 14px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
@@ -1480,8 +1501,32 @@
 
         </div>
     </div>
+
+    <script>
+        // Enable Left/Right Arrow Key Navigation for Tab Buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+            tabs.forEach(tab => {
+                tab.addEventListener('keydown', (e) => {
+                    const activeIndex = tabs.findIndex(t => t.classList.contains('active'));
+                    if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        const nextTab = tabs[(activeIndex + 1) % tabs.length];
+                        nextTab.click();
+                        nextTab.focus();
+                    } else if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        const prevTab = tabs[(activeIndex - 1 + tabs.length) % tabs.length];
+                        prevTab.click();
+                        prevTab.focus();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
+
 
 
 
