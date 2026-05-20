@@ -3399,6 +3399,233 @@ app.put('/api/admin/pdcn/claims/:id/reject', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- STOCKIST PURCHASED ITEMS FOR AUTOCOMPLETE ---
+app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
+    try {
+        const { stockistId } = req.params;
+        const invoices = await db.Invoice.findAll({
+            where: { stockistId },
+            include: [{ model: db.InvoiceItem, as: 'items' }]
+        });
+        
+        let purchasedMap = {}; // "name|batch": data
+        invoices.forEach(inv => {
+            if (inv.items) {
+                inv.items.forEach(item => {
+                    const key = `${item.name}|${item.batch}`;
+                    if (!purchasedMap[key]) {
+                        purchasedMap[key] = {
+                            name: item.name,
+                            batch: item.batch,
+                            expDate: item.expDate || '',
+                            rate: item.priceUsed || item.pts || item.ptr || 0,
+                            gst: item.gstPercent || 0,
+                            hsn: item.hsn || '',
+                            purchasedQty: 0,
+                            returnedQty: 0,
+                            lastInvoiceNo: inv.invoiceNo
+                        };
+                    }
+                    purchasedMap[key].purchasedQty += parseInt(item.qty) || 0;
+                    // Update to the most recent invoice that had this batch
+                    if (new Date(inv.createdAt) > new Date(purchasedMap[key].lastInvoiceNo ? '1970-01-01' : 0)) {
+                        purchasedMap[key].lastInvoiceNo = inv.invoiceNo;
+                    }
+                });
+            }
+        });
+
+        // Query previously returned items (from FinancialNotes created by returns)
+        const returnedNotes = await db.FinancialNote.findAll({
+            where: { 
+                stockistId,
+                noteType: 'CN',
+                reason: { [db.Sequelize.Op.in]: ['Salable Return', 'Dmg/Exp/Brk Return'] },
+                status: { [db.Sequelize.Op.ne]: 'rejected' } // Only count pending or approved
+            },
+            include: [{ model: db.NoteItem, as: 'items' }]
+        });
+
+        returnedNotes.forEach(note => {
+            if (note.items) {
+                note.items.forEach(item => {
+                    const key = `${item.name}|${item.batchNo}`;
+                    if (purchasedMap[key]) {
+                        purchasedMap[key].returnedQty += parseInt(item.qty) || 0;
+                    }
+                });
+            }
+        });
+
+        // Filter out items that have no available quantity
+        let availableItems = Object.values(purchasedMap).map(p => {
+            p.availableQty = p.purchasedQty - p.returnedQty;
+            return p;
+        }).filter(p => p.availableQty > 0);
+
+        res.json({ success: true, items: availableItems });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/stockist/purchase-return', async (req, res) => {
+    const t = await db.sequelize.transaction();
+    try {
+        const { reason, items } = req.body;
+        const stockistId = req.body.stockistId || 1; 
+
+        if (!items || items.length === 0) throw new Error("No items provided");
+
+        // VALIDATION LOOP: Check if return qty exceeds available purchased qty
+        // First, fetch all their invoice items
+        const invoices = await db.Invoice.findAll({
+            where: { stockistId },
+            include: [{ model: db.InvoiceItem, as: 'items' }]
+        });
+        
+        // Accumulate purchased amounts
+        let purchasedMap = {};
+        invoices.forEach(inv => {
+            if (inv.items) {
+                inv.items.forEach(item => {
+                    const key = `${item.name}|${item.batch}`;
+                    if (!purchasedMap[key]) purchasedMap[key] = { qty: 0, lastInvoice: inv.invoiceNo };
+                    purchasedMap[key].qty += parseInt(item.qty) || 0;
+                });
+            }
+        });
+
+        // Accumulate returned amounts
+        const returnedNotes = await db.FinancialNote.findAll({
+            where: { 
+                stockistId, noteType: 'CN', 
+                reason: { [db.Sequelize.Op.in]: ['Salable Return', 'Dmg/Exp/Brk Return'] },
+                status: { [db.Sequelize.Op.ne]: 'rejected' } 
+            },
+            include: [{ model: db.NoteItem, as: 'items' }]
+        });
+        returnedNotes.forEach(note => {
+            if (note.items) {
+                note.items.forEach(item => {
+                    const key = `${item.name}|${item.batchNo}`;
+                    if (purchasedMap[key]) purchasedMap[key].qty -= parseInt(item.qty) || 0;
+                });
+            }
+        });
+
+        let primaryRefInvoice = null;
+
+        // Perform the validation
+        for (const item of items) {
+            const reqQty = parseInt(item.qty) || 0;
+            const key = `${item.name}|${item.batch}`;
+            const available = purchasedMap[key] ? purchasedMap[key].qty : 0;
+            
+            if (reqQty > available) {
+                throw new Error(`Cannot return ${reqQty} of ${item.name} (Batch: ${item.batch}). Only ${available} units available to return.`);
+            }
+
+            // Save the ref invoice from the first matched item
+            if (!primaryRefInvoice && purchasedMap[key] && purchasedMap[key].lastInvoice) {
+                primaryRefInvoice = purchasedMap[key].lastInvoice;
+            }
+        }
+
+        const noteNo = await getNextDocNo('lcn'); 
+        const totalAmount = items.reduce((sum, i) => {
+            const tax = (i.qty * i.rate * (i.gst || 0)) / 100;
+            return sum + (i.qty * i.rate) + tax;
+        }, 0);
+
+        const financialNote = await db.FinancialNote.create({
+            noteNo,
+            noteType: 'CN', 
+            stockistId,
+            amount: totalAmount,
+            reason: reason, 
+            status: 'pending',
+            refInvoiceNo: primaryRefInvoice || '', // Link the invoice
+            description: `Stockist Purchase Return - ${reason}`
+        }, { transaction: t });
+
+        for (const item of items) {
+            // Find product to get productId if possible
+            const product = await db.Product.findOne({ where: { name: { [db.Sequelize.Op.iLike]: item.name.trim() } } });
+            
+            await db.NoteItem.create({
+                financialNoteId: financialNote.id,
+                productId: product ? product.id : null,
+                name: item.name,
+                batchNo: item.batch || '',
+                expDate: item.exp || '',
+                qty: parseInt(item.qty),
+                price: parseFloat(item.rate),
+                gstPercent: parseFloat(item.gst || 0),
+                totalValue: (item.qty * item.rate) + ((item.qty * item.rate * (item.gst || 0)) / 100)
+            }, { transaction: t });
+        }
+
+        await t.commit();
+        res.json({ success: true, message: 'Return request submitted.' });
+    } catch (e) {
+        await t.rollback();
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// Admin Approve Purchase Return / Financial Note
+app.post('/api/admin/financial-notes/approve/:id', async (req, res) => {
+    const t = await db.sequelize.transaction();
+    try {
+        const note = await db.FinancialNote.findByPk(req.params.id, {
+            include: [{ model: db.NoteItem, as: 'items' }]
+        });
+
+        if (!note) return res.status(404).json({ success: false, message: "Note not found" });
+        if (note.status === 'approved') return res.status(400).json({ success: false, message: "Already approved" });
+
+        // If it's a Salable Return, increase inventory
+        if (note.reason === 'Salable Return') {
+            for (const item of note.items) {
+                if (item.productId) {
+                    await db.Product.increment('stock', { by: item.qty, where: { id: item.productId }, transaction: t });
+                }
+            }
+        }
+
+        // Adjust Stockist Balance
+        const adjustment = note.noteType === 'CN' ? -note.amount : note.amount; 
+        // CN means we owe stockist or reduce their debt, so balance decreases. Wait, Stockist outstandingBalance: positive means they owe us. So CN reduces it.
+        await db.Stockist.increment('outstandingBalance', { by: -note.amount, where: { id: note.stockistId }, transaction: t });
+
+        await note.update({ status: 'approved' }, { transaction: t });
+        
+        await t.commit();
+        
+        // Auto JV after commit
+        await autoPostNoteJV(note);
+
+        res.json({ success: true });
+    } catch (e) {
+        await t.rollback();
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// Admin Reject Purchase Return / Financial Note
+app.post('/api/admin/financial-notes/reject/:id', async (req, res) => {
+    try {
+        const note = await db.FinancialNote.findByPk(req.params.id);
+        if (!note) return res.status(404).json({ success: false, message: "Note not found" });
+        if (note.status !== 'pending') return res.status(400).json({ success: false, message: "Cannot reject processed note" });
+
+        await note.update({ status: 'rejected' });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 app.delete('/api/admin/financial-notes/:id', async (req, res) => {
     try {
         const note = await db.FinancialNote.findByPk(req.params.id);

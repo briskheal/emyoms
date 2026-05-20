@@ -476,8 +476,9 @@
         </div>
 
         <div style="display: flex; gap: 1rem; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 5px; align-items: center;">
-            <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Place Order</button>
-            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Billing Details</button>
+            <button class="tab-btn active" id="btn-tab-place" onclick="switchOrderTab('place')">🛒 Purchase Order</button>
+            <button class="tab-btn" id="btn-tab-history" onclick="switchOrderTab('history')">📜 Purchased Details</button>
+            <button class="tab-btn" id="btn-tab-return" onclick="switchOrderTab('return')">🔄 Purchase Return</button>
             <button class="tab-btn" id="btn-tab-pdcn" onclick="switchOrderTab('pdcn')">📝 PDCN Worksheet</button>
             <button class="tab-btn" id="btn-tab-pdcn-history" onclick="switchOrderTab('pdcn-history')">📊 PDCN Claims</button>
             <button class="tab-btn" id="btn-tab-registry" onclick="switchOrderTab('registry')">📂 Invoice Registry</button>
@@ -760,6 +761,54 @@
             </div>
         </div>
 
+        <!-- PURCHASE RETURN SECTION (NEW) -->
+        <div id="section-return" class="hidden">
+            <div class="glass-card" style="padding: 2rem; border-top: 4px solid var(--accent);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: #fff;">Purchase Return</h2>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Request returns for Salable or Damaged/Expired/Broken products.</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <label style="color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">Return Type:</label>
+                        <select id="return-type" style="background: rgba(0,0,0,0.4); color: #fff; border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;">
+                            <option value="Salable Return">Salable Return</option>
+                            <option value="Dmg/Exp/Brk Return">Dmg/Exp/Brk Return</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="excel-container" style="min-height: auto; margin-bottom: 2rem;">
+                    <table class="excel-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">S.No</th>
+                                <th>Product Name</th>
+                                <th>Batch</th>
+                                <th>Exp</th>
+                                <th>Qty</th>
+                                <th>Rate (₹)</th>
+                                <th>GST %</th>
+                                <th>Total (₹)</th>
+                                <th style="width: 50px; text-align: center;">DEL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="return-body"></tbody>
+                    </table>
+                    <div style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); text-align: right;">
+                        <button onclick="addReturnRow()" class="btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;"><i class="fas fa-plus"></i> ADD ROW</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 2rem;">
+                    <div style="text-align: right;">
+                        <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Total Return Value</span>
+                        <div id="return-grand-total" style="font-size: 1.6rem; font-weight: 900; color: #fff;">₹0.00</div>
+                    </div>
+                    <button class="btn-primary" style="width: auto; padding: 12px 30px;" onclick="submitPurchaseReturn()">SUBMIT RETURN</button>
+                </div>
+            </div>
+        </div>
     <div id="orderFooter" class="sticky-footer hidden">
         <div style="display: flex; gap: 2rem;">
             <div><span style="font-size: 0.6rem; opacity: 0.5;">TAXABLE</span><div id="footer-subtotal" style="font-weight: 800;">₹0.00</div></div>

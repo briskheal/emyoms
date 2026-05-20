@@ -175,7 +175,7 @@ function switchOrderTab(tab) {
     });
 
     // Hide all sections first
-    ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history', 'section-registry'].forEach(id => {
+    ['section-place-order', 'section-order-history', 'section-pdcn', 'section-pdcn-history', 'section-registry', 'section-return'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -236,6 +236,16 @@ function switchOrderTab(tab) {
         
         setTimeout(() => {
             document.getElementById('section-registry').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    } else if (tab === 'return') {
+        document.getElementById('section-return').classList.remove('hidden');
+        if (document.getElementById('orderFooter')) document.getElementById('orderFooter').classList.add('hidden');
+        
+        // initialize one row if empty
+        if (purchaseReturnItems.length === 0) addReturnRow();
+
+        setTimeout(() => {
+            document.getElementById('section-return').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
     }
 }
@@ -3363,6 +3373,7 @@ async function saveCalibrationTemplate() {
     }
 }
 
+
 async function purgeParsedInvoices() {
     if (!currentUser) return showCenteredMessage("Session expired. Please login again.", "error");
     const stockistId = currentUser._id || currentUser.id;
@@ -3386,6 +3397,173 @@ async function purgeParsedInvoices() {
             } catch (e) {
                 console.error("❌ Failed to purge parsed invoices:", e);
                 showCenteredMessage(`Error: ${e.message}`, "error");
+            }
+        }
+    );
+}
+
+// ==========================================
+// 🔄 PURCHASE RETURN SYSTEM (STOCKIST)
+// ==========================================
+let purchaseReturnItems = [];
+let stockistPurchaseHistory = [];
+
+async function loadStockistPurchaseHistory() {
+    if (!currentUser) return;
+    try {
+        const stockistId = currentUser._id || currentUser.id;
+        const res = await fetch(`${API_BASE}/stockist/purchased-items/${stockistId}`);
+        const data = await res.json();
+        if (data.success) {
+            stockistPurchaseHistory = data.items;
+        }
+    } catch(e) { console.error("Failed to load purchase history", e); }
+}
+
+function addReturnRow() {
+    purchaseReturnItems.push({ name: '', batch: '', exp: '', qty: 1, rate: 0, gst: 12, maxQty: 0 });
+    renderReturnTable();
+}
+
+function removeReturnRow(idx) {
+    purchaseReturnItems.splice(idx, 1);
+    if (purchaseReturnItems.length === 0) addReturnRow();
+    else renderReturnTable();
+}
+
+function updateReturnItem(idx, field, val) {
+    if (field === 'qty') {
+        val = parseFloat(val) || 0;
+        const maxQty = parseFloat(purchaseReturnItems[idx].maxQty) || 0;
+        if (maxQty > 0 && val > maxQty) {
+            val = maxQty;
+            showCenteredMessage(`Cannot return more than ${maxQty} units.`, "warning");
+        }
+    }
+    purchaseReturnItems[idx][field] = val;
+    if (['qty', 'rate', 'gst'].includes(field)) renderReturnTable();
+}
+
+function selectReturnProduct(idx, name, batch, exp, rate, gst, availableQty) {
+    purchaseReturnItems[idx].name = name;
+    purchaseReturnItems[idx].batch = batch;
+    purchaseReturnItems[idx].exp = exp;
+    purchaseReturnItems[idx].rate = rate;
+    purchaseReturnItems[idx].gst = gst;
+    purchaseReturnItems[idx].maxQty = availableQty;
+    
+    // Automatically set qty to 1 or max if max is 0
+    purchaseReturnItems[idx].qty = availableQty > 0 ? 1 : 0;
+    
+    const dd = document.getElementById('ret-dd-' + idx);
+    if (dd) dd.classList.add('hidden');
+    
+    renderReturnTable();
+}
+
+function handleReturnProductInput(idx, el) {
+    const val = el.value.toLowerCase();
+    updateReturnItem(idx, 'name', el.value);
+    
+    const dd = document.getElementById('ret-dd-' + idx);
+    if (!dd) return;
+    
+    if (!val) {
+        dd.classList.add('hidden');
+        return;
+    }
+    
+    const matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(val));
+    if (matches.length > 0) {
+        dd.innerHTML = matches.map(m => `
+            <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
+                 onclick="selectReturnProduct(${idx}, '${m.name.replace(/'/g, "\\'")}', '${m.batch}', '${m.expDate}', ${m.rate}, ${m.gst}, ${m.availableQty})"
+                 onmouseover="this.style.background='var(--primary)'" 
+                 onmouseout="this.style.background='transparent'">
+                <div style="font-weight:700; color:#fff;">${m.name}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted);">Batch: ${m.batch} | Exp: ${m.expDate} | Rate: ₹${m.rate} | <b>Max Return: <span style="color:var(--accent);">${m.availableQty}</span></b></div>
+            </div>
+        `).join('');
+        dd.classList.remove('hidden');
+    } else {
+        dd.innerHTML = '<div style="padding: 8px; font-size:0.7rem; color:var(--text-muted);">No matching past purchases found</div>';
+        dd.classList.remove('hidden');
+    }
+}
+
+function renderReturnTable() {
+    const tbody = document.getElementById('return-body');
+    if (!tbody) return;
+
+    let grandTotal = 0;
+
+    tbody.innerHTML = purchaseReturnItems.map((item, i) => {
+        const qty = parseFloat(item.qty) || 0;
+        const rate = parseFloat(item.rate) || 0;
+        const gst = parseFloat(item.gst) || 0;
+        const taxable = qty * rate;
+        const total = taxable + (taxable * gst / 100);
+        grandTotal += total;
+
+        return `
+            <tr>
+                <td><div style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.75rem;">${i + 1}</div></td>
+                <td style="position:relative;">
+                    <input type="text" value="${item.name || ''}" oninput="handleReturnProductInput(${i}, this)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;" placeholder="Search past purchases...">
+                    <div id="ret-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; right:0; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:200px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+                </td>
+                <td><input type="text" value="${item.batch || ''}" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
+                <td><input type="text" value="${item.exp || ''}" oninput="updateReturnItem(${i}, 'exp', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:80px;" placeholder="MM/YY"></td>
+                <td>
+                    <input type="number" value="${item.qty || 0}" ${item.maxQty ? `max="${item.maxQty}"` : ''} oninput="updateReturnItem(${i}, 'qty', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:65px; text-align:center;">
+                    ${item.maxQty ? `<div style="font-size:0.5rem; color:var(--text-muted); text-align:center;">Max: ${item.maxQty}</div>` : ''}
+                </td>
+                <td><input type="number" step="0.01" value="${item.rate || 0}" oninput="updateReturnItem(${i}, 'rate', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:85px; text-align:right;"></td>
+                <td><input type="number" value="${item.gst || 0}" oninput="updateReturnItem(${i}, 'gst', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:55px; text-align:center;"></td>
+                <td style="text-align:right; font-weight:800; color:#fff;">₹${total.toFixed(2)}</td>
+                <td style="text-align:center;"><button onclick="removeReturnRow(${i})" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `;
+    }).join('');
+
+    const gtEl = document.getElementById('return-grand-total');
+    if (gtEl) gtEl.innerText = `₹${Math.round(grandTotal).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+}
+
+async function submitPurchaseReturn() {
+    if (!purchaseReturnItems.length) return showCenteredMessage("Please add items to return.", "warning");
+    
+    const validItems = purchaseReturnItems.filter(i => i.name.trim() && parseFloat(i.qty) > 0);
+    if (!validItems.length) return showCenteredMessage("Please fill out Product Name and Qty for at least one item.", "warning");
+
+    const returnType = document.getElementById('return-type').value; 
+    
+    const payload = {
+        reason: returnType,
+        items: validItems,
+        stockistId: currentUser._id || currentUser.id
+    };
+
+    showCenteredConfirm(
+        `Are you sure you want to submit this ${returnType} request to Admin?`,
+        "Submit Return Request",
+        async () => {
+            try {
+                const res = await fetch(`${API_BASE}/stockist/purchase-return`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showCenteredMessage("Return request submitted successfully. It is pending admin approval.", "success");
+                    purchaseReturnItems = [];
+                    addReturnRow(); 
+                } else {
+                    showCenteredMessage(data.message || "Failed to submit return request.", "error");
+                }
+            } catch(e) {
+                showCenteredMessage("Server error during submission.", "error");
             }
         }
     );

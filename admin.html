@@ -1019,6 +1019,43 @@
                 </div>
             </div>
 
+            <!-- FINANCIAL NOTES (CN/DN) TAB -->
+            <div id="tab-notes" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 class="section-title" id="notes-page-title" style="margin: 0;">📈 Global Financial Adjustments</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="noteSearch" placeholder="Search by note no or party..." class="search-box" onkeyup="filterNotes()" style="width: 250px;">
+                        <button class="btn btn-primary" onclick="openNoteModal()">+ Add Manual Note</button>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1rem; padding: 10px; background: rgba(99, 102, 241, 0.1); border: 1px solid var(--primary); border-radius: 8px; font-weight: 600; color: var(--accent);">
+                    <i class="fas fa-info-circle"></i> <span id="note-context-label">Global View</span>
+                </div>
+
+                <div class="glass-card">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>NOTE NO</th>
+                                    <th>TYPE</th>
+                                    <th>PARTY</th>
+                                    <th>REASON & DETAILS</th>
+                                    <th style="text-align:right;">AMOUNT</th>
+                                    <th>DATE</th>
+                                    <th style="text-align:right;">ACTIONS</th>
+                                    <th style="text-align:center;">PDF</th>
+                                </tr>
+                            </thead>
+                            <tbody id="noteTableBody">
+                                <!-- Data injected via script.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- ACCOUNTING & INVOICES TAB -->
             <div id="tab-invoices" class="hidden">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">

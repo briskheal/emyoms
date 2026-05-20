@@ -4736,6 +4736,8 @@ function filterNotes() {
         // Combined filter for Price Difference
         if (currentNoteReason === 'Price Diff') {
             matchesReason = (n.reason === 'Price Diff CN' || n.reason === 'Price Diff DN');
+        } else if (currentNoteReason === 'Salable Return') {
+            matchesReason = (n.reason === 'Salable Return' || n.reason === 'Dmg/Exp/Brk Return' || n.reason === 'Exp/Brk/Damg CN');
         }
         
         return matchesQuery && matchesReason;
@@ -4758,7 +4760,9 @@ function renderFinancialNotes(data = allNotes) {
     const tbody = document.getElementById('noteTableBody');
     if (!tbody || !Array.isArray(data)) return;
 
-    tbody.innerHTML = data.map(n => {
+    let html = '';
+    
+    const renderNoteRow = (n) => {
         const isPending = n.status === 'pending';
         const statusBadge = n.status 
             ? `<span class="badge ${n.status === 'approved' ? 'badge-approved' : (n.status === 'rejected' ? 'badge-rejected' : 'badge-pending')}" style="font-size:0.6rem; margin-top:2px;">${n.status.toUpperCase()}</span>`
@@ -4775,27 +4779,44 @@ function renderFinancialNotes(data = allNotes) {
                 <td>
                     <div style="font-weight:700;">${n.reason}</div>
                     ${n.items && n.items.length > 0 
-                        ? `<div style="font-size:0.7rem; color:var(--text-muted);">📈¦ ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
-                        : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📈¦ ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
+                        ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.items.length} Items | Inv: ${n.refInvoiceNo || '-'}</div>` 
+                        : (n.productName ? `<div style="font-size:0.7rem; color:var(--text-muted);">📦 ${n.productName} | ${n.batchNo} | Qty: ${n.qty}</div>` : '')}
                 </td>
                 <td style="text-align:right; font-weight:800; color:${n.noteType === 'CN' ? 'var(--accent)' : '#ef4444'};">₹${Number(n.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
 
                 <td>${new Date(n.createdAt).toLocaleDateString('en-GB')}</td>
                 <td style="text-align:right; display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
                     ${isPending ? `
-                        <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#10b981;" onclick="reviewPDCNClaim('${n._id}', 'approve')">APPROVE</button>
-                        <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#ef4444;" onclick="reviewPDCNClaim('${n._id}', 'reject')">REJECT</button>
+                        <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#10b981;" onclick="reviewFinancialNote('${n.id || n._id}', 'approve')">APPROVE</button>
+                        <button class="btn btn-primary" style="padding:4px 8px; font-size:0.65rem; background:#ef4444;" onclick="reviewFinancialNote('${n.id || n._id}', 'reject')">REJECT</button>
                     ` : ''}
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n._id}')" title="Edit Record">✓ï¸</button>
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n._id}')" title="Download PDF">📈¥</button>
-                    <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n._id}')" title="Delete Record">✓•</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="editNote('${n.id || n._id}')" title="Edit Record">✏️</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="downloadNotePDF('${n.id || n._id}')" title="Download PDF">⬇️</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px; color:#ef4444;" onclick="deleteNote('${n.id || n._id}')" title="Delete Record">🗑 </button>
                 </td>
                 <td style="text-align:center;">
-                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n._id}')" title="View PDF">👍ï¸</button>
+                    <button class="btn btn-ghost" style="padding:5px 10px;" onclick="viewNotePDF('${n.id || n._id}')" title="View PDF">📄</button>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+async function reviewFinancialNote(id, action) {
+    if (!confirm(`Are you sure you want to ${action} this request?`)) return;
+    try {
+        const res = await fetch(`/api/admin/financial-notes/${action}/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(`Request ${action}d successfully`);
+            loadFinancialNotes();
+        } else {
+            alert("Error: " + (result.message || result.error));
+        }
+    } catch (e) { alert("Action failed"); }
 }
 
 async function reviewPDCNClaim(id, action) {
