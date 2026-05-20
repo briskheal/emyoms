@@ -3463,20 +3463,20 @@ function selectReturnProduct(idx, name, batch, exp, rate, gst, availableQty) {
 
 function handleReturnProductInput(idx, el) {
     const val = el.value.toLowerCase();
-    updateReturnItem(idx, 'name', el.value);
+    // Only update name if they are typing, don't overwrite if they just focus
+    if (event && event.type === 'input') {
+        updateReturnItem(idx, 'name', el.value);
+    }
     
     const dd = document.getElementById('ret-dd-' + idx);
     if (!dd) return;
-    
-    if (!val) {
-        dd.classList.add('hidden');
-        return;
-    }
     
     // First try stockistPurchaseHistory, if empty fallback to allProducts
     let matches = [];
     if (typeof stockistPurchaseHistory !== 'undefined' && stockistPurchaseHistory && stockistPurchaseHistory.length > 0) {
         matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(val));
+        if (matches.length === 0 && val === '') matches = stockistPurchaseHistory.slice(0, 15);
+        
         if (matches.length > 0) {
             dd.innerHTML = matches.map(m => `
                 <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
@@ -3494,7 +3494,12 @@ function handleReturnProductInput(idx, el) {
     
     // Fallback to allProducts
     if (typeof allProducts !== 'undefined' && allProducts) {
-        matches = allProducts.filter(p => p.name.toLowerCase().includes(val)).slice(0, 15);
+        if (val === '') {
+            matches = allProducts.slice(0, 15);
+        } else {
+            matches = allProducts.filter(p => p.name.toLowerCase().includes(val)).slice(0, 15);
+        }
+        
         if (matches.length > 0) {
             dd.innerHTML = matches.map(m => `
                 <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
@@ -3532,7 +3537,7 @@ function renderReturnTable() {
             <tr>
                 <td><div style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.75rem;">${i + 1}</div></td>
                 <td style="position:relative;">
-                    <input type="text" value="${item.name || ''}" oninput="handleReturnProductInput(${i}, this)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;" placeholder="Search past purchases...">
+                    <input type="text" value="${item.name || ''}" onfocus="handleReturnProductInput(${i}, this)" oninput="handleReturnProductInput(${i}, this)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;" placeholder="Search past purchases...">
                     <div id="ret-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; right:0; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:200px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
                 </td>
                 <td><input type="text" value="${item.batch || ''}" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
@@ -3591,3 +3596,4 @@ async function submitPurchaseReturn() {
         }
     );
 }
+
