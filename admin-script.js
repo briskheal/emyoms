@@ -5116,17 +5116,17 @@ function addReturnRow() {
     const cfg = RETURN_MODULE_CONFIG[reason] || {};
     const isPD = cfg.isPriceDiff;
 
-    const cellStyle = 'padding:4px 5px;';
-    const inputBase = 'width:100%;box-sizing:border-box;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.07);border-radius:5px;color:#e2e8f0;font-size:0.72rem;padding:4px 6px;transition:border-color 0.2s;';
+    const cellStyle = 'padding:1px 3px;border-right:1px solid rgba(255,255,255,0.06);';
+    const inputBase = 'width:100%;background:transparent;border:none;color:#fff;font-size:0.7rem;padding:2px 4px;outline:none;';
 
     if (isPD) {
         row.innerHTML = `
             <td style="${cellStyle}padding-left:8px;" class="search-container">
                 <div style="position:relative; display:flex; align-items:center;">
-                    <input type="text" id="return-prod-search-${id}" placeholder="Search Product..." 
+                    <input type="text" id="return-prod-search-${id}" onkeydown="returnGridKey(event, '${id}', 'search'); handleSearchKey(event, 'return-search-results-${id}')" placeholder="Search Product..." 
                         onfocus="handleProductSearch(this, 'RETURN-${id}')"
                         oninput="handleProductSearch(this, 'RETURN-${id}')"
-                        onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
+                        
                         style="${inputBase}font-size:0.71rem; border-color:rgba(245,158,11,0.2); padding-right:25px;">
                     <i class="fa fa-list-ul" onclick="document.getElementById('return-prod-search-${id}').focus(); handleProductSearch(document.getElementById('return-prod-search-${id}'), 'RETURN-${id}')" 
                        style="position:absolute; right:8px; font-size:0.65rem; color:rgba(245,158,11,0.5); cursor:pointer;"></i>
@@ -5139,7 +5139,7 @@ function addReturnRow() {
                     style="${inputBase}background:transparent;border-color:transparent;color:#e2e8f0;font-size:0.68rem;text-align:center;">
             </td>
             <td style="${cellStyle}">
-                <input type="text" id="return-batch-${id}" placeholder="Batch" list="batch-list-${id}"
+                <input type="text" id="return-batch-${id}" onkeydown="returnGridKey(event, '${id}', 'batch')" placeholder="Batch" list="batch-list-${id}"
                     onchange="updateBatchDetails('${id}')"
                     style="${inputBase}">
                 <datalist id="batch-list-${id}"></datalist>
@@ -5150,7 +5150,7 @@ function addReturnRow() {
                     style="${inputBase}text-align:center; cursor:pointer; background:rgba(99,102,241,0.1); border-color:rgba(99,102,241,0.3);">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
+                <input type="number" id="return-qty-${id}" onkeydown="returnGridKey(event, '${id}', 'qty')" oninput="calculateReturnTotals()" min="1" required
                     style="${inputBase}width:100%;text-align:center;">
             </td>
             <td style="${cellStyle}">
@@ -5158,11 +5158,11 @@ function addReturnRow() {
                     style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" placeholder="Rate"
+                <input type="number" id="return-price-${id}" onkeydown="returnGridKey(event, '${id}', 'price')" oninput="calculateReturnTotals()" step="0.01" placeholder="Rate"
                     style="${inputBase}text-align:right; font-family:monospace; color:#fff; font-weight:700; border-color:rgba(245,158,11,0.3);">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5"
+                <input type="number" id="return-gst-pct-${id}" onkeydown="returnGridKey(event, '${id}', 'gst-pct')" oninput="calculateReturnTotals()" step="0.5"
                     style="${inputBase}text-align:center; color:#fff; font-weight:700;">
             </td>
             <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
@@ -5177,10 +5177,10 @@ function addReturnRow() {
         row.innerHTML = `
             <td style="${cellStyle}padding-left:8px;" class="search-container">
                 <div style="position:relative; display:flex; align-items:center;">
-                    <input type="text" id="return-prod-search-${id}" placeholder="Type Product..." 
+                    <input type="text" id="return-prod-search-${id}" onkeydown="returnGridKey(event, '${id}', 'search'); handleSearchKey(event, 'return-search-results-${id}')" placeholder="Type Product..." 
                         onfocus="handleProductSearch(this, 'RETURN-${id}')"
                         oninput="handleProductSearch(this, 'RETURN-${id}')"
-                        onkeydown="handleSearchKey(event, 'return-search-results-${id}')"
+                        
                         style="${inputBase}font-size:0.71rem; padding-right:25px;">
                     <i class="fa fa-list-ul" onclick="document.getElementById('return-prod-search-${id}').focus(); handleProductSearch(document.getElementById('return-prod-search-${id}'), 'RETURN-${id}')" 
                        style="position:absolute; right:8px; font-size:0.65rem; color:var(--primary); cursor:pointer; opacity:0.5;"></i>
@@ -5193,7 +5193,7 @@ function addReturnRow() {
                     style="${inputBase}background:transparent;border-color:transparent;color:#e2e8f0;font-size:0.68rem;text-align:center;">
             </td>
             <td style="${cellStyle}">
-                <input type="text" id="return-batch-${id}" placeholder="Select Batch" list="batch-list-${id}"
+                <input type="text" id="return-batch-${id}" onkeydown="returnGridKey(event, '${id}', 'batch')" placeholder="Select Batch" list="batch-list-${id}"
                     onchange="updateBatchDetails('${id}')"
                     style="${inputBase}">
                 <datalist id="batch-list-${id}"></datalist>
@@ -5204,7 +5204,7 @@ function addReturnRow() {
                     style="${inputBase}text-align:center; cursor:pointer; background:rgba(99,102,241,0.1); border-color:rgba(99,102,241,0.3);">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-qty-${id}" oninput="calculateReturnTotals()" min="1" required
+                <input type="number" id="return-qty-${id}" onkeydown="returnGridKey(event, '${id}', 'qty')" oninput="calculateReturnTotals()" min="1" required
                     style="${inputBase}width:100%;text-align:center;">
             </td>
             <td style="${cellStyle}">
@@ -5212,11 +5212,11 @@ function addReturnRow() {
                     style="${inputBase}text-align:right; font-family:monospace; color:#e2e8f0; opacity:1.0;">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-price-${id}" oninput="calculateReturnTotals()" step="0.01" min="0" required
+                <input type="number" id="return-price-${id}" onkeydown="returnGridKey(event, '${id}', 'price')" oninput="calculateReturnTotals()" step="0.01" min="0" required
                     style="${inputBase}width:100%;text-align:right;font-family:monospace;">
             </td>
             <td style="${cellStyle}">
-                <input type="number" id="return-gst-pct-${id}" oninput="calculateReturnTotals()" step="0.5" min="0" required
+                <input type="number" id="return-gst-pct-${id}" onkeydown="returnGridKey(event, '${id}', 'gst-pct')" oninput="calculateReturnTotals()" step="0.5" min="0" required
                     style="${inputBase}text-align:center;color:#fff;font-weight:700;">
             </td>
             <td style="${cellStyle}padding-right:8px;text-align:right;font-weight:800;color:#e2e8f0;font-family:monospace;font-size:0.72rem;" id="return-row-total-${id}">₹0.00</td>
@@ -9778,3 +9778,41 @@ async function downloadBSReport() {
 
 
 
+
+const RETURN_COLS = ['search', 'batch', 'exp', 'qty', 'price', 'gst-pct'];
+function returnGridKey(e, id, col) {
+    const colIdx = RETURN_COLS.indexOf(col);
+    if (e.key === 'Tab' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (colIdx < RETURN_COLS.length - 1) focusReturnCell(id, RETURN_COLS[colIdx + 1]);
+    } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (colIdx > 0) focusReturnCell(id, RETURN_COLS[colIdx - 1]);
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        const currentIndex = returnItems.indexOf(id);
+        if (currentIndex === returnItems.length - 1) {
+            const newId = addReturnRow();
+            focusReturnCell(newId, col);
+        } else if (currentIndex < returnItems.length - 1) {
+            const nextId = returnItems[currentIndex + 1];
+            focusReturnCell(nextId, col);
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const currentIndex = returnItems.indexOf(id);
+        if (currentIndex > 0) {
+            const prevId = returnItems[currentIndex - 1];
+            focusReturnCell(prevId, col);
+        }
+    }
+}
+function focusReturnCell(id, col) {
+    let elId = 'return-' + col + '-' + id;
+    if (col === 'search') elId = 'return-prod-search-' + id;
+    const el = document.getElementById(elId);
+    if (el) {
+        el.focus();
+        if (el.tagName === 'INPUT') el.select();
+    }
+}
