@@ -3473,22 +3473,45 @@ function handleReturnProductInput(idx, el) {
         return;
     }
     
-    const matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(val));
-    if (matches.length > 0) {
-        dd.innerHTML = matches.map(m => `
-            <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
-                 onclick="selectReturnProduct(${idx}, '${m.name.replace(/'/g, "\\'")}', '${m.batch}', '${m.expDate}', ${m.rate}, ${m.gst}, ${m.availableQty})"
-                 onmouseover="this.style.background='var(--primary)'" 
-                 onmouseout="this.style.background='transparent'">
-                <div style="font-weight:700; color:#fff;">${m.name}</div>
-                <div style="font-size:0.65rem; color:var(--text-muted);">Batch: ${m.batch} | Exp: ${m.expDate} | Rate: ₹${m.rate} | <b>Max Return: <span style="color:var(--accent);">${m.availableQty}</span></b></div>
-            </div>
-        `).join('');
-        dd.classList.remove('hidden');
-    } else {
-        dd.innerHTML = '<div style="padding: 8px; font-size:0.7rem; color:var(--text-muted);">No matching past purchases found</div>';
-        dd.classList.remove('hidden');
+    // First try stockistPurchaseHistory, if empty fallback to allProducts
+    let matches = [];
+    if (typeof stockistPurchaseHistory !== 'undefined' && stockistPurchaseHistory && stockistPurchaseHistory.length > 0) {
+        matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(val));
+        if (matches.length > 0) {
+            dd.innerHTML = matches.map(m => `
+                <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
+                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, "\\'")}', '${m.batch || ''}', '${m.expDate || ''}', ${m.rate || 0}, ${m.gst || 12}, ${m.availableQty || 0})"
+                     onmouseover="this.style.background='var(--primary)'" 
+                     onmouseout="this.style.background='transparent'">
+                    <div style="font-weight:700; color:#fff;">${m.name}</div>
+                    <div style="font-size:0.65rem; color:var(--text-muted);">Batch: ${m.batch || 'N/A'} | Exp: ${m.expDate || 'N/A'} | Rate: ₹${m.rate || 0} | <b>Max Return: <span style="color:var(--accent);">${m.availableQty || 0}</span></b></div>
+                </div>
+            `).join('');
+            dd.classList.remove('hidden');
+            return;
+        }
     }
+    
+    // Fallback to allProducts
+    if (typeof allProducts !== 'undefined' && allProducts) {
+        matches = allProducts.filter(p => p.name.toLowerCase().includes(val)).slice(0, 15);
+        if (matches.length > 0) {
+            dd.innerHTML = matches.map(m => `
+                <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
+                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, "\\'")}', '', '', ${m.pts || m.ptr || 0}, ${m.gstPercent || 12}, 0)"
+                     onmouseover="this.style.background='var(--primary)'" 
+                     onmouseout="this.style.background='transparent'">
+                    <div style="font-weight:700; color:#fff;">${m.name}</div>
+                    <div style="font-size:0.65rem; color:var(--text-muted);">Rate: ₹${m.pts || m.ptr || 0} | GST: ${m.gstPercent || 12}%</div>
+                </div>
+            `).join('');
+            dd.classList.remove('hidden');
+            return;
+        }
+    }
+
+    dd.innerHTML = '<div style="padding: 8px; font-size:0.7rem; color:var(--text-muted);">No matching products found</div>';
+    dd.classList.remove('hidden');
 }
 
 function renderReturnTable() {
