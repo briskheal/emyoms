@@ -3421,7 +3421,7 @@ async function loadStockistPurchaseHistory() {
 }
 
 function addReturnRow() {
-    purchaseReturnItems.push({ name: '', batch: '', exp: '', qty: 1, rate: 0, gst: 12, maxQty: 0 });
+    purchaseReturnItems.push({ name: '', batch: '', exp: '', qty: '', rate: '', gst: '', maxQty: 0 });
     renderReturnTable();
 }
 

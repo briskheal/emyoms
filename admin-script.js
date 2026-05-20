@@ -4760,9 +4760,7 @@ function renderFinancialNotes(data = allNotes) {
     const tbody = document.getElementById('noteTableBody');
     if (!tbody || !Array.isArray(data)) return;
 
-    let html = '';
-    
-    const renderNoteRow = (n) => {
+    tbody.innerHTML = data.map(n => {
         const isPending = n.status === 'pending';
         const statusBadge = n.status 
             ? `<span class="badge ${n.status === 'approved' ? 'badge-approved' : (n.status === 'rejected' ? 'badge-rejected' : 'badge-pending')}" style="font-size:0.6rem; margin-top:2px;">${n.status.toUpperCase()}</span>`
