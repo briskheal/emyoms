@@ -1632,42 +1632,67 @@ function printProductBarcode() {
     const safeName = name.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeCompany = company.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeMrp = mrp.replace(/</g, '&lt;');
-    const w = window.open('', '_blank', 'width=460,height=400');
-    w.document.write(`<!DOCTYPE html><html><head><title>Label - ${safeName}</title>
+    const w = window.open('', '_blank', 'width=520,height=520');
+    w.document.write(`<!DOCTYPE html><html><head><title>Label</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"><\/script>
 <style>
-@media print { @page { margin: 0; } body { padding: 0; } }
-body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#fff; margin:0; font-family:Arial,sans-serif; }
-.label { border:1.5px solid #333; border-radius:5px; padding:13px 16px; display:flex; flex-direction:column; align-items:center; width:240px; background:#fff; gap:3px; }
-.co { font-size:8px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#111; text-align:center; }
-.nm { font-size:12px; font-weight:800; text-align:center; color:#000; line-height:1.3; }
-.mrp { font-size:14px; font-weight:900; color:#000; }
-.cd { font-family:monospace; font-size:9px; color:#555; }
-svg { max-width:210px; }
+* { box-sizing: border-box; }
+@media print { @page { margin: 5mm; } .no-print { display:none!important; } }
+body { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:#f5f5f5; margin:0; font-family:Arial,sans-serif; padding:16px; }
+.no-print { margin-bottom:12px; }
+.print-btn { padding:8px 22px; background:#8b5cf6; color:#fff; border:none; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; }
+.label { border:1.5px solid #444; border-radius:6px; padding:10px 12px; display:flex; flex-direction:column; align-items:center; width:270px; background:#fff; gap:4px; }
+.co { font-size:7.5pt; font-weight:900; text-transform:uppercase; letter-spacing:0.8px; color:#111; text-align:center; }
+.nm { font-size:10pt; font-weight:800; text-align:center; color:#000; line-height:1.3; }
+.codes-row { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin:4px 0; }
+.bc-col,.qr-col { display:flex; flex-direction:column; align-items:center; }
+.bc-col { flex:1; }
+.lbl { font-size:6pt; color:#888; margin-top:2px; }
+.mrp { font-size:12pt; font-weight:900; color:#000; }
+.cd { font-family:monospace; font-size:8pt; color:#555; }
+.bsvg { max-width:170px; }
 </style></head><body>
+<div class="no-print"><button class="print-btn" onclick="window.print()">&#128424; PRINT LABEL</button></div>
 <div class="label">
   <div class="co">${safeCompany}</div>
   <div class="nm">${safeName}</div>
-  <svg id="bc"></svg>
+  <div class="codes-row">
+    <div class="bc-col"><svg id="bc" class="bsvg"></svg><div class="lbl">BARCODE</div></div>
+    <div class="qr-col"><canvas id="qr" width="70" height="70"></canvas><div class="lbl">QR CODE</div></div>
+  </div>
   ${safeMrp ? `<div class="mrp">MRP: &#8377;${safeMrp}</div>` : ''}
   <div class="cd">${safeCode}</div>
 </div>
-<script>JsBarcode('#bc','${safeCode}',{format:'CODE128',width:2.5,height:55,displayValue:false,background:'#fff',lineColor:'#000',margin:4});
-setTimeout(function(){window.print();window.close();},700);<\/script>
-</body></html>`);
+<script>
+JsBarcode('#bc','${safeCode}',{format:'CODE128',width:2,height:45,displayValue:false,background:'#fff',lineColor:'#000',margin:2});
+new QRious({element:document.getElementById('qr'),value:'${safeCode}',size:70,background:'#fff',foreground:'#000',padding:2});
+<\/script></body></html>`);
     w.document.close();
 }
 
 function downloadBarcodeAsSVG() {
-    const svg = document.getElementById('prod-barcode-svg');
-    if (!svg) return alert('No barcode generated. Click GEN first.');
-    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const code = document.getElementById('prod-internal-code').value || 'barcode';
-    a.href = url; a.download = code + '_barcode.svg';
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+    const code = (document.getElementById('prod-barcode').value || document.getElementById('prod-internal-code').value || '').trim();
+    if (!code) return alert('No barcode found. Click GEN first.');
+    if (typeof JsBarcode === 'undefined') return alert('Barcode library not loaded.');
+    // Re-render a fresh off-screen SVG with solid black bars (UI uses light color for dark mode)
+    const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    tempSvg.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+    document.body.appendChild(tempSvg);
+    try {
+        JsBarcode(tempSvg, code, {
+            format: 'CODE128', width: 3, height: 80,
+            displayValue: true, background: '#ffffff', lineColor: '#000000',
+            fontSize: 14, margin: 10, font: 'Arial'
+        });
+        const blob = new Blob([tempSvg.outerHTML], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = code + '_barcode.svg';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch(e) { alert('Download error: ' + e.message); }
+    document.body.removeChild(tempSvg);
 }
 
 // --- BULK BARCODE PRINT ---
@@ -1703,7 +1728,6 @@ function selectAllBulkBarcodes(checked) {
 }
 
 function printBulkBarcodes() {
-    const validProducts = allProducts.filter(p => p.internalCode || p.barcode);
     const checks = document.querySelectorAll('.bulk-barcode-check:checked');
     if (!checks.length) return alert('Please select at least one product.');
 
@@ -1727,61 +1751,68 @@ function printBulkBarcodes() {
     if (!stickers.length) return alert('No valid products with barcodes selected.');
 
     const safeCompany = company.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const stickerHTML = stickers.map((s, idx) => {
+
+    // Each sticker: 95mm wide x 67mm tall → 2 cols x 4 rows = 8 per A4 page
+    const stickerHTML = stickers.map((s) => {
         const safeName = s.name.replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const safeCode = String(s.code).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const qd = s.code.replace(/"/g, '&quot;');
         const mrpVal = (typeof s.mrp === 'number') ? s.mrp.toFixed(2) : String(s.mrp);
         return `<div class="sticker">
             <div class="co">${safeCompany}</div>
             <div class="nm">${safeName}</div>
-            <svg class="bsvg" data-code="${s.code.replace(/"/g,'&quot;')}"></svg>
-            <div class="mrp">MRP: &#8377;${mrpVal}</div>
-            <div class="cd">${safeCode}</div>
+            <div class="codes-row">
+                <div class="bc-col"><svg class="bsvg" data-code="${qd}"></svg><div class="lbl">BARCODE</div></div>
+                <div class="qr-col"><canvas class="qsvg" data-code="${qd}" width="60" height="60"></canvas><div class="lbl">QR</div></div>
+            </div>
+            <div class="foot-row"><span class="mrp">MRP: &#8377;${mrpVal}</span><span class="cd">${safeCode}</span></div>
         </div>`;
     }).join('');
 
     const pages = Math.ceil(stickers.length / 8);
     const w = window.open('', '_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Bulk Barcode Labels (${stickers.length})</title>
+    w.document.write(`<!DOCTYPE html><html><head><title>Bulk Labels (${stickers.length})</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"><\/script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing:border-box; margin:0; padding:0; }
+@page { size:A4 portrait; margin:10mm; }
 @media print {
-    @page { size: A4 portrait; margin: 8mm; }
-    body { background: #fff !important; }
-    .no-print { display: none !important; }
-    .grid { width: 194mm !important; gap: 3mm !important; }
-    .sticker { height: 62mm !important; }
+    body { background:#fff!important; padding:0!important; }
+    .hint { display:none!important; }
 }
-body { font-family: Arial, Helvetica, sans-serif; background: #f0f0f0; padding: 15px; }
-.no-print { background:#fff; border-radius:10px; padding:14px 20px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-.no-print h3 { font-size:15px; color:#1e293b; margin:0; }
-.no-print p { font-size:12px; color:#64748b; margin:4px 0 0 0; }
-.print-btn { padding:9px 24px; background:#6366f1; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
-.print-btn:hover { background:#4f46e5; }
-.grid { display:grid; grid-template-columns:1fr 1fr; gap:4mm; width:194mm; margin:0 auto; }
-.sticker { border:1px dashed #bbb; border-radius:3px; padding:4mm 3.5mm; display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; background:#fff; height:62mm; overflow:hidden; page-break-inside:avoid; text-align:center; }
-.co { font-size:7pt; font-weight:900; text-transform:uppercase; letter-spacing:0.8px; color:#111; }
-.nm { font-size:9pt; font-weight:800; color:#000; line-height:1.25; max-width:85mm; word-break:break-word; }
-.mrp { font-size:11pt; font-weight:900; color:#000; }
-.cd { font-family:monospace; font-size:7pt; color:#555; }
-.bsvg { max-width:85mm; }
+body { font-family:Arial,sans-serif; background:#eee; padding:10px; }
+.hint { background:#fff; border-radius:8px; padding:12px 18px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+.hint h3 { font-size:14px; color:#1e293b; margin:0 0 3px 0; }
+.hint p { font-size:11px; color:#64748b; }
+.pbtn { padding:8px 22px; background:#8b5cf6; color:#fff; border:none; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; }
+.grid { display:grid; grid-template-columns:repeat(2, 95mm); gap:3mm; width:193mm; margin:0 auto; }
+.sticker { width:95mm; height:67mm; border:1px dashed #aaa; background:#fff; padding:2.5mm 3mm; display:flex; flex-direction:column; align-items:center; justify-content:space-between; overflow:hidden; break-inside:avoid; page-break-inside:avoid; }
+.co { font-size:6pt; font-weight:900; text-transform:uppercase; letter-spacing:0.5px; color:#000; text-align:center; width:100%; }
+.nm { font-size:7.5pt; font-weight:800; color:#000; text-align:center; width:100%; line-height:1.2; overflow:hidden; max-height:18pt; }
+.codes-row { display:flex; align-items:center; justify-content:center; gap:3mm; width:100%; flex:1; }
+.bc-col { display:flex; flex-direction:column; align-items:center; flex:1; }
+.qr-col { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.bsvg { max-width:56mm; }
+.qsvg { width:18mm!important; height:18mm!important; }
+.lbl { font-size:5pt; color:#888; margin-top:1px; }
+.foot-row { display:flex; justify-content:space-between; align-items:center; width:100%; padding:0 1mm; }
+.mrp { font-size:9pt; font-weight:900; color:#000; }
+.cd { font-family:monospace; font-size:6pt; color:#555; }
 </style></head><body>
-<div class="no-print">
-    <div>
-        <h3>🏷️ Bulk Barcode Print — ${stickers.length} label${stickers.length > 1 ? 's' : ''}</h3>
-        <p>${pages} page${pages > 1 ? 's' : ''} | 2×4 grid (8 per page) | Set printer margins to <b>None/Minimum</b> for best results</p>
-    </div>
-    <button class="print-btn" onclick="window.print()">🖨️ PRINT NOW</button>
+<div class="hint">
+  <div><h3>&#127991;&#65039; ${stickers.length} label${stickers.length>1?'s':''} &mdash; ${pages} A4 page${pages>1?'s':''}</h3><p>2 &times; 4 grid (8 per page) &nbsp;&bull;&nbsp; Set printer margins to <b>None</b></p></div>
+  <button class="pbtn" onclick="window.print()">&#128424;&#65039; PRINT NOW</button>
 </div>
 <div class="grid">${stickerHTML}</div>
 <script>
-document.querySelectorAll('.bsvg').forEach(function(el) {
-    var code = el.getAttribute('data-code');
-    if (code) {
-        try { JsBarcode(el, code, { format:'CODE128', width:1.8, height:42, displayValue:false, background:'#fff', lineColor:'#000', margin:2 }); }
-        catch(e) { el.style.display='none'; }
-    }
+document.querySelectorAll('.bsvg').forEach(function(el){
+    var c=el.getAttribute('data-code');
+    if(c){try{JsBarcode(el,c,{format:'CODE128',width:1.4,height:32,displayValue:false,background:'#fff',lineColor:'#000',margin:1});}catch(e){el.style.display='none';}}
+});
+document.querySelectorAll('.qsvg').forEach(function(canvas){
+    var c=canvas.getAttribute('data-code');
+    if(c){try{new QRious({element:canvas,value:c,size:60,background:'#fff',foreground:'#000',padding:1});}catch(e){canvas.style.display='none';}}
 });
 <\/script></body></html>`);
     w.document.close();
