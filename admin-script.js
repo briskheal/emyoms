@@ -1158,7 +1158,6 @@ async function loadMasters() {
 }
 
 function updateDatalists() {
-    // Official Master Lists take priority
     const masterCats = (window.masters && window.masters.categories) ? window.masters.categories.map(c => c.name.toUpperCase()) : [];
     const masterGroups = (window.masters && window.masters.groups) ? window.masters.groups.map(g => g.name.toUpperCase()) : [];
     const masterHsns = (window.masters && window.masters.hsns) ? window.masters.hsns.map(h => h.code) : [];
@@ -1169,7 +1168,6 @@ function updateDatalists() {
     const hsns = new Set(masterHsns);
     const gsts = new Set([...masterGsts, 5, 12, 18, 28]);
 
-    // Add legacy entries from existing products if not already in masters
     allProducts.forEach(p => {
         if (p.category) cats.add(p.category.toUpperCase());
         if (p.group) groups.add(p.group.toUpperCase());
@@ -1177,15 +1175,15 @@ function updateDatalists() {
         if (p.gstPercent) gsts.add(Number(p.gstPercent));
     });
 
-    const catList = document.getElementById('category-list');
-    const groupList = document.getElementById('group-list');
+    // HSN and GST stay as datalists (free-text allowed)
+    // HSN datalist kept for backward compat with other uses
     const hsnList = document.getElementById('hsn-list');
-    const gstList = document.getElementById('gst-rate-list');
-
-    if (catList) catList.innerHTML = Array.from(cats).map(c => `<option value="${c}"></option>`).join('');
-    if (groupList) groupList.innerHTML = Array.from(groups).map(g => `<option value="${g}"></option>`).join('');
+    // GST now a select — no longer need datalist
+    // const gstList = document.getElementById('gst-rate-list'); // no-op
     if (hsnList) hsnList.innerHTML = Array.from(hsns).map(h => `<option value="${h}"></option>`).join('');
-    if (gstList) gstList.innerHTML = Array.from(gsts).map(g => `<option value="${g}"></option>`).join('');
+
+    // Category & Group now use <select> elements fed from Global Master
+    populateMasterSelects();
 
     // Update HQ Dropdowns
     const partyHqSelect = document.getElementById('party-hq');
@@ -1248,11 +1246,39 @@ function filterProducts(query) {
     renderProducts(filtered);
 }
 
-function openProductModal() {
+function openProductModal(mode = 'quick') {
     document.getElementById('productForm').reset();
     document.getElementById('prod-id').value = '';
+    document.getElementById('prod-gst'); // will be set by populateMasterSelects default
     currentProductBatches = [];
     renderProductBatches();
+
+    // Auto-generate internal code from product count
+    document.getElementById('prod-internal-code').value = generateInternalCode();
+
+    // Reset barcode panel
+    document.getElementById('prod-barcode').value = '';
+    const barcodeContainer = document.getElementById('barcode-svg-container');
+    if (barcodeContainer) barcodeContainer.innerHTML = '<span style="font-size:0.68rem;color:rgba(255,255,255,0.2);">Click GEN to generate barcode from internal code</span>';
+    const barcodeStatus = document.getElementById('barcode-status');
+    if (barcodeStatus) barcodeStatus.textContent = 'No barcode generated';
+    const barcodePrintRow = document.getElementById('barcode-print-row');
+    if (barcodePrintRow) barcodePrintRow.style.display = 'none';
+    // Reset HSN UI
+    document.getElementById('prod-hsn').value = '';
+    const hsnSel = document.getElementById('prod-hsn-select');
+    if (hsnSel) hsnSel.value = '';
+    const hsnCustomRow = document.getElementById('prod-hsn-custom-row');
+    if (hsnCustomRow) hsnCustomRow.style.display = 'none';
+    const hsnCustomInput = document.getElementById('prod-hsn-custom');
+    if (hsnCustomInput) hsnCustomInput.value = '';
+    const hsnWarn = document.getElementById('hsn-dup-warn');
+    if (hsnWarn) hsnWarn.style.display = 'none';
+
+    // Populate category, group, hsn & gst selects from Global Master
+    populateMasterSelects();
+
+    switchProductMode(mode);
     document.getElementById('productModal').classList.remove('hidden');
 }
 
@@ -1265,6 +1291,8 @@ async function saveProduct(e) {
     const id = safeGetVal('prod-id');
     const data = {
         name: safeGetVal('prod-name'),
+        internalCode: safeGetVal('prod-internal-code'),
+        barcode: safeGetVal('prod-barcode'),
         manufacturer: safeGetVal('prod-manufacturer'),
         hsn: safeGetVal('prod-hsn'),
         category: safeGetVal('prod-cat'),
@@ -1333,26 +1361,277 @@ async function deleteProduct(id) {
 function editProduct(id) {
     const p = allProducts.find(x => x._id == id);
     if (!p) return;
+
     document.getElementById('prod-id').value = p._id;
     document.getElementById('prod-name').value = p.name;
     document.getElementById('prod-manufacturer').value = p.manufacturer || '';
-    document.getElementById('prod-hsn').value = p.hsn || '';
-    document.getElementById('prod-cat').value = p.category;
-    document.getElementById('prod-group').value = p.group || '';
+    // Set HSN — pick from master select or show custom entry row
+    const hsnMasterCodes = (window.masters && window.masters.hsns) ? window.masters.hsns.map(h => h.code) : [];
+    const hsnSel = document.getElementById('prod-hsn-select');
+    const hsnHidden = document.getElementById('prod-hsn');
+    const hsnCustomRow = document.getElementById('prod-hsn-custom-row');
+    const hsnCustomInput = document.getElementById('prod-hsn-custom');
+    hsnHidden.value = p.hsn || '';
+    if (p.hsn && hsnMasterCodes.includes(p.hsn)) {
+        if (hsnSel) hsnSel.value = p.hsn;
+        if (hsnCustomRow) hsnCustomRow.style.display = 'none';
+    } else if (p.hsn) {
+        if (hsnSel) hsnSel.value = '__custom__';
+        if (hsnCustomRow) hsnCustomRow.style.display = 'block';
+        if (hsnCustomInput) hsnCustomInput.value = p.hsn;
+    } else {
+        if (hsnSel) hsnSel.value = '';
+        if (hsnCustomRow) hsnCustomRow.style.display = 'none';
+    }
+    // GST — set select value (populated by populateMasterSelects)
+    // done after populateMasterSelects() call below
     document.getElementById('prod-packing').value = p.packing || '';
     document.getElementById('prod-mrp').value = p.mrp;
     document.getElementById('prod-gst').value = p.gstPercent;
     document.getElementById('prod-ptr').value = p.ptr;
     document.getElementById('prod-pts').value = p.pts;
     document.getElementById('prod-purchase-rate').value = p.purchaseRate || 0;
-    document.getElementById('prod-qty').value = p.qtyAvailable;
+    document.getElementById('prod-qty').value = p.qtyAvailable || 0;
     document.getElementById('prod-buy').value = p.bonusBuy || 0;
     document.getElementById('prod-get').value = p.bonusGet || 0;
-    
+    document.getElementById('prod-internal-code').value = p.internalCode || generateInternalCode();
+    document.getElementById('prod-barcode').value = p.barcode || '';
+    const hsnWarn = document.getElementById('hsn-dup-warn');
+    if (hsnWarn) hsnWarn.style.display = 'none';
+
+    // Populate selects from Global Master, then set saved values
+    populateMasterSelects();
+    document.getElementById('prod-cat').value = p.category || '';
+    document.getElementById('prod-group').value = p.group || '';
+    // Set GST select after populating master selects
+    const gstSel = document.getElementById('prod-gst');
+    if (gstSel) gstSel.value = String(Math.round(Number(p.gstPercent || 12)));
+
+    // Restore barcode preview if a barcode or internal code exists
+    const barcodeVal = p.barcode || p.internalCode;
+    const container = document.getElementById('barcode-svg-container');
+    const barcodeStatus = document.getElementById('barcode-status');
+    const barcodePrintRow = document.getElementById('barcode-print-row');
+    if (barcodeVal && typeof JsBarcode !== 'undefined' && container) {
+        container.innerHTML = '<svg id="prod-barcode-svg"></svg>';
+        try {
+            JsBarcode('#prod-barcode-svg', barcodeVal, {
+                format: 'CODE128', width: 2, height: 60, displayValue: true,
+                fontSize: 12, background: 'transparent', lineColor: '#e2e8f0', textMargin: 4
+            });
+            if (barcodeStatus) barcodeStatus.innerHTML = 'Barcode: <span style="font-family:monospace;color:var(--primary);">' + barcodeVal + '</span>';
+            if (barcodePrintRow) barcodePrintRow.style.display = 'flex';
+        } catch(e) {
+            if (container) container.innerHTML = '<span style="font-size:0.68rem;color:rgba(255,255,255,0.2);">Click GEN to generate barcode</span>';
+        }
+    } else {
+        if (container) container.innerHTML = '<span style="font-size:0.68rem;color:rgba(255,255,255,0.2);">Click GEN to generate barcode from internal code</span>';
+        if (barcodeStatus) barcodeStatus.textContent = 'No barcode generated';
+        if (barcodePrintRow) barcodePrintRow.style.display = 'none';
+    }
+
     currentProductBatches = p.batches || [];
     renderProductBatches();
-    
+
+    // Auto-detect mode: products with batches -> Full Record, otherwise -> Quick Item
+    const mode = (p.batches && p.batches.length > 0) ? 'full' : 'quick';
+    switchProductMode(mode);
+
     document.getElementById('productModal').classList.remove('hidden');
+}
+
+// ============================================================
+// PRODUCT MODAL — NEW HELPER FUNCTIONS
+// ============================================================
+
+function generateInternalCode() {
+    const count = (allProducts && allProducts.length > 0) ? allProducts.length + 1 : 1;
+    return 'ITEM-' + String(count).padStart(4, '0');
+}
+
+function regenerateInternalCode() {
+    const now = new Date();
+    const ts = String(now.getFullYear()).slice(-2) +
+               String(now.getMonth() + 1).padStart(2, '0') +
+               String(now.getDate()).padStart(2, '0') +
+               String(now.getHours()).padStart(2, '0') +
+               String(now.getMinutes()).padStart(2, '0');
+    const el = document.getElementById('prod-internal-code');
+    if (el) el.value = 'ITEM-' + ts;
+}
+
+function switchProductMode(mode) {
+    document.getElementById('prod-mode').value = mode;
+    const batchSection = document.getElementById('batch-engine-section');
+    const quickHint = document.getElementById('quick-mode-hint');
+    const bonusRow = document.getElementById('bonus-scheme-row');
+    const btnQuick = document.getElementById('mode-btn-quick');
+    const btnFull = document.getElementById('mode-btn-full');
+    const modalTitle = document.getElementById('prod-modal-title');
+    const eyebrow = document.getElementById('prod-modal-eyebrow');
+    const isEdit = !!(document.getElementById('prod-id') && document.getElementById('prod-id').value);
+
+    if (mode === 'full') {
+        if (batchSection) { batchSection.style.display = 'flex'; batchSection.style.flexDirection = 'column'; }
+        if (quickHint) quickHint.style.display = 'none';
+        if (bonusRow) { bonusRow.style.display = 'grid'; }
+        if (btnQuick) { btnQuick.style.background = 'transparent'; btnQuick.style.color = 'rgba(255,255,255,0.38)'; }
+        if (btnFull)  { btnFull.style.background = 'var(--primary)'; btnFull.style.color = '#fff'; }
+        if (modalTitle) modalTitle.textContent = isEdit ? 'Edit Product - Full Record' : 'New Item - Full Record';
+        if (eyebrow) eyebrow.textContent = 'INVENTORY MASTER - BATCH ENGINE';
+    } else {
+        if (batchSection) batchSection.style.display = 'none';
+        if (quickHint) quickHint.style.display = 'block';
+        if (bonusRow) bonusRow.style.display = 'none';
+        if (btnFull)  { btnFull.style.background = 'transparent'; btnFull.style.color = 'rgba(255,255,255,0.38)'; }
+        if (btnQuick) { btnQuick.style.background = 'var(--primary)'; btnQuick.style.color = '#fff'; }
+        if (modalTitle) modalTitle.textContent = isEdit ? 'Edit Item - Quick Mode' : 'New Item - Quick Entry';
+        if (eyebrow) eyebrow.textContent = 'INVENTORY MASTER - QUICK ENTRY';
+    }
+}
+
+function checkHsnDuplicate(value) {
+    const warn = document.getElementById('hsn-dup-warn');
+    if (!warn) return;
+    if (!value || !window.masters || !window.masters.hsns) { warn.style.display = 'none'; return; }
+    const exists = window.masters.hsns.some(h => h.code === value.trim());
+    warn.style.display = exists ? 'block' : 'none';
+}
+
+function populateMasterSelects() {
+    const catSelect = document.getElementById('prod-cat');
+    const groupSelect = document.getElementById('prod-group');
+    const hsnSelect = document.getElementById('prod-hsn-select');
+    const gstSelect = document.getElementById('prod-gst');
+
+    if (catSelect) {
+        const currentVal = catSelect.value;
+        const masterCats = (window.masters && window.masters.categories) ? window.masters.categories.map(c => c.name.toUpperCase()) : [];
+        const legacyCats = [...new Set(allProducts.map(p => p.category).filter(Boolean).map(c => c.toUpperCase()))];
+        const allCats = [...new Set([...masterCats, 'TABLETS', 'SYRUPS', 'INJECTIONS', 'CAPSULES', 'SACHETS', ...legacyCats])].sort();
+        catSelect.innerHTML = '<option value="">-- Select Category --</option>' +
+            allCats.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (currentVal) catSelect.value = currentVal;
+    }
+
+    if (groupSelect) {
+        const currentVal = groupSelect.value;
+        const masterGroups = (window.masters && window.masters.groups) ? window.masters.groups.map(g => g.name.toUpperCase()) : [];
+        const legacyGroups = [...new Set(allProducts.map(p => p.group).filter(Boolean).map(g => g.toUpperCase()))];
+        const allGroups = [...new Set([...masterGroups, 'GENERAL', ...legacyGroups])].sort();
+        groupSelect.innerHTML = '<option value="">-- Select Group --</option>' +
+            allGroups.map(g => `<option value="${g}">${g}</option>`).join('');
+        if (currentVal) groupSelect.value = currentVal;
+    }
+
+    // HSN Select — Global Master codes only, no browser memory
+    if (hsnSelect) {
+        const currentVal = hsnSelect.value;
+        const masterHsns = (window.masters && window.masters.hsns) ? window.masters.hsns : [];
+        hsnSelect.innerHTML = '<option value="">-- Pick HSN from Global Master --</option>' +
+            masterHsns.map(h => {
+                const label = h.code + (h.description ? '  —  ' + h.description : '');
+                return `<option value="${h.code}">${label}</option>`;
+            }).join('') +
+            '<option value="__custom__" style="color:#10b981;font-weight:700;border-top:1px solid rgba(255,255,255,0.1);">&#9998; Enter custom HSN (not in master)...</option>';
+        if (currentVal) hsnSelect.value = currentVal;
+    }
+
+    // GST Select — Global Master rates only, zero browser memory
+    if (gstSelect) {
+        const currentVal = gstSelect.value;
+        const masterGsts = (window.masters && window.masters.gst) ? window.masters.gst : [];
+        let rates;
+        if (masterGsts.length > 0) {
+            rates = [...new Set(masterGsts.map(g => Math.round(Number(g.rate))))].sort((a, b) => a - b);
+        } else {
+            rates = [0, 5, 12, 18, 28]; // fallback standard Indian GST slabs
+        }
+        gstSelect.innerHTML = '<option value="">-- Select GST % --</option>' +
+            rates.map(r => `<option value="${r}">${r}%</option>`).join('');
+        // Default: use Company Settings GST rate (Banking & Finance block → set-gst-rate)
+        const companyDefaultGst = (window.companyProfile && window.companyProfile.gstRate != null)
+            ? String(Math.round(Number(window.companyProfile.gstRate)))
+            : null;
+        if (currentVal) {
+            gstSelect.value = currentVal;
+        } else if (companyDefaultGst && rates.includes(Number(companyDefaultGst))) {
+            gstSelect.value = companyDefaultGst;
+        }
+    }
+}
+
+// HSN select change handler
+function handleHsnSelectChange(selectEl) {
+    const val = selectEl.value;
+    const hsnHidden = document.getElementById('prod-hsn');
+    const customRow = document.getElementById('prod-hsn-custom-row');
+    const customInput = document.getElementById('prod-hsn-custom');
+    const dupWarn = document.getElementById('hsn-dup-warn');
+
+    if (val === '__custom__') {
+        // Show custom text entry
+        if (customRow) customRow.style.display = 'block';
+        if (hsnHidden) hsnHidden.value = '';
+        if (customInput) { customInput.value = ''; customInput.focus(); }
+    } else {
+        // Master entry selected: hide custom row, set hidden input
+        if (customRow) customRow.style.display = 'none';
+        if (hsnHidden) hsnHidden.value = val;
+        if (customInput) customInput.value = '';
+        if (dupWarn) dupWarn.style.display = 'none';
+    }
+}
+
+function generateProductBarcode() {
+    const code = document.getElementById('prod-internal-code').value || document.getElementById('prod-barcode').value;
+    if (!code) return alert('Please ensure an internal code is assigned first.');
+    if (typeof JsBarcode === 'undefined') return alert('Barcode library not loaded. Please check your internet connection.');
+    document.getElementById('prod-barcode').value = code;
+    const container = document.getElementById('barcode-svg-container');
+    container.innerHTML = '<svg id="prod-barcode-svg"></svg>';
+    try {
+        JsBarcode('#prod-barcode-svg', code, {
+            format: 'CODE128', width: 2, height: 65, displayValue: true,
+            fontSize: 13, background: 'transparent', lineColor: '#e2e8f0',
+            textMargin: 5, font: 'monospace'
+        });
+        const barcodeStatus = document.getElementById('barcode-status');
+        if (barcodeStatus) barcodeStatus.innerHTML = 'CODE128 - <span style="font-family:monospace;color:var(--primary);">' + code + '</span>';
+        const barcodePrintRow = document.getElementById('barcode-print-row');
+        if (barcodePrintRow) barcodePrintRow.style.display = 'flex';
+    } catch (e) {
+        container.innerHTML = '<span style="font-size:0.7rem;color:#ef4444;">Barcode error: ' + e.message + '</span>';
+    }
+}
+
+function printProductBarcode() {
+    const svg = document.getElementById('prod-barcode-svg');
+    if (!svg) return alert('No barcode generated. Click GEN first.');
+    const name = document.getElementById('prod-name').value || 'Product';
+    const code = document.getElementById('prod-internal-code').value || '';
+    const mrp = document.getElementById('prod-mrp').value || '';
+    const w = window.open('', '_blank', 'width=420,height=320');
+    w.document.write(`<!DOCTYPE html><html><head><title>Label - ${name}</title>
+    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:Arial,sans-serif;background:#fff;padding:16px;margin:0;}
+    .pname{font-size:13px;font-weight:800;text-align:center;margin-bottom:4px;max-width:220px;}
+    .pcode{font-family:monospace;font-size:10px;color:#888;margin-bottom:6px;}
+    .pmrp{font-size:11px;font-weight:700;color:#333;margin-top:4px;}svg{max-width:220px;}</style>
+    </head><body><div class="pname">${name}</div><div class="pcode">${code}</div>${svg.outerHTML}${mrp ? '<div class="pmrp">MRP: Rs.' + mrp + '</div>' : ''}
+    <script>setTimeout(function(){window.print();window.close();},500);<\/script></body></html>`);
+    w.document.close();
+}
+
+function downloadBarcodeAsSVG() {
+    const svg = document.getElementById('prod-barcode-svg');
+    if (!svg) return alert('No barcode generated. Click GEN first.');
+    const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const code = document.getElementById('prod-internal-code').value || 'barcode';
+    a.href = url; a.download = code + '_barcode.svg';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
 // --- BULK PRODUCT UPLOAD ---
@@ -3213,6 +3492,8 @@ function purGridSelectProduct(rowIdx, productId) {
 function closePurGridDropdown(rowIdx) {
     const dd = document.getElementById(`pur-dd-${rowIdx}`);
     if (dd) dd.style.display = 'none';
+    const gstDd = document.getElementById(`pur-gst-dd-${rowIdx}`);
+    if (gstDd) gstDd.style.display = 'none';
 }
 
 function deletePurRow(rowIdx) {
@@ -3253,12 +3534,68 @@ function buildPurchaseRow(i) {
         <td style="${cellSt}">${inp('pts','number',item.pts||0,'step="0.01"')}></td>
         <td style="${cellSt}">${inp('rate','number',item.rate||0,'step="0.01"')}></td>
         <td style="${cellSt}">${inp('qty','number',item.qty||0,'min="0"')}></td>
-        <td style="${cellSt}">${inp('gstPercent','number',item.gstPercent||0,'step="0.01"')}></td>
+        <td style="${cellSt}position:relative;overflow:visible;">
+            ${inp('gstPercent','number',item.gstPercent||0,'step="0.01" autocomplete="off" onfocus="openPurGstPicker('+i+', this)"')}
+            <div id="pur-gst-dd-${i}" style="display:none;position:fixed;z-index:99999;background:#1e293b;border:1px solid rgba(99,102,241,0.4);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.5);min-width:80px;"></div>
+        </td>
         <td style="text-align:right;padding:2px 8px 2px 4px;font-weight:800;color:var(--primary);font-size:0.72rem;font-family:monospace;" id="pur-lt-${i}">₹${Number(item.lineTotal||0).toFixed(2)}</td>
     </tr>`;
 }
 
 function escHtml(str) { return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function openPurGstPicker(rowIdx, inputEl) {
+    const dd = document.getElementById(`pur-gst-dd-${rowIdx}`);
+    if (!dd) return;
+    
+    document.querySelectorAll('[id^="pur-dd-"], [id^="pur-gst-dd-"]').forEach(d => {
+        if (d !== dd) d.style.display = 'none';
+    });
+
+    let html = '<div style="padding:6px 10px;font-size:0.6rem;color:rgba(255,255,255,0.4);text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.05);position:sticky;top:0;background:#1e293b;z-index:2;">GST %</div>';
+    
+    const masterGsts = (window.masters && window.masters.gst) ? window.masters.gst.map(g => Number(g.rate)) : [0, 5, 12, 18, 28];
+    const gstRates = [...new Set(masterGsts)].sort((a,b)=>a-b);
+    
+    gstRates.forEach(rate => {
+        html += `<div style="padding:8px 12px;font-size:0.75rem;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);color:#f8fafc;display:flex;align-items:center;gap:8px;transition:0.2s;" 
+                 onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background='transparent'"
+                 onmousedown="event.preventDefault(); selectPurGst(${rowIdx}, ${rate})">
+                    <span style="font-weight:700;">${rate}%</span>
+                 </div>`;
+    });
+    
+    dd.innerHTML = html;
+    
+    // Position fixed to avoid overflow clipping
+    const rect = inputEl.getBoundingClientRect();
+    dd.style.left = rect.left + 'px';
+    dd.style.top = (rect.bottom + 2) + 'px';
+    
+    dd.style.display = 'block';
+
+    setTimeout(() => {
+        const handler = (e) => {
+            if (!dd.contains(e.target) && e.target !== inputEl) {
+                dd.style.display = 'none';
+                document.removeEventListener('click', handler);
+            }
+        };
+        document.addEventListener('click', handler);
+    }, 50);
+}
+
+function selectPurGst(rowIdx, rate) {
+    const dd = document.getElementById(`pur-gst-dd-${rowIdx}`);
+    if (dd) dd.style.display = 'none';
+    
+    const input = document.getElementById(`pur-cell-${rowIdx}-gstPercent`);
+    if (input) {
+        input.value = rate;
+        updatePurCell(rowIdx, 'gstPercent', rate);
+        input.focus();
+    }
+}
 
 function addPurchaseItem() {
     // Legacy compat: just add a new empty row and focus it

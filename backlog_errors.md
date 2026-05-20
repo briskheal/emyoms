@@ -33,9 +33,9 @@ The error was caused by a synchronization failure between the frontend UI (`admi
 - [x] **Extended URL Encoding:** Increased limits for urlencoded data as well.
 
 #### Client-Side
-- [ ] **Safe Value Access:** Implementing `safeGetVal` helper to prevent the script from crashing if a UI element is missing.
-- [ ] **UI Restoration:** Restoring the missing "Company Settings" fields in `admin.html` to ensure the admin can actually edit all parameters.
-- [ ] **Accurate Error Messaging:** Updating the `catch` block to log the actual error and provide more helpful feedback to the user.
+- [x] **Safe Value Access:** Implementing `safeGetVal` helper to prevent the script from crashing if a UI element is missing.
+- [x] **UI Restoration:** Restoring the missing "Company Settings" fields in `admin.html` to ensure the admin can actually edit all parameters.
+- [x] **Accurate Error Messaging:** Updating the `catch` block to log the actual error and provide more helpful feedback to the user.
 
 ### 3. Prevention Strategy
 - Always use `safeGetVal` or check for element existence before accessing `.value` in global settings functions.
