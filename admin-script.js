@@ -1246,15 +1246,22 @@ function filterProducts(query) {
     renderProducts(filtered);
 }
 
-function openProductModal(mode = 'quick') {
+function openProductModal(mode = 'quick', initialName = '') {
     document.getElementById('productForm').reset();
     document.getElementById('prod-id').value = '';
+    if (initialName) document.getElementById('prod-name').value = initialName;
     document.getElementById('prod-gst'); // will be set by populateMasterSelects default
     currentProductBatches = [];
     renderProductBatches();
 
     // Auto-generate internal code from product count
     document.getElementById('prod-internal-code').value = generateInternalCode();
+
+    // Show REGEN button for new products
+    const regenBtn = document.getElementById('regen-internal-code-btn');
+    if (regenBtn) { regenBtn.style.display = ''; regenBtn.title = 'Regenerate'; }
+    const internalCodeInput = document.getElementById('prod-internal-code');
+    if (internalCodeInput) { internalCodeInput.style.opacity = ''; internalCodeInput.style.cursor = ''; }
 
     // Reset barcode panel
     document.getElementById('prod-barcode').value = '';
@@ -1437,6 +1444,16 @@ function editProduct(id) {
     const mode = (p.batches && p.batches.length > 0) ? 'full' : 'quick';
     switchProductMode(mode);
 
+    // LOCK: Hide REGEN button and visually lock internal code during edit
+    const regenBtn = document.getElementById('regen-internal-code-btn');
+    if (regenBtn) { regenBtn.style.display = 'none'; }
+    const internalCodeInput = document.getElementById('prod-internal-code');
+    if (internalCodeInput) {
+        internalCodeInput.title = 'Internal code is locked during edit to prevent accidental changes.';
+        internalCodeInput.style.opacity = '0.55';
+        internalCodeInput.style.cursor = 'not-allowed';
+    }
+
     document.getElementById('productModal').classList.remove('hidden');
 }
 
@@ -1606,19 +1623,38 @@ function generateProductBarcode() {
 }
 
 function printProductBarcode() {
-    const svg = document.getElementById('prod-barcode-svg');
-    if (!svg) return alert('No barcode generated. Click GEN first.');
-    const name = document.getElementById('prod-name').value || 'Product';
-    const code = document.getElementById('prod-internal-code').value || '';
-    const mrp = document.getElementById('prod-mrp').value || '';
-    const w = window.open('', '_blank', 'width=420,height=320');
-    w.document.write(`<!DOCTYPE html><html><head><title>Label - ${name}</title>
-    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:Arial,sans-serif;background:#fff;padding:16px;margin:0;}
-    .pname{font-size:13px;font-weight:800;text-align:center;margin-bottom:4px;max-width:220px;}
-    .pcode{font-family:monospace;font-size:10px;color:#888;margin-bottom:6px;}
-    .pmrp{font-size:11px;font-weight:700;color:#333;margin-top:4px;}svg{max-width:220px;}</style>
-    </head><body><div class="pname">${name}</div><div class="pcode">${code}</div>${svg.outerHTML}${mrp ? '<div class="pmrp">MRP: Rs.' + mrp + '</div>' : ''}
-    <script>setTimeout(function(){window.print();window.close();},500);<\/script></body></html>`);
+    const code = (document.getElementById('prod-barcode').value || document.getElementById('prod-internal-code').value || '').trim();
+    if (!code) return alert('No barcode generated. Click GEN first.');
+    const name = (document.getElementById('prod-name').value || 'Product').trim();
+    const mrp = (document.getElementById('prod-mrp').value || '').trim();
+    const company = (window.companyProfile && window.companyProfile.name) ? window.companyProfile.name : 'EMYRIS BIOLIFESCIENCES';
+    const safeCode = code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const safeName = name.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeCompany = company.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeMrp = mrp.replace(/</g, '&lt;');
+    const w = window.open('', '_blank', 'width=460,height=400');
+    w.document.write(`<!DOCTYPE html><html><head><title>Label - ${safeName}</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+@media print { @page { margin: 0; } body { padding: 0; } }
+body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#fff; margin:0; font-family:Arial,sans-serif; }
+.label { border:1.5px solid #333; border-radius:5px; padding:13px 16px; display:flex; flex-direction:column; align-items:center; width:240px; background:#fff; gap:3px; }
+.co { font-size:8px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#111; text-align:center; }
+.nm { font-size:12px; font-weight:800; text-align:center; color:#000; line-height:1.3; }
+.mrp { font-size:14px; font-weight:900; color:#000; }
+.cd { font-family:monospace; font-size:9px; color:#555; }
+svg { max-width:210px; }
+</style></head><body>
+<div class="label">
+  <div class="co">${safeCompany}</div>
+  <div class="nm">${safeName}</div>
+  <svg id="bc"></svg>
+  ${safeMrp ? `<div class="mrp">MRP: &#8377;${safeMrp}</div>` : ''}
+  <div class="cd">${safeCode}</div>
+</div>
+<script>JsBarcode('#bc','${safeCode}',{format:'CODE128',width:2.5,height:55,displayValue:false,background:'#fff',lineColor:'#000',margin:4});
+setTimeout(function(){window.print();window.close();},700);<\/script>
+</body></html>`);
     w.document.close();
 }
 
@@ -1632,6 +1668,124 @@ function downloadBarcodeAsSVG() {
     a.href = url; a.download = code + '_barcode.svg';
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// --- BULK BARCODE PRINT ---
+function openBulkBarcodeModal() {
+    const modal = document.getElementById('bulk-barcode-modal');
+    if (!modal) return;
+    const tbody = document.getElementById('bulk-barcode-tbody');
+    if (tbody) {
+        const validProducts = allProducts.filter(p => p.internalCode || p.barcode);
+        if (!validProducts.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No products with barcodes/codes found. Add products first.</td></tr>';
+        } else {
+            tbody.innerHTML = validProducts.map((p, i) => `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:7px 8px;"><input type="checkbox" id="bbc-${i}" value="${p._id}" checked class="bulk-barcode-check" style="width:15px;height:15px;cursor:pointer;"></td>
+                <td style="padding:7px 8px;font-size:0.8rem;font-weight:600;color:#f8fafc;">${p.name.replace(/</g,'&lt;')}</td>
+                <td style="padding:7px 8px;font-family:monospace;font-size:0.75rem;color:var(--primary);">${p.internalCode || p.barcode || '-'}</td>
+                <td style="padding:7px 8px;font-size:0.8rem;color:#10b981;font-weight:700;">&#8377;${p.mrp || 0}</td>
+                <td style="padding:7px 8px;"><input type="number" id="bbc-qty-${i}" value="1" min="1" max="100" style="width:58px;padding:4px 6px;font-size:0.75rem;text-align:center;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;"></td>
+            </tr>`).join('');
+        }
+    }
+    modal.classList.remove('hidden');
+}
+
+function closeBulkBarcodeModal() {
+    const modal = document.getElementById('bulk-barcode-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function selectAllBulkBarcodes(checked) {
+    document.querySelectorAll('.bulk-barcode-check').forEach(cb => cb.checked = checked);
+}
+
+function printBulkBarcodes() {
+    const validProducts = allProducts.filter(p => p.internalCode || p.barcode);
+    const checks = document.querySelectorAll('.bulk-barcode-check:checked');
+    if (!checks.length) return alert('Please select at least one product.');
+
+    const company = (window.companyProfile && window.companyProfile.name) ? window.companyProfile.name : 'EMYRIS BIOLIFESCIENCES';
+    const stickers = [];
+
+    checks.forEach(cb => {
+        const id = cb.value;
+        const idx = cb.id.replace('bbc-', '');
+        const qtyEl = document.getElementById('bbc-qty-' + idx);
+        const qty = qtyEl ? (parseInt(qtyEl.value) || 1) : 1;
+        const p = allProducts.find(x => String(x._id) === String(id));
+        if (!p) return;
+        const code = p.barcode || p.internalCode;
+        if (!code) return;
+        for (let j = 0; j < qty; j++) {
+            stickers.push({ name: p.name, code, mrp: p.mrp || 0 });
+        }
+    });
+
+    if (!stickers.length) return alert('No valid products with barcodes selected.');
+
+    const safeCompany = company.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const stickerHTML = stickers.map((s, idx) => {
+        const safeName = s.name.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const safeCode = String(s.code).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const mrpVal = (typeof s.mrp === 'number') ? s.mrp.toFixed(2) : String(s.mrp);
+        return `<div class="sticker">
+            <div class="co">${safeCompany}</div>
+            <div class="nm">${safeName}</div>
+            <svg class="bsvg" data-code="${s.code.replace(/"/g,'&quot;')}"></svg>
+            <div class="mrp">MRP: &#8377;${mrpVal}</div>
+            <div class="cd">${safeCode}</div>
+        </div>`;
+    }).join('');
+
+    const pages = Math.ceil(stickers.length / 8);
+    const w = window.open('', '_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Bulk Barcode Labels (${stickers.length})</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+@media print {
+    @page { size: A4 portrait; margin: 8mm; }
+    body { background: #fff !important; }
+    .no-print { display: none !important; }
+    .grid { width: 194mm !important; gap: 3mm !important; }
+    .sticker { height: 62mm !important; }
+}
+body { font-family: Arial, Helvetica, sans-serif; background: #f0f0f0; padding: 15px; }
+.no-print { background:#fff; border-radius:10px; padding:14px 20px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.no-print h3 { font-size:15px; color:#1e293b; margin:0; }
+.no-print p { font-size:12px; color:#64748b; margin:4px 0 0 0; }
+.print-btn { padding:9px 24px; background:#6366f1; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.print-btn:hover { background:#4f46e5; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:4mm; width:194mm; margin:0 auto; }
+.sticker { border:1px dashed #bbb; border-radius:3px; padding:4mm 3.5mm; display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; background:#fff; height:62mm; overflow:hidden; page-break-inside:avoid; text-align:center; }
+.co { font-size:7pt; font-weight:900; text-transform:uppercase; letter-spacing:0.8px; color:#111; }
+.nm { font-size:9pt; font-weight:800; color:#000; line-height:1.25; max-width:85mm; word-break:break-word; }
+.mrp { font-size:11pt; font-weight:900; color:#000; }
+.cd { font-family:monospace; font-size:7pt; color:#555; }
+.bsvg { max-width:85mm; }
+</style></head><body>
+<div class="no-print">
+    <div>
+        <h3>🏷️ Bulk Barcode Print — ${stickers.length} label${stickers.length > 1 ? 's' : ''}</h3>
+        <p>${pages} page${pages > 1 ? 's' : ''} | 2×4 grid (8 per page) | Set printer margins to <b>None/Minimum</b> for best results</p>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨️ PRINT NOW</button>
+</div>
+<div class="grid">${stickerHTML}</div>
+<script>
+document.querySelectorAll('.bsvg').forEach(function(el) {
+    var code = el.getAttribute('data-code');
+    if (code) {
+        try { JsBarcode(el, code, { format:'CODE128', width:1.8, height:42, displayValue:false, background:'#fff', lineColor:'#000', margin:2 }); }
+        catch(e) { el.style.display='none'; }
+    }
+});
+<\/script></body></html>`);
+    w.document.close();
+    closeBulkBarcodeModal();
 }
 
 // --- BULK PRODUCT UPLOAD ---
@@ -3432,8 +3586,30 @@ function purGridKey(e, rowIdx, col) {
 // ---- PURCHASE GRID: product search inside cell ----
 function purGridSearch(rowIdx, inputEl) {
     const query = inputEl.value.toLowerCase().trim();
+    const wasMapped = !!purchaseItems[rowIdx].productId;
+
     purchaseItems[rowIdx].productName = inputEl.value;
     purchaseItems[rowIdx].productId = '';
+
+    if (wasMapped) {
+        purchaseItems[rowIdx].hsn = '';
+        purchaseItems[rowIdx].pack = '';
+        purchaseItems[rowIdx].mrp = 0;
+        purchaseItems[rowIdx].ptr = 0;
+        purchaseItems[rowIdx].pts = 0;
+        purchaseItems[rowIdx].rate = 0;
+        purchaseItems[rowIdx].gstPercent = (window.companyProfile ? window.companyProfile.gstRate : 5);
+        
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        setVal(`pur-cell-${rowIdx}-hsn`, '');
+        setVal(`pur-cell-${rowIdx}-pack`, '');
+        setVal(`pur-cell-${rowIdx}-mrp`, '');
+        setVal(`pur-cell-${rowIdx}-ptr`, '');
+        setVal(`pur-cell-${rowIdx}-pts`, '');
+        setVal(`pur-cell-${rowIdx}-rate`, '');
+        setVal(`pur-cell-${rowIdx}-gstPercent`, purchaseItems[rowIdx].gstPercent);
+        updatePurCell(rowIdx, 'qty', document.getElementById(`pur-cell-${rowIdx}-qty`)?.value || 0);
+    }
 
     const dd = document.getElementById(`pur-dd-${rowIdx}`);
     if (!dd) return;
@@ -3445,21 +3621,31 @@ function purGridSearch(rowIdx, inputEl) {
         (p.hsn && p.hsn.toLowerCase().includes(query))
     ).slice(0, 12);
 
-    if (!matches.length) { dd.innerHTML = '<div style="padding:8px;color:var(--text-muted);font-size:0.75rem;">No match</div>'; dd.style.display = 'block'; return; }
+    let html = '';
+    if (!matches.length) { 
+        html = '<div style="padding:8px;color:var(--text-muted);font-size:0.75rem;">No match found in master.</div>'; 
+    } else {
+        html = matches.map(p => `
+            <div onmousedown="event.preventDefault(); purGridSelectProduct(${rowIdx}, '${p._id || p.id}')"
+                 style="padding:6px 10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05);
+                        font-size:0.72rem; display:flex; gap:8px; align-items:center;"
+                 onmouseover="this.style.background='rgba(99,102,241,0.18)'"
+                 onmouseout="this.style.background='transparent'">
+                <span style="font-weight:700; color:#fff; flex:1;">${p.name}</span>
+                <span style="color:var(--text-muted); font-size:0.65rem;">${p.hsn || ''}</span>
+            </div>`).join('');
+    }
 
-    dd.innerHTML = matches.map(p => `
-        <div onclick="purGridSelectProduct(${rowIdx}, '${p._id || p.id}')"
-             style="padding:6px 10px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.05);
-                    font-size:0.72rem; display:flex; gap:8px; align-items:center;"
-             onmouseover="this.style.background='rgba(99,102,241,0.18)'"
-             onmouseout="this.style.background='transparent'">
-            <span style="font-weight:700; color:#fff; flex:1;">${p.name}</span>
-            <span style="color:var(--text-muted); font-size:0.65rem;">${p.hsn || ''}</span>
-        </div>`).join('');
+    const safeVal = inputEl.value.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    html += `<div style="padding:4px; border-top:1px solid rgba(255,255,255,0.05);">
+                <button type="button" onmousedown="event.preventDefault(); openProductModal('quick', '${safeVal}')" style="width:100%; padding:6px; background:rgba(16, 185, 129, 0.1); color:#10b981; border:1px dashed rgba(16,185,129,0.3); border-radius:4px; cursor:pointer; font-size:0.65rem; font-weight:800; text-transform:uppercase;">+ Add to Product Master</button>
+             </div>`;
+
+    dd.innerHTML = html;
     dd.style.display = 'block';
-    // Position dropdown below the cell
+    
     const rect = inputEl.getBoundingClientRect();
-    dd.style.top = rect.bottom + 'px';
+    dd.style.top = (rect.bottom + 2) + 'px';
     dd.style.left = rect.left + 'px';
     dd.style.width = Math.max(rect.width, 280) + 'px';
 }

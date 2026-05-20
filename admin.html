@@ -1440,6 +1440,24 @@
                         </div>
                     </div>
 
+                    <!-- BULK BARCODE PRINT -->
+                    <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #8b5cf6; position: relative; overflow: hidden;">
+                        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(139,92,246,0.15),transparent);pointer-events:none;"></div>
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 0.5rem; color: #a78bfa;">🏷️ Bulk Barcode Labels</h3>
+                        <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5;">Print professional A4 sticker sheets in a 2×4 grid (8 per page). Select products, set copy count per item, and print on standard label paper.</p>
+                        <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                            <button class="btn" onclick="openBulkBarcodeModal()" id="btn-open-bulk-barcode" style="justify-content: flex-start; text-align: left; background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3); color: #c4b5fd; padding: 0.85rem 1rem;">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: #ede9fe;">🖨️ Open Bulk Label Printer</span>
+                                    <span style="font-size: 0.65rem; color: #a78bfa; margin-top: 2px;">Select products → set copies → print 2×4 sheet</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div style="margin-top:1rem;padding:0.75rem;background:rgba(139,92,246,0.07);border-radius:10px;border:1px dashed rgba(139,92,246,0.25);">
+                            <p style="font-size:0.65rem;color:rgba(139,92,246,0.8);margin:0;line-height:1.6;">💡 <b>Tip:</b> Each sticker contains Company Name, Product Name, MRP, Barcode, and Item Code. Set printer page margins to <b>None</b> for perfect alignment on pre-cut A4 sticker sheets.</p>
+                        </div>
+                    </div>
+
                     
                     <!-- EXPENSE & OVERHEADS -->
                     <div class="glass-card" style="padding: 1.5rem; border-top: 4px solid #f87171;">
@@ -2197,7 +2215,7 @@
                             <div style="background:rgba(15,23,42,0.45);padding:1rem;border-radius:12px;border:1px solid rgba(99,102,241,0.18);display:grid;gap:0.45rem;">
                                 <div class="form-group" style="margin:0;"><label style="margin-bottom:0.1rem;font-size:0.62rem;">Product Name <span style="color:#ef4444;">*</span></label><input type="text" id="prod-name" style="padding:5px 9px;font-size:0.78rem;height:auto;font-weight:600;" required placeholder="Enter full product name"></div>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.45rem;">
-                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.1rem;font-size:0.62rem;display:flex;justify-content:space-between;align-items:center;">Internal Code <span onclick="regenerateInternalCode()" style="cursor:pointer;color:var(--primary);font-size:0.58rem;opacity:0.8;" title="Regenerate">&#128260; REGEN</span></label><input type="text" id="prod-internal-code" style="padding:5px 9px;font-size:0.7rem;height:auto;font-family:monospace;background:rgba(99,102,241,0.08);color:var(--primary);font-weight:700;letter-spacing:1.5px;" readonly placeholder="Auto-generated"></div>
+                                    <div class="form-group" style="margin:0;"><label style="margin-bottom:0.1rem;font-size:0.62rem;display:flex;justify-content:space-between;align-items:center;">Internal Code <span id="regen-internal-code-btn" onclick="regenerateInternalCode()" style="cursor:pointer;color:var(--primary);font-size:0.58rem;opacity:0.8;" title="Regenerate">&#128260; REGEN</span></label><input type="text" id="prod-internal-code" style="padding:5px 9px;font-size:0.7rem;height:auto;font-family:monospace;background:rgba(99,102,241,0.08);color:var(--primary);font-weight:700;letter-spacing:1.5px;" readonly placeholder="Auto-generated"></div>
                                     <div class="form-group" style="margin:0;"><label style="margin-bottom:0.1rem;font-size:0.62rem;">Barcode / EAN</label><div style="display:flex;gap:4px;"><input type="text" id="prod-barcode" style="padding:5px 9px;font-size:0.7rem;height:auto;font-family:monospace;flex:1;" placeholder="Scan or type"><button type="button" onclick="generateProductBarcode()" style="padding:4px 8px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;border-radius:7px;font-size:0.6rem;font-weight:800;cursor:pointer;white-space:nowrap;" title="Generate barcode">&#9889; GEN</button></div></div>
                                 </div>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.45rem;">
@@ -3697,5 +3715,46 @@
         </div>
     </div>
     <audio id="bgMusic" loop preload="auto"></audio>
+
+    <!-- BULK BARCODE PRINT MODAL -->
+    <div id="bulk-barcode-modal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;z-index:6000;">
+        <div class="glass-card" style="width:820px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;margin:0;padding:0;border-top:4px solid #8b5cf6;">
+            <!-- Header -->
+            <div style="padding:1.1rem 1.5rem;border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center;background:rgba(139,92,246,0.05);">
+                <div>
+                    <div style="font-size:0.52rem;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#a78bfa;margin-bottom:2px;">INVENTORY BARCODE ENGINE</div>
+                    <div style="font-size:1rem;font-weight:800;color:#f8fafc;">🏷️ Bulk Label Print — 2×4 Grid</div>
+                </div>
+                <div style="display:flex;gap:0.6rem;align-items:center;">
+                    <button type="button" class="btn btn-ghost" onclick="selectAllBulkBarcodes(true)" style="padding:5px 12px;font-size:0.7rem;">✅ ALL</button>
+                    <button type="button" class="btn btn-ghost" onclick="selectAllBulkBarcodes(false)" style="padding:5px 12px;font-size:0.7rem;">⬜ NONE</button>
+                    <button type="button" class="btn" onclick="printBulkBarcodes()" style="padding:6px 18px;font-size:0.72rem;background:linear-gradient(135deg,#8b5cf6,#6366f1);border:none;color:#fff;border-radius:8px;font-weight:800;cursor:pointer;">🖨️ PRINT LABELS</button>
+                    <button type="button" class="btn btn-ghost" onclick="closeBulkBarcodeModal()" style="padding:5px 12px;font-size:0.72rem;">✕ CLOSE</button>
+                </div>
+            </div>
+            <!-- Product Table -->
+            <div style="flex:1;overflow-y:auto;padding:0.5rem;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead style="position:sticky;top:0;background:rgba(15,23,42,0.97);backdrop-filter:blur(8px);z-index:2;">
+                        <tr>
+                            <th style="padding:9px 8px;text-align:left;font-size:0.62rem;color:var(--text-muted);font-weight:700;width:40px;">✓</th>
+                            <th style="padding:9px 8px;text-align:left;font-size:0.62rem;color:var(--text-muted);font-weight:700;">PRODUCT NAME</th>
+                            <th style="padding:9px 8px;text-align:left;font-size:0.62rem;color:var(--text-muted);font-weight:700;">INTERNAL CODE</th>
+                            <th style="padding:9px 8px;text-align:left;font-size:0.62rem;color:var(--text-muted);font-weight:700;">MRP</th>
+                            <th style="padding:9px 8px;text-align:center;font-size:0.62rem;color:var(--text-muted);font-weight:700;">COPIES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bulk-barcode-tbody">
+                        <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Loading products...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Footer hint -->
+            <div style="padding:0.75rem 1.5rem;border-top:1px solid var(--glass-border);background:rgba(139,92,246,0.04);">
+                <p style="font-size:0.65rem;color:rgba(139,92,246,0.75);margin:0;">💡 Set <b>Copies</b> to print multiple labels of the same product. The print layout is a <b>2-column × 4-row grid</b> (8 stickers per A4 page). Use <b>printer margins = None</b> for best fit on pre-cut sticker sheets.</p>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

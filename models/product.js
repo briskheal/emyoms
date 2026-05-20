@@ -2,6 +2,8 @@ module.exports = (sequelize, DataTypes) => {
     const Product = sequelize.define('Product', {
         id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         name: { type: DataTypes.STRING, allowNull: false },
+        internalCode: { type: DataTypes.STRING },
+        barcode: { type: DataTypes.STRING },
         manufacturer: { type: DataTypes.STRING, defaultValue: "" },
         hsn: DataTypes.STRING,
         category: { type: DataTypes.STRING, defaultValue: "GENERAL" },
