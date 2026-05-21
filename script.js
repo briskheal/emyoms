@@ -3548,7 +3548,7 @@ function renderReturnTable() {
                     <div id="ret-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; width:350px; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:350px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
                 </td>
                 <td><input type="text" value="${item.batch || ''}" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:100px; text-align: center;"></td>
-                <td><input type="text" value="${item.exp || ''}" oninput="updateReturnItem(${i}, 'exp', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:80px; text-align: center;" placeholder="MM/YY"></td>
+                <td><input type="month" value="${item.exp || ''}" oninput="updateReturnItem(${i}, 'exp', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:110px; text-align: center;" placeholder="MM/YY"></td>
                 <td>
                     <input type="number" value="${item.qty || 0}" ${item.maxQty ? `max="${item.maxQty}"` : ''} oninput="updateReturnItem(${i}, 'qty', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:4px; color:#fff; width:65px; text-align:center; font-weight: 700;">
                     ${item.maxQty ? `<div style="font-size:0.5rem; color:var(--text-muted); text-align:center;">Max: ${item.maxQty}</div>` : ''}
