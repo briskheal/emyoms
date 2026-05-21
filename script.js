@@ -3527,15 +3527,18 @@ function renderReturnTable() {
     const tbody = document.getElementById('return-body');
     if (!tbody) return;
 
-    let grandTotal = 0;
+    let totalTaxable = 0;
+    let totalGst = 0;
 
     tbody.innerHTML = purchaseReturnItems.map((item, i) => {
         const qty = parseFloat(item.qty) || 0;
         const rate = parseFloat(item.rate) || 0;
         const gst = parseFloat(item.gst) || 0;
         const taxable = qty * rate;
-        const total = taxable + (taxable * gst / 100);
-        grandTotal += total;
+        const itemGst = (taxable * gst / 100);
+        totalTaxable += taxable;
+        totalGst += itemGst;
+        const total = taxable + itemGst;
 
         return `
             <tr>
@@ -3558,8 +3561,20 @@ function renderReturnTable() {
         `;
     }).join('');
 
+    const netAmount = totalTaxable + totalGst;
+    const roundedTotal = Math.round(netAmount);
+    const roundOff = (roundedTotal - netAmount).toFixed(2);
+
+    const subTotalEl = document.getElementById('ret-footer-subtotal');
+    const gstEl = document.getElementById('ret-footer-gst');
+    const roundOffEl = document.getElementById('ret-footer-roundoff');
+
+    if (subTotalEl) subTotalEl.innerText = `₹${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (gstEl) gstEl.innerText = `₹${totalGst.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (roundOffEl) roundOffEl.innerText = `₹${roundOff}`;
+
     const gtEl = document.getElementById('return-grand-total');
-    if (gtEl) gtEl.innerText = `₹${Math.round(grandTotal).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (gtEl) gtEl.innerText = `₹${roundedTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 }
 
 async function submitPurchaseReturn() {
@@ -3570,10 +3585,29 @@ async function submitPurchaseReturn() {
 
     const returnType = document.getElementById('return-type').value; 
     
+    let totalTaxable = 0;
+    let totalGst = 0;
+    validItems.forEach(item => {
+        const qty = parseFloat(item.qty) || 0;
+        const rate = parseFloat(item.rate) || 0;
+        const gst = parseFloat(item.gst) || 0;
+        const taxable = qty * rate;
+        totalTaxable += taxable;
+        totalGst += (taxable * gst / 100);
+    });
+    
+    const netTotal = totalTaxable + totalGst;
+    const roundedTotal = Math.round(netTotal);
+    const roundOff = Number((roundedTotal - netTotal).toFixed(2));
+
     const payload = {
         reason: returnType,
         items: validItems,
-        stockistId: currentUser._id || currentUser.id
+        stockistId: currentUser._id || currentUser.id,
+        subTotal: Number(totalTaxable.toFixed(2)),
+        gstAmount: Number(totalGst.toFixed(2)),
+        roundOff: roundOff,
+        grandTotal: roundedTotal
     };
 
     showCenteredConfirm(
