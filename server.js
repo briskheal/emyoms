@@ -2377,7 +2377,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
 CRITICAL RULES:
 1. HSN field: Look for the column header "HSN", "HSN/SAC", "HSN Code", or "HSN No." in the invoice table. Each product row will have an 8-digit (or 6-digit) numeric code in that column. Extract EXACTLY that numeric code for each item. Do NOT confuse with batch numbers. If not found, use "".
 2. Extract EVERY product row. Do not skip any item.
-3. Product names must be UPPERCASE, clean, without batch/expiry info.
+3. Product names must be UPPERCASE, clean, without batch/expiry info. (Note: Product names can and often do contain parentheses and ampersands like "(K&E)". Do NOT strip these out and do NOT skip the item).
 4. Batch must be UPPERCASE.
 5. expDate format: MM/YYYY or MM/YY only.
 6. All numeric fields (mrp, qty, rate, gst, grandTotal) must be numbers not strings.
