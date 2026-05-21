@@ -3540,7 +3540,7 @@ function handleReturnProductInput(idx, el) {
         if (matches.length > 0) {
             dd.innerHTML = matches.map(m => `
                 <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
-                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, \"\\'\")}', '${m.batch || ''}', '${m.expDate || ''}', ${m.rate || 0}, ${m.gst || 12}, ${m.availableQty || 0}, ${m.productId || null})"
+                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, `\\\'`)}', '${m.batch || ''}', '${m.expDate || ''}', ${m.rate || 0}, ${m.gst || 12}, ${m.availableQty || 0}, ${m.productId || null})"
                      onmouseover="this.style.background='var(--primary)'" 
                      onmouseout="this.style.background='transparent'">
                     <div style="font-weight:700; color:#fff;">${m.internalCode ? `<span style="color:#a78bfa; font-size:0.65rem; margin-right:5px;">[${m.internalCode}]</span>` : ''}${m.name}</div>
@@ -3563,7 +3563,7 @@ function handleReturnProductInput(idx, el) {
         if (matches.length > 0) {
             dd.innerHTML = matches.map(m => `
                 <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
-                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, \"\\'\")}', '', '', ${m.pts || m.ptr || 0}, ${m.gstPercent || 12}, 0, ${m._id || m.id})"
+                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, `\\\'`)}', '', '', ${m.pts || m.ptr || 0}, ${m.gstPercent || 12}, 0, ${m._id || m.id})"
                      onmouseover="this.style.background='var(--primary)'" 
                      onmouseout="this.style.background='transparent'">
                     <div style="font-weight:700; color:#fff;">${m.internalCode ? `<span style="color:#a78bfa; font-size:0.65rem; margin-right:5px;">[${m.internalCode}]</span>` : ''}${m.name}</div>
