@@ -2399,8 +2399,8 @@ Return ONLY this exact JSON structure, nothing else:
       "batch": "string (UPPERCASE)",
       "expDate": "MM/YYYY or MM/YY",
       "mrp": number,
-      "qty": number,
-      "rate": number,
+      "qty": number (Billed quantity only, do NOT include free/bonus quantity),
+      "rate": number (Unit rate/PTR. Do NOT extract the total line amount as rate),
       "gst": number
     }
   ]
