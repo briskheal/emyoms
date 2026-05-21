@@ -2452,6 +2452,8 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
                 });
             } catch (err) {
                 console.error("❌ Gemini API Error:", err.message);
+                const fs = require('fs');
+                fs.appendFileSync('gemini-error.log', new Date().toISOString() + ' - STOCKIST ERROR: ' + err.message + '\n' + (err.stack || '') + '\n\n');
                 console.log("Falling back to standard parsing engine...");
             }
         }
