@@ -3468,8 +3468,8 @@ app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
             where: { 
                 stockistId,
                 noteType: 'CN',
-                reason: { [db.Sequelize.Op.in]: ['Salable Return', 'Dmg/Exp/Brk Return'] },
-                status: { [db.Sequelize.Op.ne]: 'rejected' } // Only count pending or approved
+                reason: { [db.Sequelize.Op.in]: ['Salable Return', 'Dmg/Exp/Brk Return'] }
+                // Note: FinancialNote has no 'status' column — filter removed
             },
             include: [{ model: db.NoteItem, as: 'items' }]
         });
