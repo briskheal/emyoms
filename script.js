@@ -724,7 +724,7 @@ function renderExcelProducts() {
         return `
             <tr id="row-${pId}">
                 <td>
-                    <div class="${isWarning ? 'price-warning' : ''}" style="font-weight: 800; color: ${isWarning ? '#f59e0b' : 'var(--primary)'};">${p.name}</div>
+                    <div class="${isWarning ? 'price-warning' : ''}" style="font-weight: 800; color: ${isWarning ? '#f59e0b' : 'var(--primary)'};">${p.internalCode ? `<span style="color:#a78bfa; font-size:0.65rem; margin-right:5px;">[${p.internalCode}]</span>` : ''}${p.name}</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">${p.category || 'GENERAL'}</div>
                 </td>
                 <td style="text-align: center; font-weight: 700; color: #fff; font-size: 0.8rem;">${p.packing || '-'}</td>
@@ -934,6 +934,8 @@ async function placeOrder() {
             masterRate: Number(p.pts) || 0,
             negotiationNote: negotiationNotes[pid] || (locked ? locked.note : ''),
             mrp: p.mrp,
+            ptr: p.ptr,
+            pts: p.pts,
             gstPercent: p.gstPercent || 12,
             hsn: p.hsn || '',
             totalValue: Number(qty * rate) || 0
@@ -1284,7 +1286,7 @@ async function generateInvoicePDF(inv) {
         return final + ' Only';
     }
 
-    const { jsPDF } = window.jspdf;
+    const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
     const doc = new jsPDF('p', 'mm', 'a4');
     const style = companySettings?.invoiceStyle || 'classic';
 
@@ -1485,7 +1487,7 @@ function startMusic() {
  * AI-DRIVEN COORDINATE ENGINE (SYNCED FROM ADMIN)
  */
 async function generateSampleMatchedPDF(inv) {
-    const { jsPDF } = window.jspdf;
+    const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
     const doc = new jsPDF('p', 'mm', 'a4');
     const filename = `Invoice_${inv.invoiceNo}.pdf`;
 
@@ -1581,7 +1583,7 @@ async function generateSampleMatchedPDF(inv) {
         head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
         body: inv.items.map((it, idx) => [
             idx + 1, it.hsn || '-', it.name, it.batch || '-', it.expDate || it.exp || it.expiry || '-', 
-            (it.mrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
+            (it.mrp || fallbackMrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
             (it.priceUsed || it.rate || 0).toFixed(2), (it.gstPercent || 0) + '%', 
             (it.qty * (it.priceUsed || it.rate || 0)).toFixed(2)
         ]),
@@ -2327,7 +2329,7 @@ async function downloadPDCN_PDF() {
     const claim = window.currentViewingPDCNClaim;
     if (!claim) return alert("No claim data found to print.");
 
-    const { jsPDF } = window.jspdf;
+    const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
     const doc = new jsPDF();
     
     // Header - Use Company Data from script.js global
@@ -3448,7 +3450,8 @@ function updateReturnItem(idx, field, val) {
     if (['qty', 'rate', 'gst'].includes(field)) renderReturnTable();
 }
 
-function selectReturnProduct(idx, name, batch, exp, rate, gst, availableQty) {
+function selectReturnProduct(idx, name, batch, exp, rate, gst, availableQty, productId) {
+    purchaseReturnItems[idx].productId = productId;
     purchaseReturnItems[idx].name = name;
     purchaseReturnItems[idx].batch = batch;
     purchaseReturnItems[idx].exp = exp;
@@ -3494,7 +3497,11 @@ function handleReturnBatchInput(idx, el) {
     let matches = [];
     if (typeof stockistPurchaseHistory !== 'undefined' && stockistPurchaseHistory && stockistPurchaseHistory.length > 0) {
         const searchName = item.name.toLowerCase().trim();
-        matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(searchName));
+        if (item.productId) {
+            matches = stockistPurchaseHistory.filter(p => String(p.productId) === String(item.productId));
+        } else {
+            matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(searchName));
+        }
     }
     
     if (matches.length > 0) {
@@ -3527,16 +3534,16 @@ function handleReturnProductInput(idx, el) {
     // First try stockistPurchaseHistory, if empty fallback to allProducts
     let matches = [];
     if (typeof stockistPurchaseHistory !== 'undefined' && stockistPurchaseHistory && stockistPurchaseHistory.length > 0) {
-        matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(val));
+        matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase().includes(val) || (p.internalCode && p.internalCode.toLowerCase().includes(val)));
         if (matches.length === 0 && val === '') matches = stockistPurchaseHistory.slice(0, 15);
         
         if (matches.length > 0) {
             dd.innerHTML = matches.map(m => `
                 <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
-                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, "\\'")}', '${m.batch || ''}', '${m.expDate || ''}', ${m.rate || 0}, ${m.gst || 12}, ${m.availableQty || 0})"
+                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, \"\\'\")}', '${m.batch || ''}', '${m.expDate || ''}', ${m.rate || 0}, ${m.gst || 12}, ${m.availableQty || 0}, ${m.productId || null})"
                      onmouseover="this.style.background='var(--primary)'" 
                      onmouseout="this.style.background='transparent'">
-                    <div style="font-weight:700; color:#fff;">${m.name}</div>
+                    <div style="font-weight:700; color:#fff;">${m.internalCode ? `<span style="color:#a78bfa; font-size:0.65rem; margin-right:5px;">[${m.internalCode}]</span>` : ''}${m.name}</div>
                     <div style="font-size:0.65rem; color:var(--text-muted);">Batch: ${m.batch || 'N/A'} | Exp: ${m.expDate || 'N/A'} | Rate: ₹${m.rate || 0} | <b>Max Return: <span style="color:var(--accent);">${m.availableQty || 0}</span></b></div>
                 </div>
             `).join('');
@@ -3550,16 +3557,16 @@ function handleReturnProductInput(idx, el) {
         if (val === '') {
             matches = allProducts.slice(0, 15);
         } else {
-            matches = allProducts.filter(p => p.name.toLowerCase().includes(val)).slice(0, 15);
+            matches = allProducts.filter(p => p.name.toLowerCase().includes(val) || (p.internalCode && p.internalCode.toLowerCase().includes(val))).slice(0, 15);
         }
         
         if (matches.length > 0) {
             dd.innerHTML = matches.map(m => `
                 <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
-                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, "\\'")}', '', '', ${m.pts || m.ptr || 0}, ${m.gstPercent || 12}, 0)"
+                     onclick="selectReturnProduct(${idx}, '${(m.name || '').replace(/'/g, \"\\'\")}', '', '', ${m.pts || m.ptr || 0}, ${m.gstPercent || 12}, 0, ${m._id || m.id})"
                      onmouseover="this.style.background='var(--primary)'" 
                      onmouseout="this.style.background='transparent'">
-                    <div style="font-weight:700; color:#fff;">${m.name}</div>
+                    <div style="font-weight:700; color:#fff;">${m.internalCode ? `<span style="color:#a78bfa; font-size:0.65rem; margin-right:5px;">[${m.internalCode}]</span>` : ''}${m.name}</div>
                     <div style="font-size:0.65rem; color:var(--text-muted);">Rate: ₹${m.pts || m.ptr || 0} | GST: ${m.gstPercent || 12}%</div>
                 </div>
             `).join('');

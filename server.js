@@ -1057,7 +1057,7 @@ app.get('/api/admin/orders', async (req, res) => {
 
 app.put('/api/admin/orders/:id/approve', async (req, res) => {
     try {
-        const { approvedBy, selectedHq, batchSelections } = req.body;
+        const { approvedBy, selectedHq, batchSelections, qtySelections } = req.body;
         const order = await db.Order.findByPk(req.params.id, {
             include: [{ model: db.OrderItem, as: 'items' }]
         });
@@ -1112,7 +1112,14 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
             }
         }
 
-        await order.update({ status: 'approved', hq: selectedHq || order.hq });
+        const newGrandTotal = Math.round(newSubTotal + newGstAmount);
+        await order.update({ 
+            status: 'approved', 
+            hq: selectedHq || order.hq,
+            subTotal: newSubTotal,
+            gstAmount: newGstAmount,
+            grandTotal: newGrandTotal
+        });
         res.json({ success: true, order });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -3412,7 +3419,7 @@ app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
         invoices.forEach(inv => {
             if (inv.items) {
                 inv.items.forEach(item => {
-                    const key = `${item.name}|${item.batch}`;
+                    const key = `${item.productId || item.name}|${item.batch}`;
                     if (!purchasedMap[key]) {
                         purchasedMap[key] = {
                             name: item.name,
@@ -3449,7 +3456,7 @@ app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
         returnedNotes.forEach(note => {
             if (note.items) {
                 note.items.forEach(item => {
-                    const key = `${item.name}|${item.batchNo}`;
+                    const key = `${item.productId || item.name}|${item.batchNo}`;
                     if (purchasedMap[key]) {
                         purchasedMap[key].returnedQty += parseInt(item.qty) || 0;
                     }
@@ -3488,7 +3495,7 @@ app.post('/api/stockist/purchase-return', async (req, res) => {
         invoices.forEach(inv => {
             if (inv.items) {
                 inv.items.forEach(item => {
-                    const key = `${item.name}|${item.batch}`;
+                    const key = `${item.productId || item.name}|${item.batch}`;
                     if (!purchasedMap[key]) purchasedMap[key] = { qty: 0, lastInvoice: inv.invoiceNo };
                     purchasedMap[key].qty += parseInt(item.qty) || 0;
                 });
@@ -3507,7 +3514,7 @@ app.post('/api/stockist/purchase-return', async (req, res) => {
         returnedNotes.forEach(note => {
             if (note.items) {
                 note.items.forEach(item => {
-                    const key = `${item.name}|${item.batchNo}`;
+                    const key = `${item.productId || item.name}|${item.batchNo}`;
                     if (purchasedMap[key]) purchasedMap[key].qty -= parseInt(item.qty) || 0;
                 });
             }
@@ -3518,7 +3525,7 @@ app.post('/api/stockist/purchase-return', async (req, res) => {
         // Perform the validation
         for (const item of items) {
             const reqQty = parseInt(item.qty) || 0;
-            const key = `${item.name}|${item.batch}`;
+            const key = `${item.productId || item.name}|${item.batch}`;
             const available = purchasedMap[key] ? purchasedMap[key].qty : 0;
             
             if (reqQty > available) {
@@ -3550,7 +3557,8 @@ app.post('/api/stockist/purchase-return', async (req, res) => {
 
         for (const item of items) {
             // Find product to get productId if possible
-            const product = await db.Product.findOne({ where: { name: { [db.Sequelize.Op.iLike]: item.name.trim() } } });
+            // Use frontend productId if available, fallback to name
+            const product = item.productId ? await db.Product.findByPk(item.productId) : await db.Product.findOne({ where: { name: { [db.Sequelize.Op.iLike]: item.name.trim() } } });
             
             await db.NoteItem.create({
                 financialNoteId: financialNote.id,

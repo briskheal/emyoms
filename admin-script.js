@@ -2701,7 +2701,14 @@ function viewOrderDetails(id) {
                         oninput="updateModalTotals('${o._id}', '${item._id}')"
                         style="width: 70px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; color: var(--accent); font-weight: 800; text-align: center; padding: 3px; font-size: 0.75rem;">
                 </td>
-                <td style="text-align:center; font-weight:800; color: #fff;">${item.qty || 0}</td>
+                <td style="text-align:center; font-weight:800; color: #fff;">
+                    ${o.status === 'pending' ? `
+                    <input type="number" class="final-qty-input" id="qty-${o._id}-${item._id}" 
+                        value="${item.qty || 0}" 
+                        oninput="updateModalTotals('${o._id}', '${item._id}')"
+                        style="width: 60px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; color: #fff; font-weight: 800; text-align: center; padding: 3px; font-size: 0.75rem;">
+                    ` : `${item.qty || 0}`}
+                </td>
                 <td style="text-align:center; color:var(--accent); font-weight:800; font-size: 0.75rem;">+${item.bonusQty || 0}</td>
                 <td style="text-align:right; font-weight:900; color:var(--primary); font-size: 0.85rem; font-family: monospace;" id="linetotal-${o._id}-${item._id}">₹${Number(item.totalValue || 0).toFixed(2)}</td>
                 <td style="text-align:center;">
@@ -2902,7 +2909,8 @@ function updateModalTotals(orderId, triggerItemId) {
     o.items.forEach(item => {
         const rateInput = document.getElementById(`rate-${orderId}-${item._id}`);
         const rate = Number(rateInput ? (rateInput.value || 0) : (item.priceUsed || 0));
-        const qty = Number(item.qty || 0);
+        const qtyInput = document.getElementById(`qty-${orderId}-${item._id}`);
+        const qty = Number(qtyInput ? (qtyInput.value || 0) : (item.qty || 0));
         const lineTotal = rate * qty;
         
         const lineTotalEl = document.getElementById(`linetotal-${orderId}-${item._id}`);
@@ -2997,7 +3005,7 @@ async function approveOrder(id) {
         const res = await fetch(`${API_BASE}/admin/orders/${id}/approve`, { 
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approvedBy: 'ADMIN', batchSelections, selectedHq })
+            body: JSON.stringify({ approvedBy: 'ADMIN', batchSelections, qtySelections, selectedHq })
         });
         const result = await res.json();
         if (result.success) {
@@ -5602,7 +5610,16 @@ async function viewInvoicePDF(id) {
                 gst: partyData.gstNo || partyData.gst || '', 
                 dl: partyData.dlNo || partyData.dl || '' 
             },
-            items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
+            items: (inv.items || []).map(it => {
+                const product = allProducts.find(p => p._id == it.productId || p.id == it.productId);
+                return { 
+                    ...it, 
+                    price: it.priceUsed || it.price || 0,
+                    mrp: it.mrp || (product ? product.mrp : 0),
+                    ptr: it.ptr || (product ? product.ptr : 0),
+                    pts: it.pts || (product ? product.pts : 0)
+                };
+            }),
             additionalCharges: inv.additionalCharges || [],
             grandTotal: Number(inv.grandTotal || 0), extraFields
         });
@@ -5630,7 +5647,16 @@ async function downloadInvoicePDF(id) {
                 gst: partyData.gstNo || partyData.gst || '', 
                 dl: partyData.dlNo || partyData.dl || '' 
             },
-            items: (inv.items || []).map(it => ({ ...it, price: it.priceUsed || it.price || 0 })),
+            items: (inv.items || []).map(it => {
+                const product = allProducts.find(p => p._id == it.productId || p.id == it.productId);
+                return { 
+                    ...it, 
+                    price: it.priceUsed || it.price || 0,
+                    mrp: it.mrp || (product ? product.mrp : 0),
+                    ptr: it.ptr || (product ? product.ptr : 0),
+                    pts: it.pts || (product ? product.pts : 0)
+                };
+            }),
             additionalCharges: inv.additionalCharges || [],
             grandTotal: Number(inv.grandTotal || 0), extraFields, filename: `Invoice_${inv.invoiceNo}.pdf`
         });
@@ -6124,7 +6150,8 @@ function getReportDataByType(type, data, fromDate, toDate) {
                     
                     const costRate = Number(item.pts || (prod ? prod.purchaseRate : 0)); // Use item PTS if saved
                     const saleRate = Number(item.priceUsed || 0);
-                    const qty = Number(item.qty || 0);
+                    const qtyInput = document.getElementById(`qty-${orderId}-${item._id}`);
+        const qty = Number(qtyInput ? (qtyInput.value || 0) : (item.qty || 0));
                     const brand = prod ? (prod.category || prod.group || 'GENERAL') : 'GENERAL';
                     
                     const profitAmt = (saleRate - costRate) * qty;
@@ -8410,7 +8437,8 @@ function renderPDCNReviewItems() {
     tbody.innerHTML = currentPDCNReviewItems.map((item, idx) => {
         const billed = parseFloat(item.billedPrice || 0);
         const special = parseFloat(item.specialPrice || 0);
-        const qty = Number(item.qty || 0);
+        const qtyInput = document.getElementById(`qty-${orderId}-${item._id}`);
+        const qty = Number(qtyInput ? (qtyInput.value || 0) : (item.qty || 0));
         const gstPct = parseFloat(item.gstPercent) || 0;
         const marginPct = parseFloat(item.marginPct) || 10;
         
@@ -8473,7 +8501,8 @@ function updateAdminPDCNItem(idx, field, val) {
     const item = currentPDCNReviewItems[idx];
     const billed = parseFloat(item.billedPrice || 0);
     const special = parseFloat(item.specialPrice || 0);
-    const qty = Number(item.qty || 0);
+    const qtyInput = document.getElementById(`qty-${orderId}-${item._id}`);
+        const qty = Number(qtyInput ? (qtyInput.value || 0) : (item.qty || 0));
     const gstPct = parseFloat(item.gstPercent) || 0;
     const marginPct = parseFloat(item.marginPct) || 10;
     
