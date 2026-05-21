@@ -3465,6 +3465,54 @@ function selectReturnProduct(idx, name, batch, exp, rate, gst, availableQty) {
     renderReturnTable();
 }
 
+function selectReturnBatch(idx, batch, exp, rate, gst, availableQty) {
+    purchaseReturnItems[idx].batch = batch;
+    purchaseReturnItems[idx].exp = exp;
+    purchaseReturnItems[idx].rate = rate;
+    purchaseReturnItems[idx].gst = gst;
+    purchaseReturnItems[idx].maxQty = availableQty;
+    
+    purchaseReturnItems[idx].qty = availableQty > 0 ? 1 : 0;
+    
+    const dd = document.getElementById('ret-batch-dd-' + idx);
+    if (dd) dd.classList.add('hidden');
+    
+    renderReturnTable();
+}
+
+function handleReturnBatchInput(idx, el) {
+    const dd = document.getElementById('ret-batch-dd-' + idx);
+    if (!dd) return;
+    
+    const item = purchaseReturnItems[idx];
+    if (!item.name) {
+        dd.innerHTML = '<div style="padding: 8px; font-size:0.7rem; color:var(--text-muted);">Select a product first</div>';
+        dd.classList.remove('hidden');
+        return;
+    }
+    
+    let matches = [];
+    if (typeof stockistPurchaseHistory !== 'undefined' && stockistPurchaseHistory && stockistPurchaseHistory.length > 0) {
+        matches = stockistPurchaseHistory.filter(p => p.name.toLowerCase() === item.name.toLowerCase());
+    }
+    
+    if (matches.length > 0) {
+        dd.innerHTML = matches.map(m => `
+            <div style="padding: 8px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1);" 
+                 onclick="selectReturnBatch(${idx}, '${m.batch || ''}', '${m.expDate || ''}', ${m.rate || 0}, ${m.gst || 12}, ${m.availableQty || 0})"
+                 onmouseover="this.style.background='var(--primary)'" 
+                 onmouseout="this.style.background='transparent'">
+                <div style="font-weight:700; color:#fff;">Batch: ${m.batch || 'N/A'}</div>
+                <div style="font-size:0.65rem; color:var(--text-muted);">Exp: ${m.expDate || 'N/A'} | Rate: ₹${m.rate || 0} | <b>Max Return: <span style="color:var(--accent);">${m.availableQty || 0}</span></b></div>
+            </div>
+        `).join('');
+        dd.classList.remove('hidden');
+    } else {
+        dd.innerHTML = '<div style="padding: 8px; font-size:0.7rem; color:var(--text-muted);">No purchased batches found</div>';
+        dd.classList.remove('hidden');
+    }
+}
+
 function handleReturnProductInput(idx, el) {
     const val = el.value.toLowerCase();
     // Only update name if they are typing, don't overwrite if they just focus
@@ -3547,7 +3595,10 @@ function renderReturnTable() {
                     <input type="text" value="${item.name || ''}" onfocus="handleReturnProductInput(${i}, this)" oninput="handleReturnProductInput(${i}, this)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:100%; font-weight: 700;" placeholder="Type to search...">
                     <div id="ret-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; width:350px; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:350px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
                 </td>
-                <td><input type="text" value="${item.batch || ''}" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:100px; text-align: center;"></td>
+                <td style="position:relative;">
+                    <input type="text" value="${item.batch || ''}" onfocus="handleReturnBatchInput(${i}, this)" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:100px; text-align: center;" placeholder="Select Batch">
+                    <div id="ret-batch-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; width:250px; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:250px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+                </td>
                 <td><input type="month" value="${item.exp || ''}" oninput="updateReturnItem(${i}, 'exp', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:110px; text-align: center;" placeholder="MM/YY"></td>
                 <td>
                     <input type="number" value="${item.qty || 0}" ${item.maxQty ? `max="${item.maxQty}"` : ''} oninput="updateReturnItem(${i}, 'qty', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:4px; color:#fff; width:65px; text-align:center; font-weight: 700;">
