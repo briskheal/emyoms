@@ -3461,12 +3461,24 @@ async function uploadPurchaseInvoice(inputEl) {
         // --- Map extracted items to grid rows ---
         purchaseItems = [];
         for (const ei of extracted.items) {
-            // Try to match to existing product by HSN or name
+            // 1. Try exact name match first
             let matched = null;
-            if (ei.hsn) matched = allProducts.find(p => p.hsn && p.hsn.toString().trim() === ei.hsn.toString().trim());
+            if (ei.name) {
+                const eiClean = ei.name.toUpperCase().replace(/\s+/g, '').trim();
+                matched = allProducts.find(p => p.name && p.name.toUpperCase().replace(/\s+/g, '').trim() === eiClean);
+            }
+            // 2. If no exact match, try fuzzy name match
             if (!matched && ei.name) {
                 const eiName = ei.name.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                matched = allProducts.find(p => p.name && p.name.toUpperCase().replace(/[^A-Z0-9]/g, '').includes(eiName.substring(0, Math.min(eiName.length, 8))));
+                // Find products where the DB name includes the first 6 chars of invoice name
+                if (eiName.length >= 4) {
+                    matched = allProducts.find(p => p.name && p.name.toUpperCase().replace(/[^A-Z0-9]/g, '').includes(eiName.substring(0, Math.min(eiName.length, 6))));
+                }
+            }
+            // 3. ONLY if name fails completely, try HSN match, but verify it's unique to be safe
+            if (!matched && ei.hsn) {
+                const candidates = allProducts.filter(p => p.hsn && p.hsn.toString().trim() === ei.hsn.toString().trim());
+                if (candidates.length === 1) matched = candidates[0];
             }
 
             const defaultGst = window.companyProfile ? window.companyProfile.gstRate : 5;
