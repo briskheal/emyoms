@@ -2409,8 +2409,16 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
 
                 const result = await model.generateContent([prompt, filePart]);
                 let text = result.response.text();
-                // Sanitize: strip markdown code fences if present
-                text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+                
+                // Bulletproof JSON extraction
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    text = jsonMatch[0];
+                } else {
+                    // Fallback to old sanitization if match fails for some reason
+                    text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+                }
+                
                 console.log('🤖 [Gemini Response Preview]:', text.substring(0, 400));
                 let extractedData = JSON.parse(text);
 
@@ -3938,8 +3946,15 @@ If any field is missing, use empty string "" or 0.`;
             const result = await model.generateContent([prompt, filePart]);
             let text = result.response.text();
             
-            // Sanitize: strip markdown code fences if present
-            text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+            // Bulletproof JSON extraction
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                text = jsonMatch[0];
+            } else {
+                // Fallback to old sanitization if match fails for some reason
+                text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+            }
+            
             console.log('🤖 [Admin Gemini Response Preview]:', text.substring(0, 400));
             
             let extractedData = JSON.parse(text);
