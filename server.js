@@ -2452,7 +2452,10 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
                 });
             } catch (err) {
                 console.error("❌ Gemini API Error:", err.message);
-                console.log("Falling back to standard parsing engine...");
+                return res.json({
+                    success: false,
+                    message: `AI_ERROR: ${err.message}`
+                });
             }
         }
 
