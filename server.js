@@ -1212,7 +1212,10 @@ app.get('/api/stockist/orders/:orderId/invoice', async (req, res) => {
             ]
         });
         if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-        res.json({ success: true, invoice });
+        // Attach stockistName directly so PDF generation works
+        const invoiceData = invoice.toJSON();
+        invoiceData.stockistName = invoice.Stockist ? invoice.Stockist.name : 'N/A';
+        res.json({ success: true, invoice: invoiceData });
     } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
@@ -3425,7 +3428,10 @@ app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
         const { stockistId } = req.params;
         const invoices = await db.Invoice.findAll({
             where: { stockistId },
-            include: [{ model: db.InvoiceItem, as: 'items' }]
+            include: [{ 
+                model: db.InvoiceItem, as: 'items',
+                include: [{ model: db.Product, attributes: ['id', 'internalCode'], required: false }]
+            }]
         });
         
         let purchasedMap = {}; // "name|batch": data
@@ -3436,6 +3442,7 @@ app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
                     if (!purchasedMap[key]) {
                         purchasedMap[key] = {
                             productId: item.productId,
+                            internalCode: item.Product ? item.Product.internalCode : null,
                             name: item.name,
                             batch: item.batch,
                             expDate: item.expDate || '',

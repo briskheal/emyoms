@@ -243,6 +243,9 @@ function switchOrderTab(tab) {
         
         // initialize one row if empty
         if (purchaseReturnItems.length === 0) addReturnRow();
+        
+        // Always refresh purchase history when entering return tab, re-render when ready
+        loadStockistPurchaseHistory().then(() => renderReturnTable());
 
         setTimeout(() => {
             document.getElementById('section-return').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -455,6 +458,7 @@ async function initOrderSystem() {
     await loadMasters();
     renderExcelProducts();
     fetchMyOrders();
+    loadStockistPurchaseHistory(); // Load purchase history for return tab batch autocomplete
 }
 
 
