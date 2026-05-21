@@ -948,6 +948,9 @@ async function placeOrder() {
         gstAmt += Number(((Number(item.totalValue) || 0) * rate / 100).toFixed(2));
     });
 
+    const netTotal = subTotal + gstAmt;
+    const roundedTotal = Math.round(netTotal);
+    const roundOff = Number((roundedTotal - netTotal).toFixed(2));
     
     const orderData = {
         stockistId: currentUser._id,
@@ -955,7 +958,8 @@ async function placeOrder() {
         items: orderItems,
         subTotal: Number(subTotal) || 0,
         gstAmount: Number(gstAmt) || 0,
-        grandTotal: Math.round(subTotal + gstAmt) || 0,
+        roundOff: roundOff,
+        grandTotal: roundedTotal || 0,
         bonusApproval: {
             isManual: Object.keys(manualBonuses).length > 0
         }
@@ -3537,17 +3541,17 @@ function renderReturnTable() {
             <tr>
                 <td><div style="text-align:center; font-weight:bold; color:var(--text-muted); font-size:0.75rem;">${i + 1}</div></td>
                 <td style="position:relative;">
-                    <input type="text" value="${item.name || ''}" onfocus="handleReturnProductInput(${i}, this)" oninput="handleReturnProductInput(${i}, this)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100%;" placeholder="Search past purchases...">
-                    <div id="ret-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; right:0; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:200px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+                    <input type="text" value="${item.name || ''}" onfocus="handleReturnProductInput(${i}, this)" oninput="handleReturnProductInput(${i}, this)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:100%; font-weight: 700;" placeholder="Type to search...">
+                    <div id="ret-dd-${i}" class="hidden" style="position:absolute; top:100%; left:0; width:350px; background:#1e293b; border:1px solid var(--glass-border); z-index:100; max-height:350px; overflow-y:auto; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
                 </td>
-                <td><input type="text" value="${item.batch || ''}" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:100px;"></td>
-                <td><input type="text" value="${item.exp || ''}" oninput="updateReturnItem(${i}, 'exp', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:80px;" placeholder="MM/YY"></td>
+                <td><input type="text" value="${item.batch || ''}" oninput="updateReturnItem(${i}, 'batch', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:100px; text-align: center;"></td>
+                <td><input type="text" value="${item.exp || ''}" oninput="updateReturnItem(${i}, 'exp', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:80px; text-align: center;" placeholder="MM/YY"></td>
                 <td>
-                    <input type="number" value="${item.qty || 0}" ${item.maxQty ? `max="${item.maxQty}"` : ''} oninput="updateReturnItem(${i}, 'qty', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:65px; text-align:center;">
+                    <input type="number" value="${item.qty || 0}" ${item.maxQty ? `max="${item.maxQty}"` : ''} oninput="updateReturnItem(${i}, 'qty', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:4px; color:#fff; width:65px; text-align:center; font-weight: 700;">
                     ${item.maxQty ? `<div style="font-size:0.5rem; color:var(--text-muted); text-align:center;">Max: ${item.maxQty}</div>` : ''}
                 </td>
-                <td><input type="number" step="0.01" value="${item.rate || 0}" oninput="updateReturnItem(${i}, 'rate', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:85px; text-align:right;"></td>
-                <td><input type="number" value="${item.gst || 0}" oninput="updateReturnItem(${i}, 'gst', this.value)" style="font-size:0.75rem; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#fff; width:55px; text-align:center;"></td>
+                <td><input type="number" step="0.01" value="${item.rate || 0}" oninput="updateReturnItem(${i}, 'rate', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:85px; text-align:right;"></td>
+                <td><input type="number" value="${item.gst || 0}" oninput="updateReturnItem(${i}, 'gst', this.value)" style="font-size:0.75rem; padding:6px; background:transparent; border:none; outline:none; color:#fff; width:55px; text-align:center;"></td>
                 <td style="text-align:right; font-weight:800; color:#fff;">₹${total.toFixed(2)}</td>
                 <td style="text-align:center;"><button onclick="removeReturnRow(${i})" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button></td>
             </tr>
