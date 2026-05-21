@@ -2928,10 +2928,10 @@ function updateModalTotals(orderId, triggerItemId) {
     const roundOff = (grandTotal - netAmount).toFixed(2);
 
     // Update Modal Summary Fields
-    document.getElementById('detail-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('detail-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-    document.getElementById('detail-roundoff').innerText = `₹${roundOff}`;
-    document.getElementById('detail-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('detail-subtotal')) document.getElementById('detail-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('detail-gst')) document.getElementById('detail-gst').innerText = `₹${gstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    if (document.getElementById('detail-roundoff')) document.getElementById('detail-roundoff').innerText = `₹${roundOff}`;
+    if (document.getElementById('detail-total')) document.getElementById('detail-total').innerText = `₹${grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
 
     // Update Sticky Strip if present
     if (document.getElementById('strip-order-subtotal')) document.getElementById('strip-order-subtotal').innerText = `₹${subTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
@@ -2986,11 +2986,14 @@ async function approveOrder(id) {
     if (!o) return;
 
     const batchSelections = {};
+    const qtySelections = {};
     o.items.forEach(item => {
         const select = document.getElementById(`batch-${o._id}-${item._id}`);
         if (select) {
             batchSelections[item._id] = select.value;
         }
+        const qtyInp = document.getElementById(`qty-${o._id}-${item._id}`);
+        if (qtyInp) qtySelections[item._id] = Number(qtyInp.value);
     });
 
     const hqSelect = document.getElementById('detail-hq-select');
