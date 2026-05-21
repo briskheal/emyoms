@@ -1065,7 +1065,20 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
         if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
         if (order.status === 'approved') return res.status(400).json({ success: false, message: 'Order already approved' });
 
+        let newSubTotal = 0;
+        let newGstAmount = 0;
+
         for (const item of order.items) {
+            if (qtySelections && qtySelections[item.id] !== undefined) {
+                const newQty = Number(qtySelections[item.id]);
+                item.qty = newQty;
+                item.totalValue = newQty * (item.priceUsed || 0);
+                await item.save();
+            }
+
+            newSubTotal += Number(item.totalValue) || 0;
+            newGstAmount += ((Number(item.totalValue) || 0) * (Number(item.gstPercent) || 0)) / 100;
+
             let totalDeduction = (item.qty || 0) + (item.bonusQty || 0);
             if (totalDeduction > 0) {
                 const product = await db.Product.findByPk(item.productId);
