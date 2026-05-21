@@ -1583,7 +1583,7 @@ async function generateSampleMatchedPDF(inv) {
         head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
         body: inv.items.map((it, idx) => [
             idx + 1, it.hsn || '-', it.name, it.batch || '-', it.expDate || it.exp || it.expiry || '-', 
-            (it.mrp || fallbackMrp || 0).toFixed(2), it.qty, it.bonusQty || 0, 
+            (Number(it.mrp) || 0).toFixed(2), it.qty, it.bonusQty || 0, 
             (it.priceUsed || it.rate || 0).toFixed(2), (it.gstPercent || 0) + '%', 
             (it.qty * (it.priceUsed || it.rate || 0)).toFixed(2)
         ]),

@@ -3435,6 +3435,7 @@ app.get('/api/stockist/purchased-items/:stockistId', async (req, res) => {
                     const key = `${item.productId || item.name}|${item.batch}`;
                     if (!purchasedMap[key]) {
                         purchasedMap[key] = {
+                            productId: item.productId,
                             name: item.name,
                             batch: item.batch,
                             expDate: item.expDate || '',
