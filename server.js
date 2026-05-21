@@ -2372,8 +2372,17 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                     }
                 };
                 
-                const prompt = `You are a highly accurate invoice data extraction AI. Extract the invoice details from this document and return a pure JSON object.
-Format:
+                const prompt = `You are a highly accurate invoice data extraction AI for Indian pharmaceutical/FMCG invoices. Extract ALL details from this document and return ONLY a pure JSON object with NO markdown, NO code blocks, NO explanation.
+
+CRITICAL RULES:
+1. HSN field: Look for the column header "HSN", "HSN/SAC", "HSN Code", or "HSN No." in the invoice table. Each product row will have an 8-digit (or 6-digit) numeric code in that column. Extract EXACTLY that numeric code for each item. Do NOT confuse with batch numbers. If not found, use "".
+2. Extract EVERY product row. Do not skip any item.
+3. Product names must be UPPERCASE, clean, without batch/expiry info.
+4. Batch must be UPPERCASE.
+5. expDate format: MM/YYYY or MM/YY only.
+6. All numeric fields (mrp, qty, rate, gst, grandTotal) must be numbers not strings.
+
+Return ONLY this exact JSON structure, nothing else:
 {
   "invoiceNo": "string",
   "date": "YYYY-MM-DD",
@@ -2382,11 +2391,12 @@ Format:
   "pincode": "string",
   "fssaiNo": "string",
   "email": "string",
+  "grandTotal": number,
   "items": [
     {
-      "name": "string (uppercase, clean product name, no batch or expiry inside name)",
-      "hsn": "string (This is a 6 to 8 digit numerical code usually found near the product name. Extract only the exact HSN code)",
-      "batch": "string (uppercase)",
+      "name": "string (UPPERCASE product name only)",
+      "hsn": "string (exact HSN/SAC code from the invoice table HSN column, 6-8 digits)",
+      "batch": "string (UPPERCASE)",
       "expDate": "MM/YYYY or MM/YY",
       "mrp": number,
       "qty": number,
@@ -2395,12 +2405,15 @@ Format:
     }
   ]
 }
-If any field is missing, leave it as an empty string or 0. Ensure numeric fields (mrp, qty, rate, gst) are numbers.`;
+If any field is missing, use empty string "" or 0. Never omit the hsn field even if empty string.`;
 
                 const result = await model.generateContent([prompt, filePart]);
-                const text = result.response.text();
-                
+                let text = result.response.text();
+                // Sanitize: strip markdown code fences if present
+                text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+                console.log('🤖 [Gemini Response Preview]:', text.substring(0, 400));
                 let extractedData = JSON.parse(text);
+
                 
                 // Validate stockist identity
                 let identityVerified = false;
