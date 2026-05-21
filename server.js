@@ -3903,31 +3903,44 @@ app.post('/api/admin/upload-purchase-invoice', docUpload.single('invoice'), asyn
                 }
             };
             
-            const prompt = `You are a highly accurate invoice data extraction AI. Extract the invoice details from this supplier document and return a pure JSON object.
-Format:
+            const prompt = `You are a highly accurate invoice data extraction AI for Indian pharmaceutical/FMCG invoices. Extract ALL details from this supplier document and return ONLY a pure JSON object with NO markdown, NO code blocks, NO explanation.
+
+CRITICAL RULES:
+1. HSN field: Look for the column header "HSN", "HSN/SAC", "HSN Code", or "HSN No." in the invoice table. Each product row will have an 8-digit (or 6-digit) numeric code in that column. Extract EXACTLY that numeric code for each item. Do NOT confuse with batch numbers. If not found, use "".
+2. Extract EVERY product row. Do not skip any item.
+3. Product names must be UPPERCASE, clean, without batch/expiry info. (Note: Product names can and often do contain parentheses and ampersands like "(K&E)". Do NOT strip these out and do NOT skip the item).
+4. Batch must be UPPERCASE.
+5. expDate format: MM/YYYY or MM/YY only.
+6. All numeric fields (mrp, ptr, pts, rate, qty, gst) must be numbers not strings.
+
+Return ONLY this exact JSON structure, nothing else:
 {
   "invoiceNo": "string",
   "date": "YYYY-MM-DD",
   "supplierName": "string",
   "items": [
     {
-      "name": "string (uppercase, clean product name, no batch or expiry inside name)",
-      "hsn": "string (This is a 6 to 8 digit numerical code usually found near the product name. Extract only the exact HSN code)",
-      "batch": "string (uppercase)",
+      "name": "string (UPPERCASE product name only)",
+      "hsn": "string (exact HSN/SAC code from the invoice table HSN column, 6-8 digits)",
+      "batch": "string (UPPERCASE)",
       "expDate": "MM/YYYY or MM/YY",
       "mrp": number,
       "ptr": number,
       "pts": number,
-      "rate": number,
-      "qty": number,
+      "rate": number (Unit rate/PTR. Do NOT extract the total line amount as rate),
+      "qty": number (Billed quantity only, do NOT include free/bonus quantity),
       "gst": number
     }
   ]
 }
-If any field is missing, leave it as an empty string or 0. Ensure numeric fields (mrp, ptr, pts, rate, qty, gst) are numbers. PTR and PTS are often price fields.`;
+If any field is missing, use empty string "" or 0.`;
 
             const result = await model.generateContent([prompt, filePart]);
-            const text = result.response.text();
+            let text = result.response.text();
+            
+            // Sanitize: strip markdown code fences if present
+            text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+            console.log('🤖 [Admin Gemini Response Preview]:', text.substring(0, 400));
             
             let extractedData = JSON.parse(text);
             
