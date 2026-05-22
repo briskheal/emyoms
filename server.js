@@ -1069,8 +1069,9 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
         let newGstAmount = 0;
 
         for (const item of order.items) {
-            if (qtySelections && qtySelections[item.id] !== undefined) {
-                const newQty = Number(qtySelections[item.id]);
+            const qtyKey = item.id ? String(item.id) : (item._id ? String(item._id) : null);
+            if (qtySelections && qtyKey && (qtySelections[qtyKey] !== undefined || qtySelections[item.id] !== undefined)) {
+                const newQty = Number(qtySelections[qtyKey] !== undefined ? qtySelections[qtyKey] : qtySelections[item.id]);
                 item.qty = newQty;
                 item.totalValue = newQty * (item.priceUsed || 0);
                 await item.save();
@@ -1085,7 +1086,8 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
                 if (product) {
                     await product.decrement('qtyAvailable', { by: totalDeduction });
                     
-                    const selectedBatchNo = batchSelections ? batchSelections[item.id] : null;
+                    const bKey = item.id ? String(item.id) : (item._id ? String(item._id) : null);
+                    const selectedBatchNo = batchSelections ? (batchSelections[bKey] || batchSelections[item.id] || batchSelections[item._id]) : null;
                     let firstBatch = null;
 
                     if (selectedBatchNo) {
@@ -2359,7 +2361,7 @@ app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async
                 const { GoogleGenerativeAI } = require('@google/generative-ai');
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
                 const model = genAI.getGenerativeModel({ 
-                    model: "gemini-2.5-flash", 
+                    model: "gemini-flash-latest", 
                     generationConfig: { responseMimeType: "application/json" } 
                 });
                 
@@ -3897,7 +3899,7 @@ app.post('/api/admin/upload-purchase-invoice', docUpload.single('invoice'), asyn
             const { GoogleGenerativeAI } = require('@google/generative-ai');
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash", 
+                model: "gemini-flash-latest", 
                 generationConfig: { responseMimeType: "application/json" } 
             });
             

@@ -17,18 +17,33 @@ const NEON_USER = "neondb_owner";
 const NEON_PASS = "npg_bqJ3wQE8GWuX";
 const NEON_DB = "neondb";
 
-const sequelize = new Sequelize(`postgresql://${NEON_USER}:${NEON_PASS}@${NEON_IP}/${NEON_DB}`, {
-    dialect: 'postgres',
-    logging: false,
-    dialectOptions: {
-        ssl: {
-            require: true,
-            rejectUnauthorized: false,
-            servername: NEON_HOST,
-            checkServerIdentity: () => undefined
+let sequelize;
+
+if (process.env.DATABASE_URL) {
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
+        dialect: 'postgres',
+        logging: false,
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false
+            }
         }
-    }
-});
+    });
+} else {
+    sequelize = new Sequelize(`postgresql://${NEON_USER}:${NEON_PASS}@${NEON_IP}/${NEON_DB}`, {
+        dialect: 'postgres',
+        logging: false,
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false,
+                servername: NEON_HOST,
+                checkServerIdentity: () => undefined
+            }
+        }
+    });
+}
 
 const db = {};
 db.Sequelize = Sequelize;
