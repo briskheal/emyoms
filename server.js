@@ -320,17 +320,19 @@ app.post('/api/admin/upload-signature', docUpload.single('signature'), async (re
 const PORT = process.env.PORT || 4000;
 
 // Database Initialization & Server Start
-db.sequelize.authenticate()
-    .then(() => {
-        console.log('✅ PostgreSQL Connected Successfully');
-        app.listen(PORT, () => {
-            console.log(`🚀 EMYOMS Server running on http://localhost:${PORT}`);
+if (!process.env.VERCEL) {
+    db.sequelize.authenticate()
+        .then(() => {
+            console.log('✅ PostgreSQL Connected Successfully');
+            app.listen(PORT, () => {
+                console.log(`🚀 EMYOMS Server running on http://localhost:${PORT}`);
+            });
+        })
+        .catch(err => {
+            console.error('❌ CRITICAL: Server Failed to Start:', err);
+            process.exit(1); 
         });
-    })
-    .catch(err => {
-        console.error('❌ CRITICAL: Server Failed to Start:', err);
-        process.exit(1); 
-    });
+}
 
 // --- NEGOTIATION ENDPOINTS ---
 
@@ -4767,4 +4769,4 @@ app.post('/api/admin/system/reset', async (req, res) => {
     }
 });
 
-
+module.exports = app;
