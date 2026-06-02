@@ -1716,7 +1716,7 @@ app.get('/api/admin/products/:id/timeline', async (req, res) => {
                 party: it.PurchaseEntry.Supplier ? it.PurchaseEntry.Supplier.name : 'Supplier',
                 qty: it.qty,
                 batch: it.batch,
-                rate: it.rate,
+                rate: it.purchaseRate,
                 id: it.PurchaseEntry.id
             });
         });

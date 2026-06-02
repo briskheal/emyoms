@@ -1257,462 +1257,57 @@ async function downloadStockistInvoice() {
     }
 }
 
+
 async function generateInvoicePDF(inv) {
-    if (companySettings?.invoiceStyle === 'sample') {
-        return await generateSampleMatchedPDF(inv);
-    }
-
-    function numberToWords(num) {
-        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
-        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-        const g = ['', 'Thousand', 'Lakh', 'Crore'];
-        const makeGroup = (n) => {
-            let s = '';
-            if (n >= 100) { s += a[Math.floor(n / 100)] + 'Hundred '; n %= 100; }
-            if (n >= 20) { s += b[Math.floor(n / 10)] + ' '; n %= 10; }
-            if (n > 0) s += a[n];
-            return s;
+    const PDFLib = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
+    if (!PDFLib) throw new Error("PDF Library (jsPDF) not loaded properly.");
+    const doc = new PDFLib('p', 'mm', 'a4');
+    
+    const mappedItems = (inv.items || []).map(it => {
+        const prod = typeof allProducts !== 'undefined' ? allProducts.find(p => p._id == it.productId || p.id == it.productId) : null;
+        return { 
+            name: it.name,
+            hsn: it.hsn || (prod ? prod.hsn : '-'),
+            batch: it.batch || '-',
+            expDate: it.expDate || it.exp || it.expiry || '-',
+            mrp: it.mrp || (prod ? prod.mrp : 0),
+            ptr: it.ptr || (prod ? prod.ptr : 0),
+            pts: it.priceUsed !== undefined ? it.priceUsed : it.rate,
+            price: it.priceUsed !== undefined ? it.priceUsed : it.rate,
+            qty: it.qty,
+            bonusQty: it.bonusQty || it.free || 0,
+            gstPercent: it.gstPercent || (prod ? prod.gst : 0)
         };
-        if (num === 0) return 'Zero';
-        let ns = num.toString().split('.');
-        let integer = parseInt(ns[0]);
-        let fraction = ns[1] ? parseInt(ns[1]) : 0;
-        let out = '';
-        let i = 0;
-        while (integer > 0) {
-            let group = (i === 0) ? integer % 1000 : integer % 100;
-            integer = (i === 0) ? Math.floor(integer / 1000) : Math.floor(integer / 100);
-            if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
-            i++;
-        }
-        let final = 'Rupees ' + out.trim();
-        if (fraction > 0) final += ' and ' + fraction + '/100 Paise';
-        return final + ' Only';
-    }
-
-    const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const style = companySettings?.invoiceStyle || 'classic';
-
-    doc.setFont("helvetica");
-    if (style === 'modern') {
-        doc.setFillColor(99, 102, 241);
-        doc.rect(0, 0, 210, 40, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.text("TAX INVOICE", 105, 20, { align: 'center' });
-        doc.setFontSize(10);
-        doc.text(`${companySettings?.name || 'COMPANY NAME'}`, 105, 30, { align: 'center' });
-        doc.setTextColor(40, 44, 52);
-    } else {
-        doc.setFontSize(12);
-        doc.setTextColor(99, 102, 241);
-        doc.setFont("helvetica", "bold");
-        doc.text("TAX INVOICE", 105, 10, { align: 'center' });
-        doc.setDrawColor(99, 102, 241);
-        doc.line(105, 15, 105, 65); 
-        if (companySettings?.logoImage) doc.addImage(companySettings.logoImage, 'PNG', 15, 8, 30, 15);
-        doc.setFontSize(10);
-        doc.text(companySettings?.name || "COMPANY NAME", 15, 28);
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        const addr = doc.splitTextToSize(companySettings?.address || "Address Not Configured", 80);
-        doc.text(addr, 15, 33);
-        let currY = 33 + (addr.length * 4);
-        doc.text(`DL No: ${companySettings?.dlNo || 'N/A'} | GSTIN: ${companySettings?.gstNo || 'N/A'}`, 15, currY);
-    }
-
-    const party = currentUser || {};
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(99, 102, 241);
-    doc.text("BILL TO:", 115, 15);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(40, 44, 52);
-    doc.text(inv.stockistName || 'N/A', 115, 20);
-    const sAddr = doc.splitTextToSize(party.address || 'N/A', 80);
-    doc.text(sAddr, 115, 25);
-    let sY = 25 + (sAddr.length * 4);
-    doc.text(`GSTIN: ${party.gst || 'N/A'}`, 115, sY);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Invoice No: ${inv.invoiceNo} | Date: ${new Date(inv.createdAt).toLocaleDateString('en-GB')}`, 15, 65);
-
-    doc.autoTable({
-        startY: 70,
-        head: [['S.No', 'Product', 'Batch', 'MRP', 'Qty', 'Price', 'Taxable', 'GST%', 'Total']],
-        body: inv.items.map((item, idx) => {
-            const price = Number(item.priceUsed) || 0;
-            const taxable = Number(item.totalValue) || 0;
-            const rate = Number(item.gstPercent) || 0;
-            const total = taxable + (taxable * rate / 100);
-            return [
-                idx + 1, item.name, item.batch || '-', (Number(item.mrp) || 0).toFixed(2), item.qty, 
-                price.toFixed(2), taxable.toFixed(2), rate + '%', 
-                total.toFixed(2)
-            ];
-        }),
-
-        theme: 'grid',
-        headStyles: { fillColor: [99, 102, 241], fontSize: 7, halign: 'center' },
-        styles: { fontSize: 7, cellPadding: 2 },
-        margin: { left: 15, right: 15, bottom: 60 }
     });
 
-    const tableFinalY = doc.lastAutoTable.finalY + 5;
-
-    // Per-rate GST breakdown (CGST/SGST or IGST)
-    const taxMap = {};
-    let totalTaxable = 0, totalGST = 0;
-    inv.items.forEach(it => {
-        const rate = parseFloat(it.gstPercent) || 0;
-        const taxable = it.qty * (it.priceUsed || it.price || 0);
-        const gst = (taxable * rate) / 100;
-        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
-        taxMap[rate].taxable += taxable;
-        taxMap[rate].tax += gst;
-        totalTaxable += taxable;
-        totalGST += gst;
-    });
-    const companyGST = companySettings?.gstNo || '';
-    const buyerGST = party.gstNo || party.gst || '';
-    const isInterstate = buyerGST.length > 2 && companyGST.length > 2 && companyGST.substring(0, 2) !== buyerGST.substring(0, 2);
-    let taxBody = [];
-    Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
-        const rate = parseFloat(r), d = taxMap[r];
-        if (isInterstate) { taxBody.push([`IGST @ ${rate}%`, d.taxable.toFixed(2), `${rate}%`, d.tax.toFixed(2)]); }
-        else {
-            const hR = (rate/2).toFixed(1), hT = (d.tax/2).toFixed(2);
-            taxBody.push([`CGST @ ${hR}%`, d.taxable.toFixed(2), `${hR}%`, hT]);
-            taxBody.push([`SGST @ ${hR}%`, d.taxable.toFixed(2), `${hR}%`, hT]);
-        }
-    });
-
-    doc.autoTable({
-        startY: tableFinalY,
-        head: [['Tax Summary', 'Taxable', 'Rate', 'Tax Amount']],
-        body: taxBody,
-        theme: 'plain',
-        headStyles: { fillColor: false, textColor: [99, 102, 241], fontStyle: 'bold', fontSize: 7, halign: 'right' },
-        styles: { fontSize: 7, halign: 'right', cellPadding: 1 },
-        margin: { left: 110, right: 15 },
-        tableWidth: 85
-    });
-
-    const finalY = 240;
-    doc.setDrawColor(99, 102, 241); doc.setLineWidth(0.5); doc.line(15, finalY - 15, 195, finalY - 15);
-    doc.setFont("helvetica", "bold"); doc.setTextColor(99, 102, 241); doc.setFontSize(9);
-    doc.text("Amount in Words:", 15, finalY - 10);
-    doc.setTextColor(40, 44, 52); doc.setFont("helvetica", "normal");
-    const totalVal = Number(inv.grandTotal) || 0;
-    doc.text("(" + numberToWords(totalVal) + ")", 15, finalY + 5);
-
-    const unroundedNet = Number((totalTaxable + totalGST).toFixed(2));
-    const roundOffValue = (totalVal - unroundedNet).toFixed(2);
-    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(40, 44, 52);
-    doc.text(`Sub Total (Taxable): Rs. ${totalTaxable.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 10, { align: 'right' });
-    doc.text(`GST Amount: Rs. ${totalGST.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY - 5, { align: 'right' });
-    doc.text(`Round Off: Rs. ${roundOffValue}`, 195, finalY, { align: 'right' });
-    doc.setFont("helvetica", "bold"); doc.setTextColor(99, 102, 241);
-    doc.text(`NET PAYABLE: Rs. ${totalVal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, finalY + 5, { align: 'right' });
-
-
-    // Bank Details & QR
-    if (companySettings?.invoiceBankVisible !== false && companySettings?.bankDetails) {
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("courier", "bold"); doc.setFontSize(8);
-        doc.text("Bank Details:", 15, finalY + 15);
-        doc.setFont("courier", "normal");
-        companySettings.bankDetails.split('\n').forEach((line, i) => doc.text(line, 15, finalY + 19 + (i * 4)));
-        let upiTarget = companySettings.upiId;
-        if (!upiTarget && companySettings.bankAccountNo && companySettings.bankIfsc)
-            upiTarget = `${companySettings.bankAccountNo}@${companySettings.bankIfsc.toUpperCase().trim()}.ifsc.npci`;
-        if (upiTarget && window.QRCode) {
-            try {
-                const upiUrl = `upi://pay?pa=${upiTarget}&pn=${encodeURIComponent(companySettings.name||'EMYRIS')}&am=${Math.round(inv.grandTotal)}&cu=INR`;
-                const qrDataUrl = await QRCode.toDataURL(upiUrl, { width: 150, margin: 1 });
-                doc.addImage(qrDataUrl, 'PNG', 100, finalY + 10, 30, 30);
-                doc.setFontSize(6); doc.text("Scan to Pay", 115, finalY + 42, { align: 'center' });
-            } catch(err) { console.error("QR Error:", err); }
-        }
-    }
-    // Terms & Conditions
-    doc.setFontSize(8); doc.setFont("helvetica", "italic"); doc.setTextColor(0, 0, 0);
-    const tConds = (companySettings?.invoiceTerms || companySettings?.termsConditions || "1. Goods once sold will not be taken back. 2. Subject to local Jurisdiction.").split('\n');
-    tConds.forEach((line, i) => doc.text(line, 15, 280 + (i * 4)));
-    // Signatory
-    doc.setFont("helvetica", "bold"); doc.setTextColor(40, 44, 52);
-    doc.text(`For ${companySettings?.name || "EMYRIS BIOLIFESCIENCES"}`, 195, finalY + 30, { align: 'right' });
-    if (companySettings?.signatureImage) { try { doc.addImage(companySettings.signatureImage, 'JPEG', 165, finalY + 32, 30, 10); } catch(e){} }
-    doc.setFont("helvetica", "normal");
-    doc.text("Authorised Signatory", 195, finalY + 45, { align: 'right' });
-
-    doc.save(`Invoice_${inv.invoiceNo}.pdf`);
-}
-
-// --- INITIALIZATION TRIGGER ---
-document.addEventListener('DOMContentLoaded', () => {
-    // Initial UI check
-    if (!localStorage.getItem('emyris_user')) {
-        switchView('login');
-    }
-});
-
-
-// Resilient Media Handling: Ensure music/video doesn't stop on layout shifts
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        // Only resume if it was already playing
-        if (localStorage.getItem('emyris_music_on') === 'true') {
-            const audio = document.getElementById('bgMusic');
-            if (audio && audio.paused) {
-                audio.play().catch(() => {});
-            }
-        }
-    }, 250); // Debounce
-});
-
-
-function startMusic() {
-    const audio = document.getElementById('bgMusic');
-    if (!audio || !audio.src) return;
-    // Only attempt auto-start if music should be playing (state is true)
-    if (isMusicPlaying && audio.paused) {
-        audio.play().catch(e => {
-            console.warn("Music start blocked by browser policies.");
-        });
-    }
-}
-
-
-
-/**
- * AI-DRIVEN COORDINATE ENGINE (SYNCED FROM ADMIN)
- */
-async function generateSampleMatchedPDF(inv) {
-    const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const filename = `Invoice_${inv.invoiceNo}.pdf`;
-
-    // Helper: numberToWords (Copied from generateInvoicePDF)
-    const numberToWords = (num) => {
-        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
-        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-        const g = ['', 'Thousand', 'Lakh', 'Crore'];
-        const makeGroup = (n) => {
-            let s = '';
-            if (n >= 100) { s += a[Math.floor(n / 100)] + 'Hundred '; n %= 100; }
-            if (n >= 20) { s += b[Math.floor(n / 10)] + ' '; n %= 10; }
-            if (n > 0) s += a[n];
-            return s;
-        };
-        if (num === 0) return 'Zero';
-        let ns = num.toString().split('.');
-        let integer = parseInt(ns[0]);
-        let fraction = ns[1] ? parseInt(ns[1]) : 0;
-        let out = '';
-        let i = 0;
-        while (integer > 0) {
-            let group = (i === 0) ? integer % 1000 : integer % 100;
-            integer = (i === 0) ? Math.floor(integer / 1000) : Math.floor(integer / 100);
-            if (group > 0) out = makeGroup(group) + (g[i] ? g[i] + ' ' : '') + out;
-            i++;
-        }
-        let final = 'Rupees ' + out.trim();
-        if (fraction > 0) final += ' and ' + fraction + '/100 Paise';
-        return final + ' Only';
-    };
-
-    let headerY = 15;
-    if (companySettings?.logoImage) {
-        try {
-            const format = companySettings.logoImage.toLowerCase().includes('png') ? 'PNG' : 'JPEG';
-            // Wider logo as requested (40x22), moved slightly left
-            doc.addImage(companySettings.logoImage, format, 12, headerY - 3, 40, 22);
-        } catch(e){}
-    }
-
-    // Company Name & Details - Shifted Right to accommodate wider logo
-    const headerX = 58; 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(0);
-    doc.text(companySettings?.name || "EMYRIS BIOLIFESCIENCES", headerX, headerY + 5);
+    const createdAt = new Date(inv.createdAt || new Date());
+    const paymentDueDays = Number(typeof companySettings !== 'undefined' ? companySettings?.paymentDueDays : 21) || 21;
+    const dueDate = new Date(createdAt.getTime() + paymentDueDays * 24 * 60 * 60 * 1000);
     
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(60);
-    const coAddr = companySettings?.address || "Office Address Here";
-    const addrLines = doc.splitTextToSize(coAddr, 140);
-    doc.text(addrLines, headerX, headerY + 10);
-    
-    let infoY = headerY + 10 + (addrLines.length * 4);
-    doc.setFontSize(8);
-    doc.text(`GSTIN: ${companySettings?.gstNo || 'N/A'} | DL No: ${companySettings?.dlNo || 'N/A'}`, headerX, infoY);
-    doc.text(`Contact: ${companySettings?.phones?.[0] || 'N/A'} | Email: ${companySettings?.emails?.[0] || 'N/A'}`, headerX, infoY + 4);
+    const extraFields = [
+        { label: 'Place of Supply', value: inv.placeOfSupply || currentUser?.state || currentUser?.city || (typeof companySettings !== 'undefined' ? companySettings?.defaultPlaceOfSupply : '') || 'Telangana' },
+        { label: 'Due Date', value: dueDate.toLocaleDateString('en-GB') }
+    ];
 
-    const themeHex = companySettings?.themeColor || '#6366f1';
-    const r = parseInt(themeHex.slice(1, 3), 16);
-    const g = parseInt(themeHex.slice(3, 5), 16);
-    const b = parseInt(themeHex.slice(5, 7), 16);
-    const themeRgb = [r, g, b];
-
-    doc.setDrawColor(themeRgb[0], themeRgb[1], themeRgb[2]); doc.setLineWidth(0.5); doc.line(10, infoY + 6, 200, infoY + 6);
-    
-    // Right Top Label below border line
-    doc.setFontSize(7); doc.setFont("helvetica", "normal");
-    doc.text("Original Inv. for Buyer", 200, 14, { align: 'right' });
-
-    // TAX INVOICE LABEL - Clean Bold Design (No Box)
-    doc.setTextColor(0);
-    doc.setFontSize(12); doc.setFont("helvetica", "bold");
-    doc.text("TAX INVOICE", 200, infoY + 12, { align: 'right' });
-    doc.setTextColor(0);
-    
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text(`Invoice No:`, 145, 50); doc.setFont("helvetica", "bold"); doc.text(inv.invoiceNo, 170, 50);
-    doc.setFont("helvetica", "normal"); doc.text(`Date:`, 145, 55); doc.setFont("helvetica", "bold"); doc.text(new Date(inv.createdAt).toLocaleDateString('en-GB'), 170, 55);
-    
-    doc.setFontSize(9); doc.setFont("helvetica", "normal");
-    doc.text("M/s:", 15, 50); 
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-    doc.text(inv.stockistName || 'N/A', 25, 50);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    const pAddrLines = doc.splitTextToSize(currentUser?.address || 'N/A', 80);
-    doc.text(pAddrLines, 25, 55);
-    
-    let partyBottomY = 55 + (pAddrLines.length * 4);
-    doc.text(`GSTIN: ${currentUser?.gst || 'N/A'}`, 25, partyBottomY + 2);
-    doc.text(`DL No: ${currentUser?.dl || 'N/A'}`, 25, partyBottomY + 6);
-
-    doc.autoTable({
-        startY: 85,
-        head: [['Sn', 'HSN', 'Description', 'Batch', 'Exp', 'MRP', 'Qty', 'Free', 'Rate', 'GST%', 'Amount']],
-        body: inv.items.map((it, idx) => [
-            idx + 1, it.hsn || '-', it.name, it.batch || '-', it.expDate || it.exp || it.expiry || '-', 
-            (Number(it.mrp) || 0).toFixed(2), it.qty, it.bonusQty || 0, 
-            (it.priceUsed || it.rate || 0).toFixed(2), (it.gstPercent || 0) + '%', 
-            (it.qty * (it.priceUsed || it.rate || 0)).toFixed(2)
-        ]),
-        theme: 'grid',
-        headStyles: { fillColor: themeRgb, textColor: 255, fontStyle: 'bold', fontSize: 7, halign: 'center', lineWidth: 0.1 },
-        styles: { fontSize: 7, cellPadding: 1.5, textColor: 0, lineWidth: 0.1, lineColor: themeRgb },
-        columnStyles: {
-            0: { cellWidth: 8, halign: 'center' },
-            1: { cellWidth: 15, halign: 'center' },
-            2: { cellWidth: 'auto' },
-            5: { halign: 'right' },
-            6: { halign: 'center' },
-            7: { halign: 'center' },
-            8: { halign: 'right' },
-            9: { halign: 'center' },
-            10: { halign: 'right', fontStyle: 'bold' }
+    await generateStandardPDF({
+        doc,
+        title: "TAX INVOICE",
+        docNo: inv.invoiceNo,
+        date: createdAt.toLocaleDateString('en-GB'),
+        party: { 
+            name: inv.stockistName || currentUser?.name || 'Direct Customer', 
+            address: currentUser?.address || '', 
+            gst: currentUser?.gstNo || currentUser?.gst || '', 
+            dl: currentUser?.dlNo || currentUser?.dl || '' 
         },
-        margin: { left: 10, right: 10, bottom: 60 }
+        items: mappedItems,
+        grandTotal: inv.grandTotal,
+        filename: `Invoice_${inv.invoiceNo}.pdf`,
+        showBank: true,
+        extraFields: extraFields
     });
-
-    let tableFinalY = doc.lastAutoTable.finalY + 5;
-
-    const taxMap = {};
-    let totalTaxable = 0; let totalGST = 0;
-    inv.items.forEach(it => {
-        const rate = parseFloat(it.gstPercent) || 0;
-        const taxable = it.qty * it.priceUsed;
-        const gst = (taxable * rate) / 100;
-        if (!taxMap[rate]) taxMap[rate] = { taxable: 0, tax: 0 };
-        taxMap[rate].taxable += taxable;
-        taxMap[rate].tax += gst;
-        totalTaxable += taxable; totalGST += gst;
-    });
-
-    const isInter = (currentUser?.gstNo || currentUser?.gst) && companySettings?.gstNo && companySettings.gstNo.substring(0,2) !== (currentUser.gstNo || currentUser.gst).substring(0,2);
-    let taxBody = [];
-    Object.keys(taxMap).sort((a,b)=>a-b).forEach(r => {
-        const rate = parseFloat(r); const d = taxMap[r];
-        if (isInter) { taxBody.push([`${rate}%`, d.taxable.toFixed(2), '0.00', '0.00', d.tax.toFixed(2)]); }
-        else {
-            const hT = (d.tax / 2).toFixed(2);
-            taxBody.push([`${rate}%`, d.taxable.toFixed(2), hT, hT, d.tax.toFixed(2)]);
-        }
-    });
-
-    doc.setFontSize(7); doc.setFont("helvetica", "bold"); doc.text("TAX SUMMARY", 10, tableFinalY);
-    doc.autoTable({
-        startY: tableFinalY + 2,
-        head: [['GST%', 'Taxable', 'CGST', 'SGST', 'Total Tax']],
-        body: taxBody,
-        theme: 'grid',
-        headStyles: { fillColor: [250, 250, 250], textColor: 0, fontSize: 6, halign: 'center' },
-        styles: { fontSize: 6, halign: 'right', cellPadding: 1, lineColor: themeRgb },
-        margin: { left: 10 },
-        tableWidth: 80
-    });
-
-    const summaryY = tableFinalY + 2;
-    doc.setFontSize(8); doc.setFont("helvetica", "normal");
-    doc.text("Sub Total:", 150, summaryY); doc.text(`Rs. ${totalTaxable.toFixed(2)}`, 195, summaryY, { align: 'right' });
-    doc.text("Total GST:", 150, summaryY + 5); doc.text(`Rs. ${totalGST.toFixed(2)}`, 195, summaryY + 5, { align: 'right' });
-    
-    const unrounded = totalTaxable + totalGST;
-    const roundOff = (inv.grandTotal - unrounded).toFixed(2);
-    doc.text("Round Off:", 150, summaryY + 10); doc.text(`Rs. ${roundOff}`, 195, summaryY + 10, { align: 'right' });
-    
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-    doc.text("GRAND TOTAL:", 150, summaryY + 16); doc.text(`Rs. ${inv.grandTotal.toLocaleString('en-IN', {minimumFractionDigits:2})}`, 195, summaryY + 16, { align: 'right' });
-
-    doc.setFontSize(8); doc.setFont("helvetica", "italic");
-    doc.text(`(Amount in Words: ${numberToWords(inv.grandTotal)})`, 10, summaryY + 30);
-
-    const footerY = 270;
-    // QR Code Generation
-    let upiLink = "";
-    if (companySettings?.upiId) {
-        const am = Number(inv.grandTotal).toFixed(2);
-        upiLink = `upi://pay?pa=${companySettings.upiId}&pn=${encodeURIComponent(companySettings.name || 'EMYRIS')}&am=${am}&cu=INR`;
-    } else if (companySettings?.bankAccountNo && companySettings?.bankIfsc) {
-        const am = Number(inv.grandTotal).toFixed(2);
-        upiLink = `upi://pay?pa=${companySettings.bankAccountNo}@${companySettings.bankIfsc.toUpperCase().trim()}.ifsc.npci&pn=${encodeURIComponent(companySettings.name || 'EMYRIS')}&am=${am}&cu=INR`;
-    }
-
-    if (upiLink && window.QRCode) {
-        try {
-            const qrDataUrl = await QRCode.toDataURL(upiLink, { width: 150, margin: 1 });
-            doc.addImage(qrDataUrl, 'PNG', 95, footerY - 10, 22, 22);
-            doc.setFontSize(6); doc.text("Scan to Pay", 106, footerY + 14, { align: 'center' });
-        } catch(err) { 
-            console.error("Local QR Error:", err);
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
-            try { 
-                doc.addImage(qrUrl, 'PNG', 95, footerY - 20, 20, 20); 
-                doc.setFontSize(6); doc.text("Scan to Pay", 105, footerY + 2, { align: 'center' });
-            } catch(e2){}
-        }
-    }
-
-    doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(80);
-    const bankLines = (companySettings?.bankDetails) ? companySettings.bankDetails.split('\n') : [];
-    doc.text("BANK DETAILS:", 10, footerY);
-    let bankLastY = footerY;
-    bankLines.forEach((l, i) => {
-        bankLastY = footerY + 4 + (i * 3);
-        doc.text(l, 10, bankLastY);
-    });
-
-    // Terms & Conditions
-    const termsY = Math.max(footerY + 20, bankLastY + 6);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(7);
-    doc.text("TERMS & CONDITIONS:", 10, termsY);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(6);
-    const termsText = companySettings?.invoiceTerms || companySettings?.termsConditions || "1. Goods once sold will not be taken back.\n2. Subject to local Jurisdiction.";
-    const termsLines = doc.splitTextToSize(termsText, 80);
-    doc.text(termsLines, 10, termsY + 4);
-
-    doc.setFont("helvetica", "bold"); doc.setTextColor(0);
-    doc.text(`For ${companySettings?.name || "EMYRIS BIOLIFESCIENCES"}`, 195, footerY, { align: 'right' });
-    if (companySettings?.signatureImage) {
-        try { doc.addImage(companySettings.signatureImage, 'JPEG', 160, footerY + 2, 35, 12); } catch(e){}
-    }
-    doc.text("Authorised Signatory", 195, footerY + 18, { align: 'right' });
-
-    doc.save(filename);
 }
+
 // --- PDCN WORKSHEET LOGIC ---
 async function fetchPDCNInvoices() {
     const container = document.getElementById('pdcn-invoice-selector');
