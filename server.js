@@ -401,8 +401,12 @@ app.put('/api/admin/orders/:orderId/items/:itemId/negotiate', async (req, res) =
 // --- ADMIN AUTH ---
 app.post('/api/admin/login', (req, res) => {
     const { adminId, password } = req.body;
-    const correctId = process.env.ADMIN_ID || "EMYRIS";
-    const correctPass = process.env.ADMIN_PASSWORD || "1234";
+    const correctId = process.env.ADMIN_ID;
+    const correctPass = process.env.ADMIN_PASSWORD;
+
+    if (!correctId || !correctPass) {
+        return res.status(500).json({ success: false, message: "Server misconfiguration: Admin credentials not set." });
+    }
     
     if (adminId === correctId && password === correctPass) {
         res.json({ success: true, message: "Welcome Admin" });
