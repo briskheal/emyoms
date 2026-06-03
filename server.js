@@ -34,18 +34,66 @@ const upload = multer({
     storage,
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['audio/mpeg', 'video/mp4', 'audio/mp3'];
+const express = require('express');
+const db = require('./models'); // Import Sequelize models
+const cors = require('cors');
+const dotenv = require('dotenv');
+const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+dotenv.config();
+const cloudinary = require('cloudinary').v2;
+
+// Cloudinary Configuration
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+const PDFParser = require('pdf2json');
+const pdfParse = require('pdf-parse');
+
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, 'uploads', 'media');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+});
+const upload = multer({ 
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['audio/mpeg', 'video/mp4', 'audio/mp3'];
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
         else cb(new Error('Invalid file type. Only MP3 and MP4 allowed.'));
     }
 });
 const docUpload = multer({ 
-    storage,
+    storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
         if (allowedTypes.includes(file.mimetype)) cb(null, true);
         else cb(new Error('Invalid file type. Only PDF, JPG, PNG allowed.'));
-    }
+    },
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
+
+// Helper: upload buffer to Cloudinary via stream (works on serverless)
+function uploadBufferToCloudinary(buffer, options = {}) {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+        });
+        stream.end(buffer);
+    });
+}
 
 const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL;
 
@@ -244,13 +292,10 @@ app.post('/api/admin/upload-media', upload.single('media'), async (req, res) => 
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
         const { type } = req.body;
 
-        const result = await cloudinary.uploader.upload(req.file.path, {
+        const result = await uploadBufferToCloudinary(req.file.buffer, {
             resource_type: type === 'video' ? 'video' : 'auto',
             folder: 'emyoms/media'
         });
-
-        // Clean up local file
-        fs.unlinkSync(req.file.path);
 
         let company = await db.Company.findOne();
         if (!company) company = await db.Company.create({});
@@ -272,12 +317,10 @@ app.post('/api/admin/settings/upload-design', docUpload.single('design'), async 
     try {
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
 
-        const result = await cloudinary.uploader.upload(req.file.path, {
+        const result = await uploadBufferToCloudinary(req.file.buffer, {
             resource_type: 'auto',
             folder: 'emyoms/blueprints'
         });
-
-        fs.unlinkSync(req.file.path);
 
         let company = await db.Company.findOne();
         if (!company) company = await db.Company.create({});
@@ -296,8 +339,7 @@ app.post('/api/admin/settings/upload-design', docUpload.single('design'), async 
 app.post('/api/admin/upload-logo', docUpload.single('logo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
-        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyoms/branding' });
-        fs.unlinkSync(req.file.path);
+        const result = await uploadBufferToCloudinary(req.file.buffer, { folder: 'emyoms/branding' });
         let company = await db.Company.findOne();
         if (!company) company = await db.Company.create({});
         await company.update({ logoImage: result.secure_url });
@@ -308,8 +350,7 @@ app.post('/api/admin/upload-logo', docUpload.single('logo'), async (req, res) =>
 app.post('/api/admin/upload-signature', docUpload.single('signature'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, error: "No file uploaded" });
-        const result = await cloudinary.uploader.upload(req.file.path, { folder: 'emyoms/branding' });
-        fs.unlinkSync(req.file.path);
+        const result = await uploadBufferToCloudinary(req.file.buffer, { folder: 'emyoms/branding' });
         let company = await db.Company.findOne();
         if (!company) company = await db.Company.create({});
         await company.update({ signatureImage: result.secure_url });
@@ -1093,1369 +1134,6 @@ app.put('/api/admin/orders/:id/approve', async (req, res) => {
                     await product.decrement('qtyAvailable', { by: totalDeduction });
                     
                     const bKey = item.id ? String(item.id) : (item._id ? String(item._id) : null);
-                    const selectedBatchNo = batchSelections ? (batchSelections[bKey] || batchSelections[item.id] || batchSelections[item._id]) : null;
-                    let firstBatch = null;
-
-                    if (selectedBatchNo) {
-                        const targetBatch = await db.Batch.findOne({ where: { productId: item.productId, batchNo: selectedBatchNo } });
-                        if (targetBatch && targetBatch.qtyAvailable >= totalDeduction) {
-                            await targetBatch.decrement('qtyAvailable', { by: totalDeduction });
-                            firstBatch = targetBatch;
-                            totalDeduction = 0;
-                        }
-                    }
-
-                    if (totalDeduction > 0) {
-                        const batches = await db.Batch.findAll({ 
-                            where: { productId: item.productId },
-                            order: [['expDate', 'ASC']]
-                        });
-
-                        for (const b of batches) {
-                            if (totalDeduction <= 0) break;
-                            if (b.qtyAvailable > 0 && b.batchNo !== selectedBatchNo) {
-                                if (!firstBatch) firstBatch = b;
-                                const deduct = Math.min(b.qtyAvailable, totalDeduction);
-                                await b.decrement('qtyAvailable', { by: deduct });
-                                totalDeduction -= deduct;
-                            }
-                        }
-                    }
-                    
-                    if (firstBatch) {
-                        await item.update({
-                            batch: firstBatch.batchNo,
-                            mfgDate: firstBatch.mfgDate,
-                            expDate: firstBatch.expDate
-                        });
-                    }
-                }
-            }
-        }
-
-        const newGrandTotal = Math.round(newSubTotal + newGstAmount);
-        await order.update({ 
-            status: 'approved', 
-            hq: selectedHq || order.hq,
-            subTotal: newSubTotal,
-            gstAmount: newGstAmount,
-            grandTotal: newGrandTotal
-        });
-        res.json({ success: true, order });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/admin/invoices', async (req, res) => {
-    try {
-        const invoices = await db.Invoice.findAll({ 
-            include: [
-                { model: db.Stockist },
-                { model: db.InvoiceItem, as: 'items' }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
-        res.json(invoices);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.get('/api/stockist/invoice/:invoiceNo', async (req, res) => {
-    try {
-        const { stockistId } = req.query;
-        const invoice = await db.Invoice.findOne({
-            where: { invoiceNo: req.params.invoiceNo, stockistId },
-            include: [
-                { 
-                    model: db.InvoiceItem, 
-                    as: 'items',
-                    include: [{ model: db.Product }] // Added product inclusion
-                }
-            ]
-        });
-        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found or access denied' });
-
-        // Fetch previously claimed quantities for this invoice (Pending or Approved)
-        const existingClaims = await db.PDCNClaim.findAll({
-            where: { invoiceNo: invoice.invoiceNo, stockistId, status: { [db.Sequelize.Op.ne]: 'rejected' } },
-            include: [{ model: db.PDCNClaimItem, as: 'items' }]
-        });
-
-        const claimedSummary = {}; // { productId: totalQty }
-        existingClaims.forEach(c => {
-            c.items.forEach(i => {
-                claimedSummary[i.productId] = (claimedSummary[i.productId] || 0) + Number(i.qty || 0);
-            });
-        });
-
-        // Attach claimed quantity to each invoice item (using deep clone to prevent Sequelize from stripping non-schema fields)
-        const invoiceData = JSON.parse(JSON.stringify(invoice));
-        invoiceData.items.forEach(item => {
-            item.alreadyClaimedQty = claimedSummary[item.productId] || 0;
-            item.availableQty = Math.max(0, Number(item.qty || 0) - item.alreadyClaimedQty);
-        });
-
-        res.json({ success: true, invoice: invoiceData });
-
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-app.get('/api/stockist/invoices', async (req, res) => {
-    try {
-        const { stockistId } = req.query;
-        const invoices = await db.Invoice.findAll({
-            where: { stockistId },
-            attributes: ['id', 'invoiceNo', 'grandTotal', 'createdAt'],
-            order: [['createdAt', 'DESC']]
-        });
-        res.json({ success: true, invoices });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-app.get('/api/stockist/orders/:orderId/invoice', async (req, res) => {
-    try {
-        const invoice = await db.Invoice.findOne({
-            where: { orderId: req.params.orderId },
-            include: [
-                { model: db.InvoiceItem, as: 'items' },
-                { model: db.Stockist }
-            ]
-        });
-        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-        // Attach stockistName directly so PDF generation works
-        const invoiceData = invoice.toJSON();
-        invoiceData.stockistName = invoice.Stockist ? invoice.Stockist.name : 'N/A';
-        res.json({ success: true, invoice: invoiceData });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-app.post('/api/admin/invoices/generate/:orderId', async (req, res) => {
-    try {
-        const order = await db.Order.findByPk(req.params.orderId, {
-            include: [{ model: db.OrderItem, as: 'items' }]
-        });
-        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-        
-        // Check if invoice already exists
-        const existing = await db.Invoice.findOne({ where: { orderId: order.id } });
-        if (existing) return res.status(400).json({ success: false, message: 'Invoice already generated for this order' });
-
-        const invoiceNo = await getNextDocNo('invoice');
-        
-        // Ensure totals are rounded
-        const roundedGrandTotal = Math.round(order.grandTotal);
-
-        const stockist = await db.Stockist.findByPk(order.stockistId);
-        const supply = (stockist ? (stockist.state || stockist.city) : '') || companyProfile.defaultPlaceOfSupply || 'Telangana';
-
-        const newInvoice = await db.Invoice.create({
-            invoiceNo,
-            orderId: order.id,
-            stockistId: order.stockistId,
-            subTotal: order.subTotal,
-            gstAmount: order.gstAmount,
-            grandTotal: roundedGrandTotal,
-            outstandingAmount: roundedGrandTotal,
-            placeOfSupply: supply || req.body.placeOfSupply,
-            status: 'approved'
-        });
-
-        // Copy Items
-        for (const item of order.items) {
-            await db.InvoiceItem.create({
-                invoiceId: newInvoice.id,
-                productId: item.productId,
-                name: item.name,
-                manufacturer: item.manufacturer,
-                batch: item.batch,
-                expDate: item.expDate || item.exp || item.expiry || '',
-                qty: item.qty,
-                priceUsed: item.priceUsed,
-                mrp: item.mrp,
-                gstPercent: item.gstPercent,
-                totalValue: item.totalValue,
-                hsn: item.hsn,
-                pts: item.pts || 0,
-                ptr: item.ptr || 0,
-                bonusQty: item.bonusQty || 0
-            });
-        }
-
-        const tInv = await db.sequelize.transaction();
-        await order.update({ status: 'invoiced' }, { transaction: tInv });
-        await autoPostInvoiceJV(newInvoice, stockist, tInv);
-        await tInv.commit();
-        res.json({ success: true, invoice: newInvoice });
-    } catch (err) { 
-        console.error("Invoice Generation Error:", err);
-        res.status(500).json({ error: err.message }); 
-    }
-});
-
-app.post('/api/admin/invoices/bulk', async (req, res) => {
-    const { invoices } = req.body;
-    let successCount = 0;
-    let failedCount = 0;
-    const errors = [];
-
-    for (const invData of invoices) {
-        const t = await db.sequelize.transaction();
-        try {
-            // 1. Validate Stockist
-            const stockist = await db.Stockist.findOne({ 
-                where: { name: { [db.Sequelize.Op.iLike]: invData.partyName.trim() } } 
-            });
-            if (!stockist) throw new Error(`Stockist not found: ${invData.partyName}`);
-
-            // 2. Check Duplicate Invoice
-            const existing = await db.Invoice.findOne({ where: { invoiceNo: invData.invoiceNo } });
-            if (existing) throw new Error(`Invoice No ${invData.invoiceNo} already exists`);
-
-            // 3. Parse Date (DD-MM-YYYY)
-            let invoiceDate = new Date();
-            if (invData.date) {
-                const parts = String(invData.date).split('-');
-                if (parts.length === 3) {
-                    invoiceDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                }
-            }
-
-            // 4. Calculate Totals & Prep Items
-            let subTotal = 0;
-            let gstAmount = 0;
-            const preparedItems = [];
-
-            for (const item of invData.items) {
-                const product = await db.Product.findOne({ 
-                    where: { name: { [db.Sequelize.Op.iLike]: item.productName.trim() } } 
-                });
-                if (!product) throw new Error(`Product not found: ${item.productName}`);
-
-                const lineTotal = Number(item.qty) * Number(item.rate);
-                const lineGst = (lineTotal * Number(item.gstPercent)) / 100;
-                
-                subTotal += lineTotal;
-                gstAmount += lineGst;
-
-                preparedItems.push({
-                    productId: product.id,
-                    name: product.name,
-                    batch: item.batch || 'N/A',
-                    qty: item.qty,
-                    bonusQty: item.bonusQty || 0,
-                    priceUsed: item.rate,
-                    mrp: product.mrp,
-                    totalValue: lineTotal,
-                    gstPercent: item.gstPercent,
-                    hsn: product.hsn,
-                    expDate: item.expDate || ''
-                });
-            }
-
-            const grandTotal = Math.round(subTotal + gstAmount);
-
-            // 5. Create Invoice
-            const newInvoice = await db.Invoice.create({
-                invoiceNo: invData.invoiceNo,
-                stockistId: stockist.id,
-                subTotal,
-                gstAmount,
-                grandTotal,
-                outstandingAmount: grandTotal,
-                placeOfSupply: invData.placeOfSupply || stockist.state || 'Telangana',
-                status: 'approved',
-                createdAt: invoiceDate,
-                updatedAt: invoiceDate
-            }, { transaction: t });
-
-            // 6. Create Items
-            for (const pItem of preparedItems) {
-                await db.InvoiceItem.create({
-                    ...pItem,
-                    invoiceId: newInvoice.id
-                }, { transaction: t });
-            }
-
-            // 7. Update Stockist Balance
-            await stockist.increment('outstandingBalance', { by: grandTotal, transaction: t });
-
-            await t.commit();
-            successCount++;
-        } catch (err) {
-            await t.rollback();
-            failedCount++;
-            errors.push({ invoiceNo: invData.invoiceNo, error: err.message });
-        }
-    }
-
-    res.json({ success: true, results: { success: successCount, failed: failedCount, errors } });
-});
-
-// Admin: Direct Sale (Online/Manual) -> Creates Order + Deducts Inventory + Generates Invoice
-
-app.post('/api/admin/direct-sale', async (req, res) => {
-    try {
-        const { party, items, subTotal, gstAmount, grandTotal, channel, paymentMode, remarks, date, additionalCharges, otherChargesTotal } = req.body;
-        
-        const invoiceNo = await getNextDocNo('invoice');
-        const orderNo = await getNextDocNo('order');
-        const stockistId = parseInt(party);
-        const stockist = await db.Stockist.findByPk(stockistId);
-
-        const numSubTotal = Number(subTotal) || 0;
-        const numGstAmount = Number(gstAmount) || 0;
-        const numGrandTotal = Number(grandTotal) || 0;
-        const numOtherCharges = Number(otherChargesTotal) || 0;
-
-        // 1. Create Order
-        const newOrder = await db.Order.create({
-            orderNo,
-            stockistId,
-            subTotal: numSubTotal,
-            gstAmount: numGstAmount,
-            grandTotal: numGrandTotal,
-            status: 'invoiced',
-            channel: channel || 'DIRECT',
-            paymentMode: paymentMode || 'CASH',
-            remarks: remarks || '',
-            createdAt: date ? new Date(date) : new Date()
-        });
-
-        // 2. Create Invoice
-        const newInvoice = await db.Invoice.create({
-            invoiceNo,
-            orderId: newOrder.id,
-            stockistId,
-            subTotal: numSubTotal,
-            gstAmount: numGstAmount,
-            otherChargesTotal: numOtherCharges,
-            additionalCharges: additionalCharges || [],
-            grandTotal: numGrandTotal,
-            outstandingAmount: numGrandTotal,
-            placeOfSupply: req.body.placeOfSupply || 'Telangana',
-            status: 'approved',
-            createdAt: date ? new Date(date) : new Date()
-        });
-
-
-        for (const item of items) {
-            // Sanitize item: remove id to avoid PK collisions, ensure numeric rates
-            const cleanItem = { ...item };
-            delete cleanItem.id; 
-            
-            const productId = parseInt(item.productId || item.product);
-            const product = await db.Product.findByPk(productId);
-            if (product) {
-                const qty = Number(item.qty) || 0;
-                const free = Number(item.free) || 0;
-                const totalQty = qty + free;
-                
-                await product.decrement('qtyAvailable', { by: totalQty });
-                const batch = await db.Batch.findOne({ where: { productId, batchNo: item.batch } });
-                if (batch) await batch.decrement('qtyAvailable', { by: totalQty });
-
-                const rate = Number(item.rate) || 0;
-                const ptr = Number(item.ptr) || 0;
-
-
-
-                // Create Order Item
-                await db.OrderItem.create({
-                    ...cleanItem,
-                    productId,
-                    orderId: newOrder.id,
-                    qty,
-                    bonusQty: free,
-                    pts: rate,
-                    ptr: ptr,
-                    priceUsed: rate,
-                    totalValue: Number(item.totalValue) || (qty * rate)
-                });
-
-                // Create Invoice Item
-                const invItem = await db.InvoiceItem.create({
-                    ...cleanItem,
-                    productId,
-                    invoiceId: newInvoice.id,
-                    qty,
-                    bonusQty: free,
-                    expDate: item.expDate || item.exp || item.expiry || '',
-                    pts: rate,
-                    ptr: ptr,
-                    priceUsed: rate,
-                    totalValue: Number(item.totalValue) || (qty * rate)
-                });
-                console.log(`[DEBUG] Created InvoiceItem: ${product.name}, Exp: ${invItem.expDate}`);
-            }
-        }
-
-        if (stockist) {
-            await stockist.increment('outstandingBalance', { by: numGrandTotal });
-            // Generate Auto JV for Sales
-            try {
-                await autoPostInvoiceJV(newInvoice, stockist);
-            } catch(err) { console.error("Auto JV failed for sales:", err); }
-        }
-
-        res.json({ success: true, order: newOrder, invoice: newInvoice });
-    } catch (err) { 
-        console.error("Direct Sale Error:", err);
-        res.status(500).json({ error: err.message }); 
-    }
-});
-
-// --- EDIT INVOICED SALE (Reverse & Reapply Logic) ---
-// Cancel Invoice: Restore Inventory + Mark Cancelled
-app.put('/api/admin/invoices/:id/cancel', async (req, res) => {
-    const t = await db.sequelize.transaction();
-    try {
-        const inv = await db.Invoice.findByPk(req.params.id, {
-            include: [{ model: db.InvoiceItem, as: 'items' }]
-        });
-        if (!inv) throw new Error("Invoice not found");
-        if (inv.status === 'cancelled') throw new Error("Invoice already cancelled");
-
-        // 1. Restore Inventory
-        console.log(`[CANCEL] Processing ${inv.items.length} items for Invoice ${inv.invoiceNo}`);
-        for (const item of inv.items) {
-            const pId = item.productId;
-            const bNo = item.batch;
-            const qty = Number(item.qty) || 0;
-            const bonus = Number(item.bonusQty) || 0;
-            const totalToRestore = qty + bonus;
-
-            console.log(`[CANCEL] Restoring Item: ${item.name}, ProductID: ${pId}, Batch: ${bNo}, Qty: ${totalToRestore}`);
-
-            if (pId) {
-                const product = await db.Product.findByPk(pId);
-                if (product) {
-                    await product.increment('qtyAvailable', { by: totalToRestore, transaction: t });
-                    console.log(`[CANCEL] Updated Product ${product.name} (+${totalToRestore})`);
-                }
-
-                if (bNo && bNo !== 'N/A') {
-                    const batch = await db.Batch.findOne({ where: { productId: pId, batchNo: bNo } });
-                    if (batch) {
-                        await batch.increment('qtyAvailable', { by: totalToRestore, transaction: t });
-                        console.log(`[CANCEL] Updated Batch ${bNo} (+${totalToRestore})`);
-                    }
-                }
-            }
-        }
-
-        // 2. Mark Cancelled
-        await inv.update({ status: 'cancelled', outstandingAmount: 0 }, { transaction: t });
-        // 3. Update Order if linked
-        if (inv.orderId) {
-            await db.Order.update({ status: 'cancelled' }, { where: { id: inv.orderId }, transaction: t });
-        }
-
-        // 4. Update Stockist Balance
-        const stockist = await db.Stockist.findByPk(inv.stockistId);
-        if (stockist) {
-            await stockist.decrement('outstandingBalance', { by: inv.grandTotal, transaction: t });
-        }
-
-        await t.commit();
-        res.json({ success: true });
-    } catch (err) {
-        await t.rollback();
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-app.put('/api/admin/invoices/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { party, items, subTotal, gstAmount, grandTotal, date, remarks, placeOfSupply, paymentMode, channel } = req.body;
-
-        const invoice = await db.Invoice.findByPk(id, {
-            include: [
-                { model: db.InvoiceItem, as: 'items' },
-                { model: db.Order, as: 'Order', include: [{ model: db.OrderItem, as: 'items' }] }
-            ]
-        });
-
-        if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
-        const order = invoice.Order;
-
-        // 1. REVERSE OLD IMPACT
-        // 1.1 Reverse Stock
-        for (const oldItem of (invoice.items || [])) {
-            const productId = oldItem.productId;
-            const totalQty = Number(oldItem.qty || 0) + Number(oldItem.bonusQty || 0);
-            
-            const product = await db.Product.findByPk(productId);
-            if (product) await product.increment('qtyAvailable', { by: totalQty });
-            
-            const batch = await db.Batch.findOne({ where: { productId, batchNo: oldItem.batch } });
-            if (batch) await batch.increment('qtyAvailable', { by: totalQty });
-        }
-
-        // 1.2 Reverse Accounting Balance
-        if (invoice.stockistId) {
-            const oldStockist = await db.Stockist.findByPk(invoice.stockistId);
-            if (oldStockist) await oldStockist.decrement('outstandingBalance', { by: invoice.grandTotal });
-        }
-
-        // 2. UPDATE HEADERS (Keep IDs and Doc Nos)
-        const numGrandTotal = Number(grandTotal) || 0;
-        
-        await invoice.update({
-            stockistId: party,
-            subTotal: Number(subTotal) || 0,
-            gstAmount: Number(gstAmount) || 0,
-            grandTotal: numGrandTotal,
-            outstandingAmount: numGrandTotal, // Reset outstanding to new total (assuming unpaid for edit)
-            placeOfSupply: placeOfSupply || invoice.placeOfSupply,
-            createdAt: date ? new Date(date) : invoice.createdAt
-        });
-
-        if (order) {
-            await order.update({
-                stockistId: party,
-                subTotal: Number(subTotal) || 0,
-                gstAmount: Number(gstAmount) || 0,
-                grandTotal: numGrandTotal,
-                remarks: remarks || order.remarks,
-                paymentMode: paymentMode || order.paymentMode,
-                channel: channel || order.channel,
-                createdAt: date ? new Date(date) : order.createdAt
-            });
-        }
-
-        // 3. REPLACE ITEMS
-        await db.InvoiceItem.destroy({ where: { invoiceId: id } });
-        if (order) await db.OrderItem.destroy({ where: { orderId: order.id } });
-
-        // 4. APPLY NEW IMPACT & CREATE NEW ITEMS
-        for (const item of items) {
-            const productId = parseInt(item.productId || item.product);
-            const product = await db.Product.findByPk(productId);
-            if (product) {
-                const totalQty = Number(item.qty) + Number(item.free || 0);
-                
-                // Deduct Stock
-                await product.decrement('qtyAvailable', { by: totalQty });
-                const batch = await db.Batch.findOne({ where: { productId, batchNo: item.batch } });
-                if (batch) await batch.decrement('qtyAvailable', { by: totalQty });
-
-                // Create Invoice Item
-                await db.InvoiceItem.create({
-                    ...item,
-                    productId,
-                    invoiceId: invoice.id,
-                    bonusQty: item.free || 0,
-                    expDate: item.expDate || item.exp || '',
-                    pts: item.rate || 0,
-                    ptr: item.ptr || 0,
-                    priceUsed: item.rate || 0
-                });
-
-                // Create Order Item
-                if (order) {
-                    await db.OrderItem.create({
-                        ...item,
-                        productId,
-                        orderId: order.id,
-                        bonusQty: item.free || 0,
-                        expDate: item.expDate || item.exp || '',
-                        pts: item.rate || 0,
-                        ptr: item.ptr || 0,
-                        priceUsed: item.rate || 0
-                    });
-                }
-            }
-        }
-
-        // 5. APPLY NEW ACCOUNTING
-        const newStockist = await db.Stockist.findByPk(party);
-        if (newStockist) {
-            await newStockist.increment('outstandingBalance', { by: numGrandTotal });
-        }
-
-        res.json({ success: true, message: 'Invoice and Order updated successfully', invoice, order });
-
-    } catch (err) {
-        console.error("Edit Invoice Error:", err);
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-// --- PURCHASE ENTRY ---
-
-// --- PRODUCT MASTER ENHANCEMENTS ---
-
-// Get Product Transaction Timeline (Purchases + Sales)
-app.get('/api/admin/products/:id/timeline', async (req, res) => {
-    try {
-        const productId = req.params.id;
-        
-        // 1. Fetch Purchase History
-        const purchaseItems = await db.PurchaseItem.findAll({
-            where: { productId },
-            include: [{ 
-                model: db.PurchaseEntry, 
-                attributes: ['purchaseNo', 'supplierInvoiceNo', 'invoiceDate', 'createdAt'],
-                include: [{ model: db.Stockist, as: 'Supplier', attributes: ['name'] }]
-            }],
-            order: [[{ model: db.PurchaseEntry }, 'createdAt', 'ASC']]
-        });
-
-        // 2. Fetch Sales History
-        const invoiceItems = await db.InvoiceItem.findAll({
-            where: { productId },
-            include: [{ 
-                model: db.Invoice,
-                attributes: ['invoiceNo', 'createdAt', 'status'],
-                include: [{ model: db.Stockist, attributes: ['name'] }]
-            }],
-            order: [[{ model: db.Invoice }, 'createdAt', 'ASC']]
-        });
-
-        // 3. Format and Merge
-        const timeline = [];
-
-        purchaseItems.forEach(it => {
-            timeline.push({
-                date: it.PurchaseEntry.invoiceDate || it.PurchaseEntry.createdAt,
-                type: 'PURCHASE',
-                refNo: it.PurchaseEntry.purchaseNo,
-                party: it.PurchaseEntry.Supplier ? it.PurchaseEntry.Supplier.name : 'Supplier',
-                qty: it.qty,
-                batch: it.batch,
-                rate: it.purchaseRate,
-                id: it.PurchaseEntry.id
-            });
-        });
-
-        invoiceItems.forEach(it => {
-            // Only include non-cancelled invoices
-            if (it.Invoice.status !== 'cancelled') {
-                timeline.push({
-                    date: it.Invoice.createdAt,
-                    type: 'SALE',
-                    refNo: it.Invoice.invoiceNo,
-                    party: it.Invoice.Stockist ? it.Invoice.Stockist.name : 'Stockist',
-                    qty: -it.qty, // Negative for outward
-                    batch: it.batch,
-                    rate: it.priceUsed,
-                    id: it.Invoice.id,
-                    orderId: it.Invoice.orderId
-                });
-            }
-        });
-
-        // 4. Final Sort
-        timeline.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        res.json({ success: true, timeline });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-
-app.get('/api/admin/purchase-entries', async (req, res) => {
-    try {
-        const entries = await db.PurchaseEntry.findAll({ 
-            include: [
-                { 
-                    model: db.PurchaseItem, 
-                    as: 'items',
-                    include: [{ model: db.Product }]
-                }, 
-                { model: db.Stockist, as: 'Supplier' }
-            ],
-            order: [['createdAt', 'DESC']] 
-        });
-        res.json(entries);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/admin/purchase-entries', async (req, res) => {
-    try {
-        const { supplierId, billNo, date, paymentMode, warehouse, remarks, items } = req.body;
-        const subTotal = Number(req.body.subTotal) || 0;
-        const gstAmount = Number(req.body.gstAmount) || 0;
-        const grandTotal = Number(req.body.grandTotal) || 0;
-
-        // Internal Bill No is strictly auto-generated on server to ensure counter increments and no duplicates
-        const finalPurchaseNo = await getNextDocNo('purchase');
-
-        const entry = await db.PurchaseEntry.create({
-            purchaseNo: finalPurchaseNo,
-            supplierId: supplierId || null,
-            supplierInvoiceNo: req.body.supplierInvoiceNo || '',
-            invoiceDate: date ? new Date(date) : new Date(),
-            paymentMode: paymentMode || 'CREDIT',
-            remarks: remarks || '',
-            subTotal,
-            gstAmount,
-            otherChargesTotal: req.body.otherChargesTotal || 0,
-            additionalCharges: req.body.additionalCharges || [],
-            grandTotal
-        });
-
-        for (const item of (items || [])) {
-            const pId = item.productId || item.product;
-            const bNo = item.batch || item.batchNo || 'N/A';
-            const product = await db.Product.findByPk(pId);
-            if (product) {
-                await product.increment('qtyAvailable', { by: item.qty });
-                
-                // Update product master with new values from purchase entry
-                product.packing = item.pack || product.packing;
-                product.mrp = item.mrp || product.mrp;
-                product.ptr = item.ptr || product.ptr;
-                product.pts = item.pts || product.pts;
-                product.purchaseRate = item.rate || item.purchaseRate || product.purchaseRate;
-                await product.save();
-
-                let [batch] = await db.Batch.findOrCreate({
-                    where: { productId: pId, batchNo: bNo },
-                    defaults: {
-                        productId: pId,
-                        batchNo: bNo,
-                        mfgDate: item.mfg || item.mfgDate || null,
-                        expDate: item.exp || item.expDate || null,
-                        mrp: item.mrp || product.mrp,
-                        pts: item.pts || product.pts,
-                        ptr: item.ptr || product.ptr,
-                        purchaseRate: item.rate || item.purchaseRate || product.purchaseRate || 0,
-                        qtyAvailable: 0
-                    }
-                });
-                
-                // Always update metadata in case it was missing or different
-                await batch.update({
-                    mfgDate: item.mfg || item.mfgDate || batch.mfgDate,
-                    expDate: item.exp || item.expDate || batch.expDate,
-                    mrp: item.mrp || batch.mrp,
-                    pts: item.pts || batch.pts,
-                    ptr: item.ptr || batch.ptr,
-                    purchaseRate: item.rate || item.purchaseRate || batch.purchaseRate || product.purchaseRate || 0
-                });
-                
-                await batch.increment('qtyAvailable', { by: item.qty });
-
-                await db.PurchaseItem.create({
-                    productId: pId,
-                    purchaseEntryId: entry.id,
-                    name: product.name,
-                    manufacturer: product.manufacturer,
-                    qty: item.qty,
-                    purchaseRate: item.rate || item.purchaseRate || 0,
-                    mrp: item.mrp || 0,
-                    ptr: item.ptr || 0,
-                    pts: item.pts || 0,
-                    batch: bNo,
-                    hsn: item.hsn || '',
-                    mfgDate: item.mfg || item.mfgDate || null,
-                    expDate: item.exp || item.expDate || null,
-                    gstPercent: item.gstPercent || 0,
-                    totalValue: item.taxable || (item.qty * (item.rate || 0))
-                });
-            }
-        }
-
-        if (supplierId) {
-            const stockist = await db.Stockist.findByPk(supplierId);
-            if (stockist) {
-                await stockist.decrement('outstandingBalance', { by: grandTotal });
-                try { await autoPostPurchaseJV(entry, stockist); } catch(err) { console.error("Auto JV failed for purchase:", err); }
-            }
-        }
-
-        // Return with billNo for the frontend success message
-        res.json({ success: true, entry: { ...entry.toJSON(), billNo: finalPurchaseNo } });
-    } catch (e) {
-        console.error("Purchase Entry Error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.put('/api/admin/purchase-entries/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { supplierId, date, paymentMode, remarks, items, subTotal, gstAmount, grandTotal, supplierInvoiceNo } = req.body;
-
-        const entry = await db.PurchaseEntry.findByPk(id, { include: [{ model: db.PurchaseItem, as: 'items' }] });
-        if (!entry) return res.status(404).json({ success: false, message: 'Purchase record not found' });
-
-        // 1. Reverse stock for old items
-        for (const oldItem of (entry.items || [])) {
-            const product = await db.Product.findByPk(oldItem.productId);
-            if (product) await product.decrement('qtyAvailable', { by: oldItem.qty });
-            const batch = await db.Batch.findOne({ where: { productId: oldItem.productId, batchNo: oldItem.batch } });
-            if (batch) await batch.decrement('qtyAvailable', { by: oldItem.qty });
-        }
-        
-        // 2. Reverse outstanding balance
-        if (entry.supplierId) {
-            const oldStockist = await db.Stockist.findByPk(entry.supplierId);
-            if (oldStockist) await oldStockist.increment('outstandingBalance', { by: entry.grandTotal });
-        }
-
-        // 3. Update entry header
-        await entry.update({
-            supplierId: supplierId || null,
-            supplierInvoiceNo: supplierInvoiceNo || entry.supplierInvoiceNo,
-            invoiceDate: date ? new Date(date) : entry.invoiceDate,
-            paymentMode: paymentMode || entry.paymentMode,
-            remarks: remarks || entry.remarks,
-            subTotal: Number(subTotal) || 0,
-            gstAmount: Number(gstAmount) || 0,
-            otherChargesTotal: req.body.otherChargesTotal || 0,
-            additionalCharges: req.body.additionalCharges || [],
-            grandTotal: Number(grandTotal) || 0
-        });
-
-        // 4. Delete old items
-        await db.PurchaseItem.destroy({ where: { purchaseEntryId: id } });
-
-        // 5. Add new items and update stock
-        for (const item of (items || [])) {
-            const pId = item.productId || item.product;
-            const bNo = item.batch || item.batchNo || 'N/A';
-            const product = await db.Product.findByPk(pId);
-            if (product) {
-                await product.increment('qtyAvailable', { by: item.qty });
-                
-                // Update product master with new values from purchase entry
-                product.packing = item.pack || product.packing;
-                product.mrp = item.mrp || product.mrp;
-                product.ptr = item.ptr || product.ptr;
-                product.pts = item.pts || product.pts;
-                product.purchaseRate = item.rate || item.purchaseRate || product.purchaseRate;
-                await product.save();
-
-                let [batch] = await db.Batch.findOrCreate({
-                    where: { productId: pId, batchNo: bNo },
-                    defaults: {
-                        productId: pId,
-                        batchNo: bNo,
-                        mfgDate: item.mfg || item.mfgDate || null,
-                        expDate: item.exp || item.expDate || null,
-                        mrp: item.mrp || product.mrp,
-                        pts: item.pts || product.pts,
-                        ptr: item.ptr || product.ptr,
-                        qtyAvailable: 0
-                    }
-                });
-                
-                // Update metadata
-                await batch.update({
-                    mfgDate: item.mfg || item.mfgDate || batch.mfgDate,
-                    expDate: item.exp || item.expDate || batch.expDate,
-                    mrp: item.mrp || batch.mrp,
-                    pts: item.pts || batch.pts,
-                    ptr: item.ptr || batch.ptr
-                });
-                
-                await batch.increment('qtyAvailable', { by: item.qty });
-
-                await db.PurchaseItem.create({
-                    productId: pId,
-                    purchaseEntryId: entry.id,
-                    name: product.name,
-                    manufacturer: product.manufacturer,
-                    qty: item.qty,
-                    purchaseRate: item.rate || item.purchaseRate || 0,
-                    mrp: item.mrp || 0,
-                    ptr: item.ptr || 0,
-                    pts: item.pts || 0,
-                    batch: bNo,
-                    hsn: item.hsn || '',
-                    mfgDate: item.mfg || item.mfgDate || null,
-                    expDate: item.exp || item.expDate || null,
-                    gstPercent: item.gstPercent || 0,
-                    totalValue: item.taxable || (item.qty * (item.rate || 0))
-                });
-            }
-        }
-
-        // 6. Update new outstanding balance
-        if (supplierId) {
-            const newStockist = await db.Stockist.findByPk(supplierId);
-            if (newStockist) await newStockist.decrement('outstandingBalance', { by: grandTotal });
-        }
-
-        res.json({ success: true, entry: { ...entry.toJSON(), billNo: entry.purchaseNo } });
-    } catch (e) {
-        console.error("Purchase Update Error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.delete('/api/admin/purchase-entries/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const entry = await db.PurchaseEntry.findByPk(id, { include: [{ model: db.PurchaseItem, as: 'items' }] });
-        if (!entry) return res.status(404).json({ success: false, message: 'Purchase record not found' });
-
-        // 1. Reverse stock
-        for (const oldItem of (entry.items || [])) {
-            const product = await db.Product.findByPk(oldItem.productId);
-            if (product) await product.decrement('qtyAvailable', { by: oldItem.qty });
-            const batch = await db.Batch.findOne({ where: { productId: oldItem.productId, batchNo: oldItem.batch } });
-            if (batch) await batch.decrement('qtyAvailable', { by: oldItem.qty });
-        }
-        
-        // 2. Reverse outstanding balance
-        if (entry.supplierId) {
-            const stockist = await db.Stockist.findByPk(entry.supplierId);
-            if (stockist) await stockist.increment('outstandingBalance', { by: entry.grandTotal });
-        }
-
-        // 3. Delete items and entry
-        await db.PurchaseItem.destroy({ where: { purchaseEntryId: id } });
-        await entry.destroy();
-
-        res.json({ success: true, message: 'Purchase entry deleted and stock/balance reversed.' });
-    } catch (e) {
-        console.error("Purchase Delete Error:", e);
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// --- FINANCIAL NOTES (CN/DN) ---
-
-app.get('/api/admin/financial-notes', async (req, res) => {
-    try {
-        const notes = await db.FinancialNote.findAll({ 
-            include: [{ model: db.Stockist }, { model: db.NoteItem, as: 'items' }],
-            order: [['createdAt', 'DESC']]
-        });
-        res.json(notes);
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/admin/financial-notes', async (req, res) => {
-    try {
-        const { noteType, partyId, amount, reason, items } = req.body;
-        
-        let counterKey = (noteType === 'CN') ? 'lcn' : 'ldn'; // Defaults
-        if (noteType === 'CN') {
-            if (reason === 'Salable Return') counterKey = 'scn';
-            else if (reason === 'Price Diff CN') counterKey = 'pdcn';
-        } else {
-            if (reason === 'Purchase Return') counterKey = 'pdn';
-            else if (reason === 'Price Diff DN') counterKey = 'pddn';
-        }
-
-        const noteNo = await getNextDocNo(counterKey);
-
-        const numAmount = Number(amount) || 0;
-        const newNote = await db.FinancialNote.create({
-            noteNo,
-            noteType,
-            stockistId: partyId,
-            amount: numAmount,
-            reason,
-            ...req.body
-        });
-
-
-        // Inventory Logic for Salable Return / Purchase Return
-        const adjFactor = reason === 'Salable Return' ? 1 : (reason === 'Purchase Return' ? -1 : 0);
-        
-        for (const item of items) {
-            // Save Note Item regardless of inventory impact
-            await db.NoteItem.create({
-                ...item,
-                financialNoteId: newNote.id
-            });
-
-            if (adjFactor !== 0) {
-                const product = await db.Product.findByPk(item.productId);
-                if (product) {
-                    const adj = adjFactor * item.qty;
-                    await product.increment('qtyAvailable', { by: adj });
-                    const batch = await db.Batch.findOne({ where: { productId: item.productId, batchNo: item.batchNo } });
-                    if (batch) await batch.increment('qtyAvailable', { by: adj });
-                }
-            }
-        }
-
-        const adjustment = noteType === 'CN' ? -amount : amount;
-        await db.Stockist.increment('outstandingBalance', { by: adjustment, where: { id: partyId } });
-
-        res.json({ success: true, note: newNote });
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-app.post('/api/stockist/pdcn/submit', async (req, res) => {
-    try {
-        const { invoiceNo, stockistId, items, totalAmount } = req.body;
-
-        // 1. Fetch all existing non-rejected claims for this invoice/stockist
-        const existingClaims = await db.PDCNClaim.findAll({
-            where: { 
-                invoiceNo, 
-                stockistId, 
-                status: { [db.Sequelize.Op.ne]: 'rejected' } 
-            },
-            include: [{ model: db.PDCNClaimItem, as: 'items' }]
-        });
-
-        // 2. Validate quantities across all items
-        // Accumulate requested quantities by productId to handle multiple variations in the same submission
-        const newRequestsMap = {};
-        for (const newItem of items) {
-            const requestedQty = Number(newItem.qty || newItem.claimQty || 0);
-            if (requestedQty <= 0) continue;
-            newRequestsMap[newItem.productId] = (newRequestsMap[newItem.productId] || 0) + requestedQty;
-        }
-
-        for (const productId of Object.keys(newRequestsMap)) {
-            const totalRequested = newRequestsMap[productId];
-            
-            let previouslyClaimed = 0;
-            existingClaims.forEach(claim => {
-                claim.items.forEach(i => {
-                    if (String(i.productId) === String(productId)) {
-                        previouslyClaimed += Number(i.qty || 0);
-                    }
-                });
-            });
-
-            // Get the original invoice quantity for this specific product
-            const inv = await db.Invoice.findOne({
-                where: { invoiceNo, stockistId },
-                include: [{ model: db.InvoiceItem, as: 'items', where: { productId } }]
-            });
-
-            if (!inv || !inv.items || inv.items.length === 0) continue; 
-            
-            const originalQty = Number(inv.items[0].qty || 0);
-            const remainingToClaim = originalQty - previouslyClaimed;
-            
-            if (totalRequested > remainingToClaim) {
-                const name = items.find(i => String(i.productId) === String(productId))?.name || 'Product';
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `⚠️ OVER-CLAIM ERROR: Product '${name}' already has ${previouslyClaimed} units claimed. Only ${remainingToClaim} units remaining to claim.` 
-                });
-            }
-        }
-
-        // 3. Create the new claim
-        const claim = await db.PDCNClaim.create({
-            invoiceNo,
-            stockistId,
-            totalAmount: 0, // Will be updated after items are added
-            status: 'pending'
-        });
-
-        let calculatedTotal = 0;
-        for (const item of items) {
-            const qty      = Number(item.qty || item.claimQty) || 0;
-            const billed   = Number(item.billedPrice) || 0;
-            const spl      = Number(item.specialPrice || item.splPrice) || 0;
-            const diff     = billed - spl;
-            const gst      = Number(item.gstPercent || item.gstPct) || 0;
-            const marginPct = parseFloat(item.marginPct) || 10.0;
-
-            // Canonical Formula:
-            // Diff/Unit  = (Billed - Special) * (1 + GST%)
-            // Stk Margin = Special Price * 10%  (per unit)
-            // Final PDCN = (Diff/Unit + Stk Margin) * Qty
-            const unitSaleDiff  = diff * (1 + gst / 100);
-            const unitStkMargin = spl * (marginPct / 100);
-            const serverCalcPDCN = parseFloat(((unitSaleDiff + unitStkMargin) * qty).toFixed(2));
-
-            // Trust client-sent finalPDCN if provided and non-zero,
-            // otherwise fall back to server recalculation
-            const clientFinalPDCN = parseFloat(item.finalPDCN) || 0;
-            const finalItemPDCN = (clientFinalPDCN > 0) ? clientFinalPDCN : serverCalcPDCN;
-
-            await db.PDCNClaimItem.create({
-                pdcnClaimId: claim.id,
-                productId:   item.productId,
-                name:        item.name,
-                qty,
-                billedPrice: billed,
-                specialPrice: spl,
-                gstPercent:  gst,
-                marginPct,
-                stkMargin:   parseFloat((unitStkMargin * qty).toFixed(2)),
-                saleDiff:    parseFloat((unitSaleDiff  * qty).toFixed(2)),
-                finalPDCN:   finalItemPDCN,
-                remarks:     item.remarks
-            });
-            calculatedTotal += finalItemPDCN;
-        }
-
-        // Header totalAmount = exact sum of saved item finalPDCN values
-        await claim.update({ totalAmount: parseFloat(calculatedTotal.toFixed(2)) });
-
-
-
-        res.json({ success: true, message: 'PDCN Worksheet submitted for review', claimId: claim.id });
-
-    } catch (e) { res.status(500).json({ success: false, error: e.message }); }
-});
-
-// --- OCR TEMPLATE MANAGER (ADMIN CENTER) ---
-
-app.post('/api/admin/ocr-templates', async (req, res) => {
-    try {
-        const {
-            stockistId, colProductStart, colProductEnd, colHSNStart, colHSNEnd,
-            colBatchStart, colBatchEnd, colExpStart, colExpEnd, colMRPStart, colMRPEnd,
-            colRateStart, colRateEnd, colQtyStart, colQtyEnd, anchorKeyword
-        } = req.body;
-
-        if (!stockistId) {
-            return res.status(400).json({ success: false, message: 'Stockist ID is required.' });
-        }
-
-        let template = await db.InvoiceTemplate.findOne({ where: { stockistId } });
-        const templateData = {
-            stockistId: parseInt(stockistId),
-            anchorKeyword: anchorKeyword || 'HSN',
-            colProductStart: parseFloat(colProductStart),
-            colProductEnd: parseFloat(colProductEnd),
-            colHSNStart: parseFloat(colHSNStart),
-            colHSNEnd: parseFloat(colHSNEnd),
-            colBatchStart: parseFloat(colBatchStart),
-            colBatchEnd: parseFloat(colBatchEnd),
-            colExpStart: parseFloat(colExpStart),
-            colExpEnd: parseFloat(colExpEnd),
-            colMRPStart: parseFloat(colMRPStart),
-            colMRPEnd: parseFloat(colMRPEnd),
-            colRateStart: parseFloat(colRateStart),
-            colRateEnd: parseFloat(colRateEnd),
-            colQtyStart: parseFloat(colQtyStart),
-            colQtyEnd: parseFloat(colQtyEnd)
-        };
-
-        if (template) {
-            await template.update(templateData);
-        } else {
-            template = await db.InvoiceTemplate.create(templateData);
-        }
-
-        res.json({ success: true, message: 'Layout template saved successfully!', template });
-    } catch (e) {
-        console.error("❌ Save OCR Template Error:", e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.get('/api/admin/ocr-templates/:stockistId', async (req, res) => {
-    try {
-        const template = await db.InvoiceTemplate.findOne({ where: { stockistId: req.params.stockistId } });
-        res.json({ success: true, template });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-app.post('/api/admin/ocr-analyze-pdf', docUpload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: 'No PDF file uploaded.' });
-        }
-
-        const PDFParser = require('pdf2json');
-        const pdfParser = new PDFParser();
-        
-        pdfParser.on("pdfParser_dataError", errData => {
-            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            res.status(500).json({ success: false, message: errData.parserError });
-        });
-        
-        pdfParser.on("pdfParser_dataReady", pdfData => {
-            const pages = pdfData.Pages;
-            let tokens = [];
-            pages.forEach((page, pageIdx) => {
-                const texts = page.Texts;
-                texts.forEach(textObj => {
-                    const x = textObj.x;
-                    const y = textObj.y;
-                    const w = textObj.w;
-                    const rawText = decodeURIComponent(textObj.R[0].T);
-                    tokens.push({
-                        text: rawText.trim(),
-                        x: parseFloat(x.toFixed(3)),
-                        y: parseFloat(y.toFixed(3)),
-                        w: parseFloat(w.toFixed(3)),
-                        page: pageIdx + 1
-                    });
-                });
-            });
-
-            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            res.json({ success: true, tokens });
-        });
-        
-        pdfParser.loadPDF(req.file.path);
-    } catch (e) {
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
-
-// --- EXTERNAL INVOICE ---
-
-function parseSquashedLine(line) {
-    const hsnMatch = line.match(/^(\d{4}|\d{8})(?=[A-Za-z])/);
-    if (!hsnMatch) return null;
-
-    const hsn = hsnMatch[1];
-    let remaining = line.substring(hsn.length);
-
-    const expMatch = remaining.match(/\b(\d{1,2}\/\d{2,4})\b/) || remaining.match(/(\d{1,2}\/\d{2,4})/);
-    if (!expMatch) return null;
-
-    const expDate = expMatch[1];
-    const expIdx = remaining.indexOf(expDate);
-
-    const leftSide = remaining.substring(0, expIdx).trim();
-    const rightSide = remaining.substring(expIdx + expDate.length).trim();
-
-    const parts = rightSide.split(/\s+/).filter(p => p);
-    if (parts.length < 3) return null;
-
-    const cleanNum = (txt) => parseFloat(txt.replace(/,/g, '').replace(/[^0-9.]/g, '')) || 0;
-    
-    const mrp = cleanNum(parts[0]);
-    const qty = parseInt(parts[1]) || 0;
-    const rate = cleanNum(parts[2]);
-    const gst = parts.length >= 5 ? parseInt(parts[4]) || 5 : 5;
-
-    const batchMatch = leftSide.match(/([A-Z0-9\-]{4,15})$/i);
-    let batch = "EXTRACTED";
-    let name = leftSide;
-    if (batchMatch) {
-        batch = batchMatch[1];
-        name = leftSide.substring(0, leftSide.length - batch.length).trim();
-
-        const injMatch = batch.match(/^(INJ(?:ECTION)?)(.+)$/i);
-        if (injMatch) {
-            name = (name + " " + injMatch[1]).trim();
-            batch = injMatch[2];
-        }
-    }
-
-    name = name.replace(/^EMYRI\d?\s*(VIAL|TAB|CAP|PCS|BOX|NOS)?/i, '').trim();
-
-    return {
-        name: name.toUpperCase(),
-        hsn,
-        batch: batch.toUpperCase(),
-        expDate,
-        mrp,
-        qty,
-        rate,
-        gst
-    };
-}
-
-
-app.post('/api/stockist/upload-invoice-read', docUpload.single('invoice'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: "No invoice file uploaded." });
-        }
-
-        const { stockistName, stockistId } = req.body;
-        const stockist = await db.Stockist.findByPk(stockistId || 0);
-
-        // --- GEMINI API VISION PARSER ---
-        if (process.env.GEMINI_API_KEY) {
-            try {
-                console.log("🤖 Attempting to parse invoice via Gemini API Vision...");
-                const { GoogleGenerativeAI } = require('@google/generative-ai');
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ 
-                    model: "gemini-flash-latest", 
-                    generationConfig: { responseMimeType: "application/json" } 
-                });
-                
-                const dataBuffer = fs.readFileSync(req.file.path);
-                const mimeType = req.file.mimetype || 'application/pdf';
-                const filePart = {
-                    inlineData: {
-                        data: dataBuffer.toString("base64"),
-                        mimeType
-                    }
-                };
-                
-                const prompt = `You are a highly accurate invoice data extraction AI for Indian pharmaceutical/FMCG invoices. Extract ALL details from this document and return ONLY a pure JSON object with NO markdown, NO code blocks, NO explanation.
-
-CRITICAL RULES:
-1. HSN field: Look for the column header "HSN", "HSN/SAC", "HSN Code", or "HSN No." in the invoice table. Each product row will have an 8-digit (or 6-digit) numeric code in that column. Extract EXACTLY that numeric code for each item. Do NOT confuse with batch numbers. If not found, use "".
-2. Extract EVERY product row. Do not skip any item.
-3. Product names must be UPPERCASE, clean, without batch/expiry info. (Note: Product names can and often do contain parentheses and ampersands like "(K&E)". Do NOT strip these out and do NOT skip the item).
-4. Batch must be UPPERCASE.
-5. expDate format: MM/YYYY or MM/YY only.
-6. All numeric fields (mrp, qty, rate, gst, grandTotal) must be numbers not strings.
-
-Return ONLY this exact JSON structure, nothing else:
-{
-  "invoiceNo": "string",
-  "date": "YYYY-MM-DD",
-  "customerName": "string",
-  "placeOfSupply": "string",
-  "pincode": "string",
-  "fssaiNo": "string",
-  "email": "string",
-  "grandTotal": number,
-  "items": [
-    {
-      "name": "string (UPPERCASE product name only)",
-      "hsn": "string (exact HSN/SAC code from the invoice table HSN column, 6-8 digits)",
-      "batch": "string (UPPERCASE)",
-      "expDate": "MM/YYYY or MM/YY",
-      "mrp": number,
-      "qty": number (Billed quantity only, do NOT include free/bonus quantity),
-      "rate": number (Unit rate/PTR. Do NOT extract the total line amount as rate),
-      "gst": number
-    }
-  ]
-}
-If any field is missing, use empty string "" or 0. Never omit the hsn field even if empty string.`;
-
-                const result = await model.generateContent([prompt, filePart]);
-                let text = result.response.text();
-                
-                // Bulletproof JSON extraction
-                const jsonMatch = text.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    text = jsonMatch[0];
-                } else {
-                    // Fallback to old sanitization if match fails for some reason
-                    text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-                }
-                
-                console.log('🤖 [Gemini Response Preview]:', text.substring(0, 400));
-                let extractedData = JSON.parse(text);
-
-                
-                // Validate stockist identity
-                let identityVerified = false;
-                if (stockistName) {
-                    const cleanStockistName = stockistName.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    const cleanExtractedName = (extractedData.customerName || "").toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    if (cleanExtractedName && cleanExtractedName.includes(cleanStockistName)) identityVerified = true;
-                } else {
-                    identityVerified = true;
-                }
-                
-                if (stockistName && !identityVerified) {
-                    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `ERROR: UPLOAD YOUR OWN INVOICE. This invoice belongs to: ${extractedData.customerName || "UNKNOWN"}` 
-                    });
-                }
-                
-                // Clean up files and respond immediately!
-                if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-                
-                return res.json({
-                    success: true,
-                    data: extractedData,
-                    profile: stockist ? stockist.toJSON() : null,
                     message: "✨ Invoice successfully extracted using Gemini AI Vision."
                 });
             } catch (err) {
@@ -2467,7 +1145,7 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
         const pdf = require('pdf-parse');
         
         // Since we use disk storage, req.file.buffer is null. Read from disk instead.
-        const dataBuffer = fs.readFileSync(req.file.path);
+        const dataBuffer = req.file.buffer;
         const pdfData = await pdf(dataBuffer);
         const text = pdfData.text;
 
@@ -2647,7 +1325,7 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
             extractedData.items = extractedItems;
             
             // Clean up files and respond immediately!
-            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            // memory storage - no temp file to clean up
             return res.json({
                 success: true,
                 data: extractedData,
@@ -2737,7 +1415,7 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
         }
 
         if (stockistName && !identityVerified) {
-            if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            // memory storage - no temp file to clean up
             return res.status(400).json({ 
                 success: false, 
                 message: `ERROR: UPLOAD YOUR OWN INVOICE FROM SUPER DISTRIBUTOR. This invoice belongs to: ${extractedData.customerName || "UNKNOWN"}` 
@@ -2778,7 +1456,7 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
                     });
                 });
                 
-                pdfParser.loadPDF(req.file.path);
+                pdfParser.parseBuffer(req.file.buffer);
                 const tokens = await parsePromise;
 
                 const uniqueYs = new Set(tokens.map(t => t.y));
@@ -3224,7 +1902,7 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
             if (floats.length >= 2) extractedData.grandTotal = floats[1];
         }
 
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        // memory storage - no temp file to clean up
         res.json({ 
             success: true, 
             data: extractedData, 
@@ -3233,7 +1911,7 @@ If any field is missing, use empty string "" or 0. Never omit the hsn field even
         });
 
     } catch (innerErr) {
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        // memory storage - no temp file to clean up
         res.status(500).json({ success: false, message: innerErr.message });
     }
 });
@@ -3909,8 +2587,7 @@ app.post('/api/admin/upload-purchase-invoice', docUpload.single('invoice'), asyn
                 generationConfig: { responseMimeType: "application/json" } 
             });
             
-            const fs = require('fs');
-            const dataBuffer = fs.readFileSync(req.file.path);
+            const dataBuffer = req.file.buffer;
             const mimeType = req.file.mimetype || 'application/pdf';
             const filePart = {
                 inlineData: {
@@ -3967,8 +2644,7 @@ If any field is missing, use empty string "" or 0.`;
             
             let extractedData = JSON.parse(text);
             
-            // Clean up files
-            if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            // memory storage - no temp file to clean up
             
             return res.json({
                 success: true,
@@ -3977,13 +2653,11 @@ If any field is missing, use empty string "" or 0.`;
             });
         }
 
-        const fs = require('fs');
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        // memory storage - no temp file to clean up
         return res.status(500).json({ success: false, message: "Gemini API key not configured for Admin." });
     } catch (err) {
         console.error("❌ Purchase Upload Error:", err.message);
-        const fs = require('fs');
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        // memory storage - no temp file to clean up
         res.status(500).json({ success: false, message: err.message });
     }
 });
